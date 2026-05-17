@@ -92,3 +92,22 @@ def test_shaded_svg_url_actually_swaps_fills():
     a = shaded_svg_url("bg-cloud.svg", 0)
     b = shaded_svg_url("bg-cloud.svg", 4)
     assert a != b, "bucket 0 and bucket 4 should produce different SVG output"
+
+
+@pytest.mark.parametrize("bucket_idx", range(5))
+def test_shaded_cloud_svg_retains_three_distinct_fills(bucket_idx):
+    """Regression: an earlier sequential-str.replace implementation
+    cascaded — if bucket N mapped #666→#999 and #999→#BBB in the same
+    pass, the post-step-1 #999 got caught by step 2 and collapsed.
+    bg-cloud.svg uses all three artist fills (#666/#999/#BBB), so the
+    output must still contain 3 distinct fill values per bucket."""
+    import base64
+    import re
+    url = shaded_svg_url("bg-cloud.svg", bucket_idx)
+    # Decode the data: URL back to SVG text.
+    payload = url.split(",", 1)[1]
+    svg_text = base64.b64decode(payload).decode("utf-8")
+    fills = set(re.findall(r'fill="(#[0-9A-Fa-f]+)"', svg_text))
+    assert len(fills) == 3, (
+        f"bucket {bucket_idx} produced {len(fills)} distinct fills: {fills}"
+    )

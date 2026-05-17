@@ -169,10 +169,10 @@ def build_context(
     # parse a near-empty chart. Cloud overlay also triggers when cloud
     # cover is genuinely low even if bucket > 0 in edge cases, but
     # tying to the bucket keeps the rule simple.
-    cloud_empty_text  = "CLEAR SKIES"       if cloud_b == 0 else None
+    cloud_empty_text  = "CLEAR SKIES"           if cloud_b == 0 else None
     precip_empty_text = (
-        "NO SNOW FORECAST" if (precip_b == 0 and precip_type == "snow") else
-        "NO RAIN FORECAST" if precip_b == 0 else None
+        "NO SNOW FORECASTED" if (precip_b == 0 and precip_type == "snow") else
+        "NO RAIN FORECASTED" if precip_b == 0 else None
     )
 
     return {

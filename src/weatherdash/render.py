@@ -91,7 +91,7 @@ def render_html(data: dict) -> str:
         precip_bg_url = shaded_svg_url(precip_svg, p_bucket)
         if precip_empty_text is None and p_bucket == 0:
             precip_empty_text = (
-                "NO SNOW FORECAST" if precip_type == "snow" else "NO RAIN FORECAST"
+                "NO SNOW FORECASTED" if precip_type == "snow" else "NO RAIN FORECASTED"
             )
 
     ctx = {**data, "hourly": enriched,

@@ -22,6 +22,7 @@ background tint changes.
 """
 from __future__ import annotations
 
+import re
 from base64 import b64encode
 from functools import lru_cache
 from pathlib import Path
@@ -96,16 +97,35 @@ def precip_bucket(total_mm: float) -> int:
     return 4
 
 
+_FILL_RE = re.compile(r'fill="(#[0-9A-Fa-f]+)"')
+
+
 @lru_cache(maxsize=24)
 def shaded_svg_url(svg_filename: str, bucket: int) -> str:
     """Return a data: URL of the SVG with fills shifted to the given bucket.
+
+    Implemented as a single-pass regex substitution. Earlier versions did
+    sequential `str.replace` calls per (orig, repl) pair — that cascades
+    when a target color is also a source key in the same mapping. For the
+    cloud SVG (which carries all three artist fills #666/#999/#BBB), the
+    bucket-1 mapping {#666→#999, #999→#BBB, #BBB→#CCC} collapsed every
+    fill to #CCC because the post-stage-1 #999 got caught by stage 2,
+    which then got caught by stage 3. The rain SVG escaped that bug
+    because it only has two of the three source fills.
 
     Cached because the inputs are a tiny finite set (3 base SVGs × 5
     buckets) and each render of the dashboard hits the same combos.
     """
     svg_path = ASSETS / svg_filename
     content = svg_path.read_text()
-    for orig, replacement in INTENSITY_BUCKETS[bucket].items():
-        content = content.replace(f'fill="{orig}"', f'fill="{replacement}"')
+    mapping = INTENSITY_BUCKETS[bucket]
+    # Normalize keys to uppercase for case-insensitive lookup.
+    mapping_upper = {k.upper(): v for k, v in mapping.items()}
+
+    def _swap(m: re.Match) -> str:
+        color = m.group(1).upper()
+        return f'fill="{mapping_upper.get(color, m.group(1))}"'
+
+    content = _FILL_RE.sub(_swap, content)
     encoded = b64encode(content.encode("utf-8")).decode("ascii")
     return f"data:image/svg+xml;base64,{encoded}"
