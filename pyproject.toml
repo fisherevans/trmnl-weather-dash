@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "weatherdash"
+version = "0.1.0"
+description = "TRMNL X weather dashboard renderer: produces a 1872x1404 16-grey PNG for the 10.3\" e-ink panel."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "Fisher Evans", email = "fisher@fisherevans.com" }]
+dependencies = [
+    "playwright>=1.44",
+    "jinja2>=3.1",
+    "pillow>=10.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/fisherevans/trmnl-weather-dash"
+Issues = "https://github.com/fisherevans/trmnl-weather-dash/issues"
+
+[project.scripts]
+weatherdash = "weatherdash.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/weatherdash"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/weatherdash/assets" = "weatherdash/assets"

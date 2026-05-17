@@ -10,10 +10,12 @@ A weather-dashboard renderer that produces a 1872×1404, 16-grey PNG for the
 TRMNL X 10.3" e-ink panel (4-bit mode). Pipeline: JSON data → Jinja2 template
 → headless Chromium screenshot → Pillow quantization to the 16-level palette.
 
-Not a service. There's no live data source yet — the four `data*.json` files
-are hand-crafted scenarios covering different times of day so the layout can
-be stress-tested. When live data is wired in, the integration point is
-`render.py` (load function) and the `outside.condition` string mapping.
+The four `data*.json` files are hand-crafted scenarios covering different
+times of day so the layout can be stress-tested. Live data sources are
+being wired in via issues #2-#7; the integration point is
+`weatherdash.aggregate.build_context` (produces a dict matching the
+existing `data.json` shape) and the condition-string mapping in
+`weatherdash.aggregate` (#5).
 
 ## Architecture
 
@@ -48,10 +50,11 @@ Icon pipeline (one-time per pack):
 
 ## Key design decisions
 
-- **Single-file uv scripts.** `render.py`, `gen_patterns.py`, `convert_icons.py`,
-  `tighten_viewbox.py`, `pattern_studio.py` each declare their own deps via
-  PEP 723 (`# /// script ... # ///`). No global venv, no `requirements.txt`,
-  no pip in CI. `uv run render.py` just works.
+- **uv-only Python.** The renderer is a small package (`src/weatherdash/`)
+  with deps declared in `pyproject.toml`. `uv run weatherdash render` builds
+  + installs into an ephemeral env transparently. The one-off generators in
+  `scripts/` are still single-file PEP 723 uv scripts. No global venv, no
+  `requirements.txt`, no pip in CI.
 - **Template inlines its CSS.** No separate stylesheet, no build step. Edits
   happen in `template.html` directly. The dashboard is *one HTML file* +
   *one Python orchestrator*; everything else is data or assets.
@@ -101,38 +104,58 @@ Icon pipeline (one-time per pack):
   show both per slot — the user explicitly asked for alternation. The hour
   for an odd-index bar is meant to be inferred from neighbours.
 
-## Live data integration (when you get there)
+## Repo layout
 
-1. Replace `json.loads(...)` in `render.py` with whatever fetches your data.
-   Adapt to the shape in `data.json`.
-2. Map the API's condition codes to `makin-grey/` filenames. All 58 icon
-   stems are documented in `README.md`. Write a small mapper:
-   `(api_code, intensity, is_night) → "rainy-2-night"`.
-3. Compute `sun.{sunset,sunrise}.hour_index` from absolute event timestamps
-   relative to the chart's start hour (negative or `> n_hours` → marker is
-   hidden, which is the intended behaviour).
-4. Per-hour `temp_f` populates the alternating-temperature axis labels.
+```
+src/weatherdash/         # the installable package
+├── cli.py               # entrypoint (subcommands: render, setup, ...)
+├── render.py            # template -> Chromium -> 4-bit PNG pipeline
+└── assets/              # template.html, bg-*.svg, makin-grey/ (ship with package)
+scripts/                 # one-off generators (PEP 723 single-file uv scripts)
+├── gen_patterns.py
+├── pattern_studio.py
+├── convert_icons.py
+├── tighten_viewbox.py
+└── convert_bg.py
+data*.json               # dev fixtures (replaced by live data sources later)
+pyproject.toml           # hatchling-built package; `weatherdash` console script
+```
+
+## Live data integration (in progress per issues #2-#7)
+
+Tracked end-to-end via GitHub issues. The shape:
+1. `weatherdash.config` loads a YAML config (provider, location, HA sensors).
+2. `weatherdash.sources.openmeteo` (and friends) fetch the forecast.
+3. `weatherdash.sources.homeassistant` fetches HA sensor states.
+4. `weatherdash.aggregate.build_context` merges them into the dict
+   `render_to_png(data, ...)` already expects (same shape as `data.json`).
+5. `weatherdash.serve` runs a scheduler + HTTP server in one process.
+
+Condition-code mapping (#5): maps API codes + `is_day` to `makin-grey/`
+filenames. All 58 stems documented in `README.md`. Sunset/sunrise
+`hour_index` is computed relative to the chart's start hour; negative
+or `>= n_hours` hides the marker.
 
 ## Commands
 
 ```bash
-# Render the dashboard
-uv run render.py                              # data.json → output.png
-uv run render.py --data data-morning.json --out morning.png
-uv run render.py --no-quantize                # skip 4-bit snap (faster iteration)
-uv run render.py --setup                      # one-time: download chromium
+# Render the dashboard from a data.json fixture
+uv run weatherdash render                                 # data.json → output.png
+uv run weatherdash render --data data-morning.json --out morning.png
+uv run weatherdash render --no-quantize                   # skip the 4-bit snap
+uv run weatherdash setup                                  # one-time: install chromium
 
-# Regenerate background pattern tiles
-uv run gen_patterns.py                        # uses function defaults
-uv run pattern_studio.py                      # http://localhost:5055/ — live editor
+# One-off generators (still single-file uv scripts in scripts/)
+uv run scripts/gen_patterns.py
+uv run scripts/pattern_studio.py                          # http://localhost:5055/
 
 # Process an icon pack (when adding new conditions)
-uv run convert_icons.py <raw_dir> <out_dir>   # strip anim, hue-aware greyscale
-uv run tighten_viewbox.py <dir>               # auto-center via getBBox
+uv run scripts/convert_icons.py <raw_dir> <out_dir>
+uv run scripts/tighten_viewbox.py <dir>
 
 # Stress-test layout across times of day
 for f in data data-morning data-evening data-latenight; do
-  uv run render.py --data $f.json --out out-$f.png --no-quantize
+  uv run weatherdash render --data $f.json --out out-$f.png --no-quantize
 done
 ```
 

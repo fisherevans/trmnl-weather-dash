@@ -1,30 +1,12 @@
-#!/usr/bin/env -S uv run --script
-# /// script
-# requires-python = ">=3.10"
-# dependencies = [
-#     "playwright>=1.44",
-#     "jinja2>=3.1",
-#     "pillow>=10.0",
-# ]
-# ///
-"""Render the TRMNL X weather dashboard.
+"""Render pipeline: data dict -> template -> Chromium screenshot -> 4-bit PNG.
 
-Loads data.json, renders template.html with it, screenshots via headless
-Chromium at the device's native 1872x1404 resolution, then quantizes the
-PNG to the 16-level grayscale palette the panel displays in 4-bit mode.
-
-First-time setup (downloads the bundled chromium):
-  uv run render.py --setup
-
-Then:
-  uv run render.py                              # data.json -> output.png
-  uv run render.py --data foo.json --out foo.png
-  uv run render.py --keep-html                  # leave the rendered html beside the png
-  uv run render.py --no-quantize                # skip the 16-gray snap (useful when iterating)
+The renderer reads template + asset files from a sibling `assets/` directory
+that ships with the package. Callers supply a data dict matching the shape
+in `data.json` plus optional `updated_at` (defaults to now, formatted as
+"H:MM AM/PM").
 """
 from __future__ import annotations
 
-import argparse
 import json
 import subprocess
 import sys
@@ -35,15 +17,19 @@ from tempfile import NamedTemporaryFile
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from PIL import Image
 
-ROOT = Path(__file__).parent
+ASSETS = Path(__file__).parent / "assets"
 WIDTH, HEIGHT = 1872, 1404
 # 4-bit grayscale: 16 levels evenly spaced 0..255.
 GRAY_LEVELS = [round(i * 255 / 15) for i in range(16)]
 
+# Intensity thresholds. Rain values are mm/hour. Cloud values are %.
+RAIN_THRESHOLDS  = [(2.5, "MODERATE"), (7.5, "HEAVY")]
+CLOUD_THRESHOLDS = [(30,  "PARTLY"),   (70,  "OVERCAST")]
+
 
 def render_html(data: dict) -> str:
     env = Environment(
-        loader=FileSystemLoader(ROOT),
+        loader=FileSystemLoader(ASSETS),
         autoescape=select_autoescape(["html"]),
     )
     hourly = data["hourly"]
@@ -90,11 +76,6 @@ def render_html(data: dict) -> str:
     return env.get_template("template.html").render(**ctx)
 
 
-# Intensity thresholds. Rain values are mm/hour. Cloud values are %.
-RAIN_THRESHOLDS  = [(2.5, "MODERATE"), (7.5, "HEAVY")]
-CLOUD_THRESHOLDS = [(30,  "PARTLY"),   (70,  "OVERCAST")]
-
-
 def compute_regions(hourly: list, n_hours: int) -> list:
     """Group contiguous hours by is_night into regions covering the chart width."""
     if not hourly:
@@ -126,7 +107,9 @@ def format_precip(mm: float) -> str:
 def screenshot(html: str, out: Path) -> None:
     from playwright.sync_api import sync_playwright
 
-    with NamedTemporaryFile(suffix=".html", dir=ROOT, delete=False, mode="w") as f:
+    # tmp HTML file sits inside the assets dir so relative URLs (bg-*.svg,
+    # makin-grey/*) resolve via the file:// scheme.
+    with NamedTemporaryFile(suffix=".html", dir=ASSETS, delete=False, mode="w") as f:
         f.write(html)
         tmp = Path(f.name)
     try:
@@ -158,28 +141,16 @@ def setup_browser() -> int:
     return subprocess.call([sys.executable, "-m", "playwright", "install", "chromium"])
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--data", default="data.json")
-    ap.add_argument("--out", default="output.png")
-    ap.add_argument("--keep-html", action="store_true")
-    ap.add_argument("--no-quantize", action="store_true")
-    ap.add_argument("--setup", action="store_true", help="install bundled chromium then exit")
-    args = ap.parse_args()
-
-    if args.setup:
-        sys.exit(setup_browser())
-
-    data = json.loads((ROOT / args.data).read_text())
+def render_to_png(data: dict, out: Path, *, quantize: bool = True, keep_html: bool = False) -> None:
+    """Render `data` to `out`. If `keep_html`, also write the intermediate HTML beside `out`."""
     html = render_html(data)
-    out = ROOT / args.out
-    if args.keep_html:
+    if keep_html:
         out.with_suffix(".html").write_text(html)
     screenshot(html, out)
-    if not args.no_quantize:
+    if quantize:
         quantize_to_4bit_gray(out)
-    print(f"wrote {out}")
 
 
-if __name__ == "__main__":
-    main()
+def render_from_json(data_path: Path, out: Path, *, quantize: bool = True, keep_html: bool = False) -> None:
+    data = json.loads(data_path.read_text())
+    render_to_png(data, out, quantize=quantize, keep_html=keep_html)
