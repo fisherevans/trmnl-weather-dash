@@ -66,15 +66,15 @@
   }
   .grid > .h { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #888; padding-top: 8px; }
 
-  .bucket-row {
-    display: contents;
-  }
-  .bucket-row .label {
+  /* Each bucket contributes 3 grid items: a label + day tile + night tile.
+     Don't use display:contents here — that would make the children of
+     each div become direct grid items, scrambling the column layout. */
+  .bucket-row.label {
     font-weight: 700;
     font-size: 13px;
     padding-top: 8px;
   }
-  .bucket-row .label .lvl {
+  .bucket-row.label .lvl {
     display: block;
     font-size: 10px;
     color: #888;
