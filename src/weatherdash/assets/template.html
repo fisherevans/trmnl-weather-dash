@@ -12,9 +12,14 @@
       --paper:     #ffffff;
       --panel:     #ececec;
       --bar:       #cfcfcf;
-      --night:     #6a6a6a;
-      --night-ink: #ffffff;
-      --night-bar: #2a2a2a;
+      /* Night-shade is one panel level darker than the day row, not the
+         hard inverse it used to be. Still a clear visual cue for the
+         day/night boundary in the chart, but doesn't dominate over the
+         bg pattern. The pattern itself carries through the night region
+         using the same shaded SVG the day side gets. */
+      --night:     #D8D8D8;
+      --night-ink: #000;
+      --night-bar: #000;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width: 1872px; height: 1404px; }
@@ -307,9 +312,13 @@
       display: grid;
       grid-template-columns: repeat(var(--cols), 1fr);
       column-gap: 6px;
-      /* Opaque base — without this, the SVG's transparent areas reveal
-         the card's --panel background, but only inside the row's box. */
+      /* `--row-bg` is set inline per-row to a data: URL whose SVG fills
+         have been shifted to match the forecast intensity (see
+         bg_shading.py). The night-shade inside the row inherits the
+         same data: URL via CSS variable inheritance so the pattern
+         continues unchanged across the day/night boundary. */
       background-color: var(--panel);
+      background-image: var(--row-bg);
       background-repeat: no-repeat;
       background-size: cover;
       background-position: center;
@@ -319,27 +328,22 @@
        precip-bars row at z-index 6 and can overlap a bar at its column;
        on the cloud side, the 0→110 scale still leaves a small gutter
        below 100% bars. */
-    .chart-row.precip-bars.precip-rain { background-image: url("bg-rain.svg"); }
-    .chart-row.precip-bars.precip-snow { background-image: url("bg-snow.svg"); }
-    .chart-row.cloud-bars              { background-image: url("bg-cloud.svg"); }
 
     /* Per-row night shade. Sits behind bars (z-index 1) but above the row's day
-       pattern, and carries its own night-tinted SVG pattern so the texture
-       continues into the night region instead of going flat. */
+       pattern. Reuses the row's --row-bg so the pattern continues; only the
+       background-color changes to mark night. */
     .night-shade {
       position: absolute;
       top: 0;
       bottom: 0;
       background-color: var(--night);
+      background-image: var(--row-bg);
       background-repeat: no-repeat;
       background-size: cover;
       background-position: center;
       z-index: 1;
       pointer-events: none;
     }
-    .chart-row.precip-bars.precip-rain .night-shade { background-image: url("bg-rain-night.svg"); }
-    .chart-row.precip-bars.precip-snow .night-shade { background-image: url("bg-snow-night.svg"); }
-    .chart-row.cloud-bars  .night-shade             { background-image: url("bg-cloud-night.svg"); }
 
     /* Bar cells — bar + label in normal flow so the label snugs the bar. */
     .bar-col {
@@ -634,7 +638,8 @@
           {%- endif %}
 
           <!-- row 1: precipitation bars (grow up). One night-shade per night region. -->
-          <div class="chart-row precip-bars precip-{{ precip_type }}">
+          <div class="chart-row precip-bars precip-{{ precip_type }}"
+               style="--row-bg: url('{{ precip_bg_url }}');">
             {%- for r in night_regions %}
             {%- set ns_w = r.end_at - r.start_at %}
             <div class="night-shade"
@@ -679,7 +684,8 @@
           </div>
 
           <!-- row 3: cloud cover bars (grow down). One night-shade per night region. -->
-          <div class="chart-row cloud-bars">
+          <div class="chart-row cloud-bars"
+               style="--row-bg: url('{{ cloud_bg_url }}');">
             {%- for r in night_regions %}
             {%- set ns_w = r.end_at - r.start_at %}
             <div class="night-shade"

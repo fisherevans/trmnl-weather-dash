@@ -17,6 +17,8 @@ from tempfile import NamedTemporaryFile
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from PIL import Image
 
+from .bg_shading import cloud_bucket, precip_bucket, shaded_svg_url
+
 ASSETS = Path(__file__).parent / "assets"
 WIDTH, HEIGHT = 1872, 1404
 # 4-bit grayscale: 16 levels evenly spaced 0..255.
@@ -65,6 +67,21 @@ def render_html(data: dict) -> str:
     # stale image is visually obvious on the panel. %-I drops the leading
     # zero on the hour to match the header's "10:03 AM" style.
     updated_at = data.get("updated_at") or datetime.now().strftime("%-I:%M %p")
+
+    # Pre-computed bg URLs from the aggregation layer take priority. For
+    # static `data*.json` renders (which skip the aggregation layer), we
+    # compute them here from the same fields the live pipeline uses, so
+    # offline fixture renders still produce density-shifted backgrounds.
+    cloud_bg_url = data.get("cloud_bg_url")
+    if not cloud_bg_url:
+        avg_cloud = data.get("avg_cloud_pct", 0)
+        cloud_bg_url = shaded_svg_url("bg-cloud.svg", cloud_bucket(avg_cloud))
+    precip_bg_url = data.get("precip_bg_url")
+    if not precip_bg_url:
+        precip_svg = "bg-snow.svg" if data.get("precip_type") == "snow" else "bg-rain.svg"
+        total_mm = data.get("total_accumulation_mm", 0.0)
+        precip_bg_url = shaded_svg_url(precip_svg, precip_bucket(total_mm))
+
     ctx = {**data, "hourly": enriched,
            "max_precip": max_precip,
            "n_hours": n_hours,
@@ -72,6 +89,8 @@ def render_html(data: dict) -> str:
            "rain_lines": rain_lines,
            "cloud_lines": cloud_lines,
            "updated_at": updated_at,
+           "cloud_bg_url": cloud_bg_url,
+           "precip_bg_url": precip_bg_url,
            "night_regions": [r for r in regions if r["is_night"]]}
     return env.get_template("template.html").render(**ctx)
 

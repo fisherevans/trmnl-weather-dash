@@ -20,6 +20,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from .bg_shading import cloud_bucket, precip_bucket, shaded_svg_url
 from .config import Config, SensorRef, as_sensor_list
 from .sources.base import NormalizedForecast
 from .sources.homeassistant import SensorReading
@@ -153,6 +154,14 @@ def build_context(
     total_precip_mm = sum(h.precip_mm for h in weather.hourly)
     avg_cloud_pct   = round(sum(h.cloud_pct for h in weather.hourly) / n_hours)
 
+    # ── density-shifted background SVGs ───────────────────────────────────
+    # Cloud-row darkness scales with avg cloud %, precip-row scales with
+    # total mm. SVG fills get swapped at render time and inlined as
+    # data: URLs (see bg_shading.py).
+    cloud_bg_url  = shaded_svg_url("bg-cloud.svg", cloud_bucket(avg_cloud_pct))
+    precip_svg    = "bg-snow.svg" if precip_type == "snow" else "bg-rain.svg"
+    precip_bg_url = shaded_svg_url(precip_svg, precip_bucket(total_precip_mm))
+
     return {
         "date_line": now.strftime("%A, %B %-d, %Y").upper(),
         "time":      now.strftime("%-I:%M %p"),
@@ -192,6 +201,8 @@ def build_context(
         "total_accumulation_mm": round(total_precip_mm, 1),
         "avg_cloud_pct":         avg_cloud_pct,
         "cloud_description":     _cloud_description(avg_cloud_pct),
+        "cloud_bg_url":          cloud_bg_url,
+        "precip_bg_url":         precip_bg_url,
         "hourly":                hourly,
     }
 

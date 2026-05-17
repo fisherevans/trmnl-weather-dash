@@ -246,12 +246,14 @@ def test_forecast_high_low_picks_extremes_and_their_times():
 
 def test_high_tomorrow_flag_set_when_peak_on_next_day():
     """At 9pm today, the 18h window's peak is tomorrow afternoon — TMRW."""
-    start = datetime(2026, 5, 16, 21, 0, tzinfo=TZ)
-    hourly = []
     import datetime as dt
+    # Build a window that starts at 9pm "today" (relative to wall-clock now)
+    # so the test stays stable across day-of-year boundaries.
+    now = dt.datetime.now(tz=TZ)
+    start = now.replace(hour=21, minute=0, second=0, microsecond=0)
+    hourly = []
     for i in range(18):
         ts = start + dt.timedelta(hours=i)
-        # Rising temps that peak at 81 at 1pm tomorrow (hour idx 16)
         temp = 70.0 if i < 16 else 81.0 if i == 16 else 78.0
         hourly.append(HourlyPoint(ts, temp, 0.0, 0, 0, True, 50))
     wx = _forecast(hourly=hourly, current_temp_f=68.0)
@@ -261,8 +263,9 @@ def test_high_tomorrow_flag_set_when_peak_on_next_day():
 
 def test_low_tomorrow_flag_suppressed_for_overnight_low_before_noon():
     """A 5am-tomorrow low is just the overnight low — not TMRW-worthy."""
-    start = datetime(2026, 5, 16, 21, 0, tzinfo=TZ)
     import datetime as dt
+    now = dt.datetime.now(tz=TZ)
+    start = now.replace(hour=21, minute=0, second=0, microsecond=0)
     hourly = [
         HourlyPoint(start + dt.timedelta(hours=i),
                     temp_f=(70.0 if i < 8 else 55.0 if i == 8 else 60.0),
@@ -277,18 +280,24 @@ def test_low_tomorrow_flag_suppressed_for_overnight_low_before_noon():
 
 
 def test_low_tomorrow_flag_set_when_low_is_past_noon_tomorrow():
-    """Rare day-cooling event: low falls at 3pm tomorrow — TMRW."""
-    start = datetime(2026, 5, 16, 21, 0, tzinfo=TZ)
+    """Rare day-cooling event: low falls past noon tomorrow — TMRW.
+
+    Need a window long enough to reach >noon next day. From start=9pm
+    today, that's hour idx ≥ 15. We need ≥ 28 hours of fixture, so use 30.
+    """
     import datetime as dt
+    now = dt.datetime.now(tz=TZ)
+    start = now.replace(hour=21, minute=0, second=0, microsecond=0)
+    # idx 30 = 3am two days from now. We want the low at idx 16 (1pm
+    # tomorrow), which is just past noon tomorrow.
+    low_idx = 16
     hourly = [
         HourlyPoint(start + dt.timedelta(hours=i),
-                    temp_f=(70.0 if i != 17 else 50.0),
+                    temp_f=(70.0 if i != low_idx else 50.0),
                     precip_mm=0.0, cloud_pct=0, weather_code=0,
                     is_day=True, humidity_pct=50)
-        for i in range(18)
+        for i in range(30)
     ]
-    # idx 17 = 2pm next day, but we need past noon AND the lowest. Set
-    # idx 17 = 50 (lowest) and timestamp = 2pm tomorrow.
     wx = _forecast(hourly=hourly)
     ctx = build_context(_config(), wx, ha={})
     assert ctx["forecast"]["low"]["tomorrow"] is True
