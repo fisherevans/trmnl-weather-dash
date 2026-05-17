@@ -27,6 +27,15 @@ Issues = "https://github.com/fisherevans/trmnl-weather-dash/issues"
 [project.scripts]
 weatherdash = "weatherdash.cli:main"
 
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/weatherdash"]
 
