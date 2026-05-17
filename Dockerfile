@@ -1,7 +1,7 @@
 # ─── builder ──────────────────────────────────────────────────────────────
 # uv resolves and installs Python deps into a venv we copy into the runtime
-# image. Same Python version (3.12) as the runtime base so the venv runs
-# without rebuilds.
+# image. Slim base; same Python version (3.12) on both stages so the venv
+# carries over without rebuilds.
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1 \
@@ -19,24 +19,44 @@ RUN uv sync --no-dev --frozen
 
 
 # ─── runtime ──────────────────────────────────────────────────────────────
-# Playwright's official Python image ships Chromium + the long list of GTK/
-# audio/font system libraries it needs. We just drop our venv on top.
-FROM mcr.microsoft.com/playwright/python:v1.50.0-noble AS runtime
+# python:3.12-slim is ~150 MB. We install Chromium (only) via Playwright's
+# CLI, which pulls the right browser version for our playwright package
+# and `--with-deps` brings in the GTK/audio/font system libs it needs.
+# This shaves ~3 GB vs starting from mcr.microsoft.com/playwright/python
+# (which ships chromium + firefox + webkit + edge — we only need chromium).
+FROM python:3.12-slim AS runtime
 WORKDIR /app
 
 COPY --from=builder /app /app
 
 ENV PATH="/app/.venv/bin:${PATH}" \
     PYTHONUNBUFFERED=1 \
-    WEATHERDASH_CONFIG=/etc/weatherdash/config.yaml
+    WEATHERDASH_CONFIG=/etc/weatherdash/config.yaml \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-# Non-root user. Browsers under /ms-playwright are world-executable in the
-# base image, so an unprivileged user can launch Chromium.
-RUN groupadd --system app && useradd --system --gid app --create-home app && \
-    chown -R app:app /app
+# Install Chromium + its system deps. --with-deps invokes apt-get under
+# the hood; the playwright CLI knows the exact package list.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates && \
+    playwright install --with-deps chromium && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /root/.cache/pip /root/.cache/uv
+
+# Non-root user. We deliberately do NOT chown -R the /app or /ms-playwright
+# trees — each chown rewrites every file into a fresh image layer (1+ GB
+# of duplicated bytes). The files land as root with world-read + world-exec
+# bits from the default umask, so the unprivileged user can still launch
+# chromium and read the venv.
+RUN groupadd --system app && useradd --system --gid app --create-home app
+
+# /data is the writable surface for the rendered PNG. Pre-creating it with
+# `app` ownership in the image means a fresh named volume inherits that
+# ownership when Docker initializes it. (A bind mount would still need the
+# host dir to be writable for the runtime UID.)
+RUN mkdir -p /data && chown app:app /data
+VOLUME ["/data"]
 
 USER app
-VOLUME ["/data"]
 EXPOSE 8080
 
 CMD ["weatherdash", "serve"]

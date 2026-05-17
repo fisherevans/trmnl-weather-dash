@@ -107,9 +107,15 @@ def format_precip(mm: float) -> str:
 def screenshot(html: str, out: Path) -> None:
     from playwright.sync_api import sync_playwright
 
-    # tmp HTML file sits inside the assets dir so relative URLs (bg-*.svg,
-    # makin-grey/*) resolve via the file:// scheme.
-    with NamedTemporaryFile(suffix=".html", dir=ASSETS, delete=False, mode="w") as f:
+    # Inject `<base href>` pointing at the assets dir so relative URLs in the
+    # template (bg-*.svg, makin-grey/<stem>.svg) resolve regardless of where
+    # the tmp HTML lives. Previously the tmp file sat inside the assets dir
+    # for that purpose, but in a Docker container the assets dir is owned by
+    # root + read-only for the unprivileged runtime user.
+    base_tag = f'<base href="{ASSETS.as_uri()}/">'
+    html = html.replace("<head>", f"<head>\n  {base_tag}", 1)
+
+    with NamedTemporaryFile(suffix=".html", delete=False, mode="w", encoding="utf-8") as f:
         f.write(html)
         tmp = Path(f.name)
     try:
