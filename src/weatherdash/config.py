@@ -94,7 +94,7 @@ class HomeAssistantConfig(_Strict):
 
 class RenderConfig(_Strict):
     output_path: Path = Path("/data/dashboard.png")
-    refresh_minutes: int = Field(default=10, ge=1, le=180)
+    refresh_minutes: int = Field(default=1, ge=1, le=180)
 
 
 class ServeConfig(_Strict):

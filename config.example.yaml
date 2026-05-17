@@ -49,10 +49,16 @@ home_assistant:
 # ──────────────────────────────────────────────────────────────────────────
 # Render cadence. The scheduler re-renders on this interval; the HTTP
 # server (below) always serves whatever the most recent render produced.
+#
+# 1-minute default: TRMNL devices set their own poll cadence we don't
+# control. If we render every N min, worst case is a poll lands right
+# before our next render and the image is N-1 min stale. Rendering every
+# minute caps staleness at ~1 min for ~3% CPU on one core (a render is
+# ~2 sec of Chromium). Bump higher only if your host is constrained.
 # ──────────────────────────────────────────────────────────────────────────
 render:
   output_path: /data/dashboard.png
-  refresh_minutes: 10         # 1-180
+  refresh_minutes: 1          # 1-180
 
 # ──────────────────────────────────────────────────────────────────────────
 # HTTP server. TRMNL's Image Display plugin polls a public URL on its own
