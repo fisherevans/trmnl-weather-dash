@@ -1,0 +1,70 @@
+# weatherdash config — a fully-configured deploy fits in this one file.
+# Validate with: uv run weatherdash validate --config <this-path>
+# Pass at runtime via --config or the WEATHERDASH_CONFIG env var.
+
+# ──────────────────────────────────────────────────────────────────────────
+# Where the dashboard is for. Hourly forecast + sunset/sunrise + tz-aware
+# hour labels all depend on these.
+# ──────────────────────────────────────────────────────────────────────────
+location:
+  lat: 43.21                  # decimal degrees, [-90, 90]
+  lon: -71.54                 # decimal degrees, [-180, 180]
+  timezone: America/New_York  # IANA timezone, used for chart hour labels
+
+# ──────────────────────────────────────────────────────────────────────────
+# Forecast source. open-meteo is the default because it requires no key.
+# Other providers land in later issues; flipping `provider` is all it takes.
+# ──────────────────────────────────────────────────────────────────────────
+weather:
+  provider: open-meteo        # open-meteo | nws | pirate | openweathermap
+  # api_key_env: WEATHER_API_KEY   # name of env var holding the key, if needed
+  hours: 24                   # forecast horizon (1-168)
+
+# ──────────────────────────────────────────────────────────────────────────
+# Home Assistant: source for any sensor-backed reading on the dashboard.
+# Any sensor field can be omitted — aggregation falls back to the weather
+# API where applicable, or hides the relevant card.
+#
+# Each sensor field is either:
+#   - a single entity_id (string): used as-is
+#   - a list of entity_ids: averaged at aggregation time
+# ──────────────────────────────────────────────────────────────────────────
+home_assistant:
+  base_url: http://homeassistant.local:8123
+  token_env: HA_TOKEN         # env var holding the long-lived access token
+
+  sensors:
+    outdoor_temp_f: sensor.outdoor_temperature
+    outdoor_humidity: sensor.outdoor_humidity
+
+    indoor_temp_f:
+      - sensor.living_room_temperature
+      - sensor.bedroom_temperature
+      - sensor.office_temperature
+
+    indoor_humidity:
+      - sensor.living_room_humidity
+      - sensor.bedroom_humidity
+
+# ──────────────────────────────────────────────────────────────────────────
+# Render cadence. The scheduler re-renders on this interval; the HTTP
+# server (below) always serves whatever the most recent render produced.
+# ──────────────────────────────────────────────────────────────────────────
+render:
+  output_path: /data/dashboard.png
+  refresh_minutes: 10         # 1-180
+
+# ──────────────────────────────────────────────────────────────────────────
+# HTTP server. TRMNL's Image Display plugin polls a public URL on its own
+# refresh interval; you wire this server's port to that public URL
+# (typically via a Cloudflare tunnel).
+#
+# `secret_path`, if set, gates the dashboard URL: PNG is served at
+#   /<secret_path>/dashboard.png
+# Treat the secret like a password — anyone with the URL can read the
+# image. Leave unset only on trusted local networks.
+# ──────────────────────────────────────────────────────────────────────────
+serve:
+  host: 0.0.0.0
+  port: 8080
+  secret_path: change-me-to-a-random-token

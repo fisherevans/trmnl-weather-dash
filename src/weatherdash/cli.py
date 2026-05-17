@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from . import render as render_mod
+from .config import ConfigError, load_config
 
 
 def cmd_render(args: argparse.Namespace) -> int:
@@ -23,6 +24,22 @@ def cmd_setup(_args: argparse.Namespace) -> int:
     return render_mod.setup_browser()
 
 
+def cmd_validate(args: argparse.Namespace) -> int:
+    path = Path(args.config) if args.config else None
+    try:
+        cfg = load_config(path)
+    except ConfigError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    # Show a one-line OK summary; full dump is too noisy for a routine check.
+    print(
+        f"config OK: provider={cfg.weather.provider.value} "
+        f"location=({cfg.location.lat},{cfg.location.lon}) tz={cfg.location.timezone} "
+        f"refresh={cfg.render.refresh_minutes}m port={cfg.serve.port}"
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="weatherdash")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -38,6 +55,11 @@ def main(argv: list[str] | None = None) -> int:
 
     p_setup = sub.add_parser("setup", help="install bundled chromium then exit")
     p_setup.set_defaults(func=cmd_setup)
+
+    p_validate = sub.add_parser("validate", help="load and validate a config.yaml")
+    p_validate.add_argument("--config", default=None,
+                            help="path to config.yaml (or set WEATHERDASH_CONFIG)")
+    p_validate.set_defaults(func=cmd_validate)
 
     args = ap.parse_args(argv)
     return args.func(args)
