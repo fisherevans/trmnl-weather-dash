@@ -363,8 +363,9 @@
     /* No-data overlay: "CLEAR SKIES" / "NO RAIN FORECAST" centered in
        a row when the intensity bucket falls to 0. Replaces the blank
        feeling with a brief explanation of what the (mostly empty) row
-       is showing. Halo for legibility against any small bars that
-       happen to exist. */
+       is showing. Halo for legibility against any small bars or pattern
+       shapes that happen to exist. z-index sits above the threshold
+       lines + their pill labels (4 / 5) so it dominates the empty row. */
     .row-empty {
       position: absolute;
       inset: 0;
@@ -376,7 +377,7 @@
       letter-spacing: 0.06em;
       color: var(--ink);
       opacity: 0.70;
-      z-index: 4;
+      z-index: 7;
       pointer-events: none;
       text-shadow:
          3px  3px 0 var(--panel), -3px  3px 0 var(--panel),
