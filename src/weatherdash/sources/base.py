@@ -29,6 +29,7 @@ class HourlyPoint:
     cloud_pct: int              # 0..100
     weather_code: int           # WMO code
     is_day: bool
+    humidity_pct: int | None = None    # not all providers expose hourly humidity
 
 
 @dataclass(frozen=True)

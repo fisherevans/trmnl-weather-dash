@@ -45,7 +45,8 @@ class OpenMeteoProvider:
             "temperature_unit": "fahrenheit",
             "wind_speed_unit": "mph",
             "precipitation_unit": "mm",
-            "hourly": "temperature_2m,precipitation,cloud_cover,weather_code,is_day",
+            "hourly": ("temperature_2m,relative_humidity_2m,precipitation,"
+                       "cloud_cover,weather_code,is_day"),
             "current": ("temperature_2m,relative_humidity_2m,wind_speed_10m,"
                         "wind_gusts_10m,wind_direction_10m,weather_code,is_day"),
             "daily": "sunrise,sunset",
@@ -98,6 +99,7 @@ class OpenMeteoProvider:
                 cloud_pct=int(h["cloud_cover"][i]),
                 weather_code=int(h["weather_code"][i]),
                 is_day=bool(h["is_day"][i]),
+                humidity_pct=int(h["relative_humidity_2m"][i]),
             )
             for i in range(len(times))
         ]

@@ -61,6 +61,15 @@ WMO_ICON_MAP: dict[int, tuple[str, str]] = {
 DEFAULT_ICON = ("cloudy", "cloudy")             # neutral fallback for unknown codes
 SNOW_CODES = frozenset({71, 73, 75, 77, 85, 86})
 
+# Look-ahead and deadbands for the OUTSIDE trend arrows. Compares the
+# current observation against the forecast `TREND_HOURS` hours out.
+TREND_HOURS = 3
+TREND_TEMP_THRESHOLD_F = 2.0
+# 8% chosen as the humidity deadband: typical hourly RH drift from the
+# diurnal cycle is 3-6%, so 8% suppresses that noise while still flagging
+# a real shift (front moving in, etc).
+TREND_HUMIDITY_THRESHOLD_PCT = 8
+
 
 def build_context(
     config: Config,
@@ -90,6 +99,19 @@ def build_context(
 
     # ── current condition (icon) ──────────────────────────────────────────
     condition = wmo_to_icon(weather.current.weather_code, weather.current.is_day)
+
+    # ── outdoor trends (next ~3h vs now) ──────────────────────────────────
+    # Compares current observation to the forecast 3 hours out. Within
+    # the deadband -> "flat". Renders as ↗ / → / ↘ on the OUTSIDE card.
+    look_ahead = min(TREND_HOURS, len(weather.hourly) - 1)
+    future = weather.hourly[look_ahead]
+    temp_trend = _trend(future.temp_f - weather.current.temp_f, TREND_TEMP_THRESHOLD_F)
+    humidity_trend = "flat"
+    if future.humidity_pct is not None:
+        humidity_trend = _trend(
+            future.humidity_pct - weather.current.humidity_pct,
+            TREND_HUMIDITY_THRESHOLD_PCT,
+        )
 
     # ── hourly slice ──────────────────────────────────────────────────────
     hourly = [
@@ -139,9 +161,11 @@ def build_context(
             "humidity_pct": _round_or_placeholder(in_hum),
         },
         "outside": {
-            "temp_f":       round(out_temp),
-            "humidity_pct": round(out_hum),
-            "condition":    condition,
+            "temp_f":         round(out_temp),
+            "temp_trend":     temp_trend,
+            "humidity_pct":   round(out_hum),
+            "humidity_trend": humidity_trend,
+            "condition":      condition,
             "wind": {
                 "speed_mph": round(weather.current.wind_mph),
                 "gust_mph":  round(weather.current.wind_gust_mph),
@@ -178,6 +202,15 @@ def build_context(
 def wmo_to_icon(code: int, is_day: bool) -> str:
     day, night = WMO_ICON_MAP.get(code, DEFAULT_ICON)
     return day if is_day else night
+
+
+def _trend(delta: float, threshold: float) -> str:
+    """Return 'up' / 'flat' / 'down' for a deadband around 0."""
+    if delta > threshold:
+        return "up"
+    if delta < -threshold:
+        return "down"
+    return "flat"
 
 
 def _ha_mean(ref: SensorRef, ha: dict[str, SensorReading]) -> float | None:

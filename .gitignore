@@ -15,6 +15,7 @@ build/
 # Local config / secrets (the deploy repo owns these)
 .env
 config.local.yaml
+docker-compose.yml    # the .example.yml stays in git; the live copy doesn't
 
 # Tooling
 .DS_Store

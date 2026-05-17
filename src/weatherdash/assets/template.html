@@ -172,6 +172,7 @@
     }
     .reading .divider { background: var(--ink); align-self: stretch; }
     .reading .temp {
+      position: relative;          /* anchor for the trend arrow */
       font-size: 138px;
       font-weight: 800;
       line-height: 1;
@@ -179,7 +180,32 @@
       letter-spacing: -0.03em;
     }
     .reading .temp sup { font-size: 60px; font-weight: 700; top: -0.55em; }
+    /* Trajectory arrow on the OUTSIDE temperature. Lives in the empty
+       space below the ° superscript, right of the number. */
+    .reading .temp .trend {
+      position: absolute;
+      right: 4px;
+      bottom: 4px;
+      font-size: 42px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: 0;
+      opacity: 0.7;
+    }
     .reading .hum { text-align: center; }
+    /* HUMIDITY label + trend arrow centered together as a single unit
+       under the percentage value. */
+    .reading .hum .lab {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .reading .hum .lab .trend {
+      font-size: 22px;
+      font-weight: 800;
+      opacity: 0.7;
+      line-height: 1;
+    }
     .reading .hum .val {
       font-size: 70px;
       font-weight: 800;
@@ -515,11 +541,17 @@
             <img src="makin-grey/{{ outside.condition }}.svg" alt="{{ outside.condition }}">
           </div>
           <div class="reading">
-            <div class="temp">{{ outside.temp_f }}<sup>°F</sup></div>
+            <div class="temp">
+              {{ outside.temp_f }}<sup>°F</sup>
+              <span class="trend">{{- {"up":"↗","down":"↘","flat":"→"}[outside.temp_trend] -}}</span>
+            </div>
             <div class="divider"></div>
             <div class="hum">
               <div class="val">{{ outside.humidity_pct }}%</div>
-              <div class="lab">HUMIDITY</div>
+              <div class="lab">
+                <span>HUMIDITY</span>
+                <span class="trend">{{- {"up":"↗","down":"↘","flat":"→"}[outside.humidity_trend] -}}</span>
+              </div>
             </div>
           </div>
           <div class="wind">
