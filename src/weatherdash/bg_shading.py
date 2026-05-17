@@ -37,25 +37,30 @@ ASSETS = Path(__file__).parent / "assets"
 #  - 16 panel levels at integer multiples of 17; quantize snaps to nearest.
 #  - Day bg (--panel=#ECECEC) post-quantize sits at level 14 (#EEE).
 #  - Night bg (--night=#D8D8D8) post-quantize sits at level 13 (#DDD).
-#  - For a fill to render visibly in BOTH day and night regions it must
-#    quantize to level ≤ 12 (#CCC). Anything at level 13 vanishes on the
-#    night-shade; anything at level 14 vanishes on the day bg too.
-#  - Each bucket must have 3 distinct quantize levels so the SVG's three
-#    artist fills don't collapse into 2 colors.
+#  - Single palette shared across day+night and across rain+cloud rows;
+#    intensity bucket drives the darkness, the day/night region's bg-color
+#    tint provides the time-of-day cue.
+#  - Buckets must be monotonically lighter from 4 to 0. Each bucket has
+#    three fills but the lightest bucket (0) may collapse two fills onto
+#    the same level — at "barely visible" the shape distinction stops
+#    mattering and a near-invisible pattern reads as one wash anyway.
 #
-# The progression below: darkest fill steps from level 6 (bucket 4) up to
-# level 10 (bucket 0); mid + light stagger one level each. Monotonic +
-# distinct + visible-everywhere.
+# This palette was tuned to keep bucket 1 ("Partly Cloudy" / "Drizzle")
+# visibly distinct from bucket 0 ("Clear" / "Dry"). User feedback: at
+# 0mm rain the row should read as almost-empty, while a partly-cloudy
+# 30% cover should clearly show pattern.
 INTENSITY_BUCKETS: list[dict[str, str]] = [
-    # 0 — barely visible. Levels 10, 11, 12 — all 2-4 steps darker than the
-    # day bg (level 14) and 1-3 steps darker than the night bg (level 13).
+    # 0 — barely visible. Levels 12, 13, 13 — only 1-2 steps below the
+    # day bg (14). On night bg (13) the #DDD fills are invisible and
+    # the row reads as a single faint #CCC wash. Intentional: bucket 0
+    # is "no data", the pattern shouldn't compete with the message.
+    {"#666666": "#CCCCCC", "#999999": "#DDDDDD", "#BBBBBB": "#DDDDDD"},
+    # 1 — light. Levels 10, 11, 12.
     {"#666666": "#AAAAAA", "#999999": "#BBBBBB", "#BBBBBB": "#CCCCCC"},
-    # 1 — light. Levels 9, 11, 12.
+    # 2 — moderate. Levels 9, 11, 12.
     {"#666666": "#999999", "#999999": "#BBBBBB", "#BBBBBB": "#CCCCCC"},
-    # 2 — moderate. Levels 8, 10, 12.
-    {"#666666": "#888888", "#999999": "#AAAAAA", "#BBBBBB": "#CCCCCC"},
-    # 3 — dense. Levels 7, 9, 11.
-    {"#666666": "#777777", "#999999": "#999999", "#BBBBBB": "#BBBBBB"},
+    # 3 — dense. Levels 8, 10, 11.
+    {"#666666": "#888888", "#999999": "#AAAAAA", "#BBBBBB": "#BBBBBB"},
     # 4 — full strength (artist original). Levels 6, 9, 11.
     {"#666666": "#666666", "#999999": "#999999", "#BBBBBB": "#BBBBBB"},
 ]

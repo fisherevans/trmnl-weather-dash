@@ -23,9 +23,15 @@ def _hex_to_level(hex_str: str) -> int:
     return round(val / 17)
 
 
-@pytest.mark.parametrize("bucket_idx", range(5))
-def test_bucket_has_three_distinct_quantize_levels(bucket_idx):
-    """Each bucket's 3 fills must land at 3 different quantize levels."""
+@pytest.mark.parametrize("bucket_idx", range(1, 5))
+def test_non_zero_bucket_has_three_distinct_quantize_levels(bucket_idx):
+    """Each bucket >= 1's 3 fills must land at 3 different quantize levels.
+
+    Bucket 0 is the "barely visible" case and may intentionally collapse
+    two fills onto the same level — at that intensity the pattern reads
+    as a single faint wash regardless, so shape distinction stops
+    mattering.
+    """
     mapping = INTENSITY_BUCKETS[bucket_idx]
     levels = sorted(_hex_to_level(v) for v in mapping.values())
     assert len(set(levels)) == 3, (
@@ -33,10 +39,21 @@ def test_bucket_has_three_distinct_quantize_levels(bucket_idx):
     )
 
 
-@pytest.mark.parametrize("bucket_idx", range(5))
-def test_bucket_fills_visible_on_both_bg(bucket_idx):
-    """All fills must quantize to level <= 12 so they're visible on both
-    the day bg (level 14, panel) and the night-shade (level 13)."""
+def test_bucket_zero_has_at_least_one_visible_fill_on_day_bg():
+    """Bucket 0 is allowed to collapse to fewer levels but must still
+    have at least one fill visible against the day bg (level 14)."""
+    levels = {_hex_to_level(v) for v in INTENSITY_BUCKETS[0].values()}
+    assert any(lv <= 13 for lv in levels), (
+        f"bucket 0 fills {INTENSITY_BUCKETS[0]} all match the day bg"
+    )
+
+
+@pytest.mark.parametrize("bucket_idx", range(1, 5))
+def test_non_zero_bucket_fills_visible_on_both_bg(bucket_idx):
+    """Buckets >= 1 must keep all 3 fills at quantize level <= 12 so they
+    render against both the day bg (level 14) and the night-shade (level
+    13). Bucket 0 is exempt — fills may match the night bg level since
+    "barely visible" is the goal."""
     for fill in INTENSITY_BUCKETS[bucket_idx].values():
         assert _hex_to_level(fill) <= 12, (
             f"bucket {bucket_idx} fill {fill} quantizes too light to render"
@@ -94,17 +111,17 @@ def test_shaded_svg_url_actually_swaps_fills():
     assert a != b, "bucket 0 and bucket 4 should produce different SVG output"
 
 
-@pytest.mark.parametrize("bucket_idx", range(5))
+@pytest.mark.parametrize("bucket_idx", range(1, 5))
 def test_shaded_cloud_svg_retains_three_distinct_fills(bucket_idx):
     """Regression: an earlier sequential-str.replace implementation
     cascaded — if bucket N mapped #666→#999 and #999→#BBB in the same
     pass, the post-step-1 #999 got caught by step 2 and collapsed.
-    bg-cloud.svg uses all three artist fills (#666/#999/#BBB), so the
-    output must still contain 3 distinct fill values per bucket."""
+    bg-cloud.svg uses all three artist fills (#666/#999/#BBB), so a
+    non-zero bucket's output must still contain 3 distinct fill values.
+    (Bucket 0 intentionally collapses — see INTENSITY_BUCKETS docs.)"""
     import base64
     import re
     url = shaded_svg_url("bg-cloud.svg", bucket_idx)
-    # Decode the data: URL back to SVG text.
     payload = url.split(",", 1)[1]
     svg_text = base64.b64decode(payload).decode("utf-8")
     fills = set(re.findall(r'fill="(#[0-9A-Fa-f]+)"', svg_text))
