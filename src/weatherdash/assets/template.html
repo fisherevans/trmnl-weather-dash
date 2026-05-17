@@ -22,10 +22,11 @@
       font-family: 'Inter', system-ui, sans-serif;
       background: var(--paper);
       color: var(--ink);
-      /* Uniform 36px gutter on all four sides. Body grid stretches the body
-         row to fill the remaining height so the cards naturally end exactly
-         36px above the bottom edge. */
-      padding: 36px;
+      /* 36px gutter on sides + bottom. Top padding is reduced and the
+         missing 18px is shifted into the header's vertical padding so the
+         header content sits visually centered between the top edge and
+         the widget block top, without moving the widget block. */
+      padding: 18px 36px 36px;
       display: grid;
       grid-template-rows: auto 1fr;
       gap: 18px;
@@ -62,7 +63,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 4px 12px;
+      padding: 13px 12px;
       font-family: 'Playfair Display', 'Times New Roman', serif;
       font-feature-settings: "tnum" 1, "lnum" 1;
       font-variant-numeric: lining-nums tabular-nums;
