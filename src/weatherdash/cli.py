@@ -1,12 +1,17 @@
-"""Console entrypoint. Subcommands grow as later issues land (#6 render-live, #7 serve)."""
+"""Console entrypoint. Subcommands: render (offline json), render-live
+(fetch + aggregate + render), setup (chromium install), validate (config
+check). Scheduler + HTTP server arrive in #7 (`weatherdash serve`)."""
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 
 from . import render as render_mod
 from .config import ConfigError, load_config
+from .pipeline import run_once
+from .sources.base import ForecastError
 
 
 def cmd_render(args: argparse.Namespace) -> int:
@@ -40,11 +45,56 @@ def cmd_validate(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_render_live(args: argparse.Namespace) -> int:
+    path = Path(args.config) if args.config else None
+    try:
+        cfg = load_config(path)
+    except ConfigError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    out = Path(args.out) if args.out else cfg.render.output_path
+    out.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        stats = run_once(cfg, out, quantize=not args.no_quantize)
+    except ForecastError as e:
+        print(f"forecast fetch failed: {e}", file=sys.stderr)
+        return 1
+    except ConfigError as e:
+        # require_env() can raise this if a referenced env var isn't set
+        print(str(e), file=sys.stderr)
+        return 1
+    _print_summary(cfg, stats)
+    return 0
+
+
+def _print_summary(cfg, stats) -> None:
+    print(f"wrote {stats.output_path}")
+    print(f"  weather ({cfg.weather.provider.value}): {stats.weather_ms:.0f}ms")
+    if stats.ha_sensors_requested == 0:
+        print("  ha: not configured")
+    elif stats.ha_failed:
+        print(f"  ha: FAILED, fell back to weather API ({stats.ha_ms:.0f}ms)")
+    else:
+        missing = stats.ha_sensors_requested - stats.ha_sensors_got
+        miss_tag = "" if missing == 0 else f" [{missing} missing]"
+        print(
+            f"  ha: {stats.ha_sensors_got}/{stats.ha_sensors_requested} sensors "
+            f"({stats.ha_ms:.0f}ms){miss_tag}"
+        )
+    print(f"  aggregate: {stats.aggregate_ms:.0f}ms")
+    print(f"  render: {stats.render_ms:.0f}ms")
+    print(f"  total: {stats.total_ms:.0f}ms")
+
+
 def main(argv: list[str] | None = None) -> int:
+    # WARNINGs from sources/{openmeteo,homeassistant} should hit stderr by
+    # default — per-sensor skips and retry chatter are useful signals.
+    logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
+
     ap = argparse.ArgumentParser(prog="weatherdash")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
-    p_render = sub.add_parser("render", help="render a data.json file to a PNG")
+    p_render = sub.add_parser("render", help="render a data.json file to a PNG (offline)")
     p_render.add_argument("--data", default="data.json")
     p_render.add_argument("--out", default="output.png")
     p_render.add_argument("--keep-html", action="store_true",
@@ -52,6 +102,15 @@ def main(argv: list[str] | None = None) -> int:
     p_render.add_argument("--no-quantize", action="store_true",
                           help="skip the 16-gray snap (faster iteration)")
     p_render.set_defaults(func=cmd_render)
+
+    p_live = sub.add_parser("render-live", help="fetch live data + render once")
+    p_live.add_argument("--config", default=None,
+                        help="path to config.yaml (or set WEATHERDASH_CONFIG)")
+    p_live.add_argument("--out", default=None,
+                        help="output PNG path (default: config's render.output_path)")
+    p_live.add_argument("--no-quantize", action="store_true",
+                        help="skip the 16-gray snap (faster iteration)")
+    p_live.set_defaults(func=cmd_render_live)
 
     p_setup = sub.add_parser("setup", help="install bundled chromium then exit")
     p_setup.set_defaults(func=cmd_setup)
