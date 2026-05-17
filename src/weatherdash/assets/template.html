@@ -404,11 +404,11 @@
     .bar {
       position: relative;        /* anchor for inside labels */
       width: 100%;
-      background: #333333;
+      background: #444444;
       min-height: 3px;
       flex-shrink: 0;
     }
-    .bar-col.is-night .bar { background: #333333; }
+    .bar-col.is-night .bar { background: #444444; }
     .bar-label {
       font-size: 20px;
       font-weight: 800;
@@ -439,15 +439,15 @@
       left: 0;
       right: 0;
       height: 3px;
-      /* Black/white stripe at ~55% alpha. Strong enough to stay legible
-         across panel, black bar, and night-shade, but transparent enough
-         that inside-bar labels read through the line where they overlap. */
+      /* Black/white stripe at ~35% alpha. Visible against panel + bar +
+         night-shade but quieter than the original 55% — the line is a
+         secondary reference, the bars are the primary signal. */
       background: repeating-linear-gradient(
         to right,
-        rgba(0, 0, 0, 0.55) 0,
-        rgba(0, 0, 0, 0.55) 5px,
-        rgba(255, 255, 255, 0.55) 5px,
-        rgba(255, 255, 255, 0.55) 10px
+        rgba(0, 0, 0, 0.35) 0,
+        rgba(0, 0, 0, 0.35) 5px,
+        rgba(255, 255, 255, 0.35) 5px,
+        rgba(255, 255, 255, 0.35) 10px
       );
       z-index: 4;
       pointer-events: none;
