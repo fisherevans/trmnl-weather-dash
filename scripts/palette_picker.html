@@ -187,16 +187,23 @@
 // 4-bit grayscale: 16 levels at multiples of 17.
 const LEVELS = Array.from({length: 16}, (_, i) => Math.round(i * 255 / 15));
 
-// Default palette — keep in sync with bg_shading.py INTENSITY_BUCKETS.
+// Default palette — keep in sync with bg_shading.py BUCKET_PALETTES.
+// Each bucket: [slot 0, slot 1, slot 2]
+//   slot 0 = darkest fill   (cloud #666, rain #666)
+//   slot 1 = mid fill       (cloud #999, rain #BBB / drops)
+//   slot 2 = row bg color   (also cloud's #BBB lightest fill)
 const DEFAULTS = {
-  0: ["#CCCCCC", "#DDDDDD", "#DDDDDD"],
-  1: ["#AAAAAA", "#BBBBBB", "#CCCCCC"],
-  2: ["#999999", "#BBBBBB", "#CCCCCC"],
-  3: ["#888888", "#AAAAAA", "#BBBBBB"],
-  4: ["#666666", "#999999", "#BBBBBB"],
+  0: ["#CCCCCC", "#DDDDDD", "#ECECEC"],
+  1: ["#AAAAAA", "#BBBBBB", "#ECECEC"],
+  2: ["#999999", "#BBBBBB", "#ECECEC"],
+  3: ["#888888", "#AAAAAA", "#ECECEC"],
+  4: ["#666666", "#999999", "#ECECEC"],
 };
-// Original artist palette — the keys of INTENSITY_BUCKETS dicts.
-const ARTIST_FILLS = ["#666666", "#999999", "#BBBBBB"];
+// Per-SVG: artist fill at each slot index. null = no SVG fill at this slot.
+const SLOT_KEYS = {
+  "bg-cloud.svg": ["#666666", "#999999", "#BBBBBB"],
+  "bg-rain.svg":  ["#666666", "#BBBBBB", null],
+};
 const BUCKET_LABELS = {
   0: "Clear / Dry",
   1: "Light",
@@ -241,8 +248,13 @@ async function loadSvgs() {
   }
 }
 
-function shadedSvg(filename, mapping) {
-  // Replace each fill="#ORIG" with the mapped value, single-pass regex.
+function shadedSvg(filename, palette) {
+  // Build SVG-specific mapping from the slot keys for this filename.
+  const slotKeys = SLOT_KEYS[filename];
+  const mapping = {};
+  for (let i = 0; i < 3; i++) {
+    if (slotKeys[i] !== null) mapping[slotKeys[i].toUpperCase()] = palette[i];
+  }
   let s = svgTexts[filename];
   return s.replace(/fill="(#[0-9A-Fa-f]+)"/g, (m, color) => {
     const target = mapping[color.toUpperCase()] || color;
@@ -255,22 +267,20 @@ function svgDataUrl(text) {
 }
 
 function rebuildBucketRow(bucketIdx) {
-  // Find the tile elements for this bucket and update their backgrounds
-  // and fill slot displays.
   const fills = palette[bucketIdx];
-  // mapping is keyed by the artist's original fills
-  const mapping = {
-    [ARTIST_FILLS[0]]: fills[0],
-    [ARTIST_FILLS[1]]: fills[1],
-    [ARTIST_FILLS[2]]: fills[2],
-  };
-  const cloudUrl = svgDataUrl(shadedSvg("bg-cloud.svg", mapping));
-  const rainUrl  = svgDataUrl(shadedSvg("bg-rain.svg",  mapping));
+  const cloudUrl = svgDataUrl(shadedSvg("bg-cloud.svg", fills));
+  const rainUrl  = svgDataUrl(shadedSvg("bg-rain.svg",  fills));
+  const bgColor  = fills[2];   // slot 2 = row bg color (and cloud's lightest)
   ["day", "night"].forEach(mode => {
     document.querySelector(`#tile-${bucketIdx}-${mode}-cloud`).style.backgroundImage = `url(${cloudUrl})`;
     document.querySelector(`#tile-${bucketIdx}-${mode}-rain`).style.backgroundImage  = `url(${rainUrl})`;
+    // Tile-level bg color comes from slot 2 (day-mode tile only; night
+    // keeps --night for now until we add a night palette).
+    if (mode === "day") {
+      document.querySelector(`#tile-${bucketIdx}-day`).style.backgroundColor = bgColor;
+    }
   });
-  // Update fill slot labels + bg
+  // Update fill slot labels + bg swatch on each slot
   for (let i = 0; i < 3; i++) {
     document.querySelectorAll(`.slot-b${bucketIdx}-${i}`).forEach(slot => {
       slot.style.background = fills[i];
@@ -292,6 +302,7 @@ function renderRows() {
     for (const mode of ["day", "night"]) {
       const tile = document.createElement("div");
       tile.className = `bucket-row tile ${mode}`;
+      tile.id = `tile-${b}-${mode}`;
       tile.innerHTML = `
         <div class="tile-svgs">
           <div class="tile-svg" id="tile-${b}-${mode}-cloud"></div>
@@ -321,16 +332,12 @@ function renderRows() {
 
 // ── actions ─────────────────────────────────────────────────────────────
 document.getElementById("export").addEventListener("click", () => {
-  // Emit a Python-formatted dict matching bg_shading.INTENSITY_BUCKETS.
-  let lines = ["INTENSITY_BUCKETS: list[dict[str, str]] = ["];
+  // Emit a Python tuple list matching bg_shading.BUCKET_PALETTES.
+  let lines = ["BUCKET_PALETTES: list[tuple[str, str, str]] = ["];
   for (let b = 0; b <= 4; b++) {
     const fills = palette[b];
     lines.push(`    # ${b} — ${BUCKET_LABELS[b]}`);
-    lines.push(
-      `    {"${ARTIST_FILLS[0]}": "${fills[0]}", ` +
-      `"${ARTIST_FILLS[1]}": "${fills[1]}", ` +
-      `"${ARTIST_FILLS[2]}": "${fills[2]}"},`
-    );
+    lines.push(`    ("${fills[0]}", "${fills[1]}", "${fills[2]}"),`);
   }
   lines.push("]");
   $output.textContent = lines.join("\n");

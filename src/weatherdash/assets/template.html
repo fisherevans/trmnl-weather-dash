@@ -696,7 +696,7 @@
 
           <!-- row 1: precipitation bars (grow up). One night-shade per night region. -->
           <div class="chart-row precip-bars precip-{{ precip_type }}"
-               style="--row-bg: url('{{ precip_bg_url }}');">
+               style="--row-bg: url('{{ precip_bg_url }}'); background-color: {{ precip_bg_color }};">
             <div class="row-title">PRECIPITATION</div>
             {%- if precip_empty_text %}
             <div class="row-empty">{{ precip_empty_text }}</div>
@@ -746,7 +746,7 @@
 
           <!-- row 3: cloud cover bars (grow down). One night-shade per night region. -->
           <div class="chart-row cloud-bars"
-               style="--row-bg: url('{{ cloud_bg_url }}');">
+               style="--row-bg: url('{{ cloud_bg_url }}'); background-color: {{ cloud_bg_color }};">
             <div class="row-title">CLOUD COVER</div>
             {%- if cloud_empty_text %}
             <div class="row-empty">{{ cloud_empty_text }}</div>

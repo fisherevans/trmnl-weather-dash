@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import pytest
 
-from weatherdash.bg_shading import (INTENSITY_BUCKETS, cloud_bucket,
-                                    precip_bucket, shaded_svg_url)
+from weatherdash.bg_shading import (BUCKET_PALETTES, INTENSITY_BUCKETS,
+                                    cloud_bucket, precip_bucket, row_bg_color,
+                                    shaded_svg_url)
 
 
 def _hex_to_level(hex_str: str) -> int:
@@ -49,32 +50,33 @@ def test_bucket_zero_has_at_least_one_visible_fill_on_day_bg():
 
 
 @pytest.mark.parametrize("bucket_idx", range(1, 5))
-def test_non_zero_bucket_fills_visible_on_both_bg(bucket_idx):
-    """Buckets >= 1 must keep all 3 fills at quantize level <= 12 so they
-    render against both the day bg (level 14) and the night-shade (level
-    13). Bucket 0 is exempt — fills may match the night bg level since
-    "barely visible" is the goal."""
-    for fill in INTENSITY_BUCKETS[bucket_idx].values():
-        assert _hex_to_level(fill) <= 12, (
-            f"bucket {bucket_idx} fill {fill} quantizes too light to render"
-            " against the night-shade"
-        )
+def test_shape_fills_visible_on_night_shade(bucket_idx):
+    """Slots 0 and 1 (the SVG shape colors) must keep at quantize level
+    <= 12 so they render as darker shapes against the night-shade (level
+    13). Slot 2 is the row bg color, not a fill, so this constraint
+    doesn't apply to it. Bucket 0 is exempt — at "barely visible" the
+    shapes may approach the bg level by design."""
+    p = BUCKET_PALETTES[bucket_idx]
+    assert _hex_to_level(p[0]) <= 12, f"bucket {bucket_idx} slot 0 = {p[0]} too light"
+    assert _hex_to_level(p[1]) <= 12, f"bucket {bucket_idx} slot 1 = {p[1]} too light"
 
 
 def test_buckets_progress_monotonically_lighter_to_subtle():
-    """As bucket index drops from 4 to 0, the DARKEST fill in each bucket
-    must get lighter (no regressions)."""
-    darkest_levels = []
-    for b in INTENSITY_BUCKETS:
-        # The original artist palette puts the darkest fill on #666666.
-        # That key tells us where the "darkest visible" lands after shift.
-        darkest_levels.append(_hex_to_level(b["#666666"]))
+    """As bucket index drops from 4 to 0, slot 0 (the darkest fill in each
+    bucket) must get lighter (no regressions)."""
+    darkest_levels = [_hex_to_level(p[0]) for p in BUCKET_PALETTES]
     # bucket 4 (last) is the artist original (darkest), bucket 0 the lightest
     for i in range(len(darkest_levels) - 1):
         assert darkest_levels[i] >= darkest_levels[i + 1], (
             f"bucket {i} darkest ({darkest_levels[i]}) should be ≥ "
             f"bucket {i+1} darkest ({darkest_levels[i+1]})"
         )
+
+
+def test_row_bg_color_returns_slot_2():
+    """row_bg_color(bucket) must equal BUCKET_PALETTES[bucket][2]."""
+    for b in range(5):
+        assert row_bg_color(b) == BUCKET_PALETTES[b][2]
 
 
 @pytest.mark.parametrize("avg_cloud,expected", [

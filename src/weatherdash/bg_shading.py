@@ -37,32 +37,53 @@ ASSETS = Path(__file__).parent / "assets"
 #  - 16 panel levels at integer multiples of 17; quantize snaps to nearest.
 #  - Day bg (--panel=#ECECEC) post-quantize sits at level 14 (#EEE).
 #  - Night bg (--night=#D8D8D8) post-quantize sits at level 13 (#DDD).
-#  - Single palette shared across day+night and across rain+cloud rows;
-#    intensity bucket drives the darkness, the day/night region's bg-color
-#    tint provides the time-of-day cue.
-#  - Buckets must be monotonically lighter from 4 to 0. Each bucket has
-#    three fills but the lightest bucket (0) may collapse two fills onto
-#    the same level — at "barely visible" the shape distinction stops
-#    mattering and a near-invisible pattern reads as one wash anyway.
+#  - Buckets must be monotonically lighter from 4 to 0.
 #
-# This palette was tuned to keep bucket 1 ("Partly Cloudy" / "Drizzle")
-# visibly distinct from bucket 0 ("Clear" / "Dry"). User feedback: at
-# 0mm rain the row should read as almost-empty, while a partly-cloudy
-# 30% cover should clearly show pattern.
+# Each bucket carries a 3-slot palette. The slots have unified semantics
+# across cloud and rain rows so a picker can show the same controls for
+# both:
+#
+#   slot 0  →  darkest fill   →  cloud's #666666 / rain's #666666 (slashes)
+#   slot 1  →  mid fill       →  cloud's #999999 / rain's #BBBBBB (drops)
+#   slot 2  →  row bg + cloud's lightest fill (cloud's #BBBBBB)
+#
+# The reason slot 2 is BOTH the row bg and the cloud's lightest fill: the
+# user wants slot 2 to be "the background for the whole image". Having the
+# cloud's lightest highlight also land at this value makes those highlights
+# blend into bg (effectively invisible). Trade-off accepted — cloud loses
+# one tier of detail; rain gains a controllable bg.
+#
+# Rain only has two visible SVG fills (slashes + drops), so its slot 2 is
+# pure bg. Cloud has three fills, with #BBB pinned to bg.
+BUCKET_PALETTES: list[tuple[str, str, str]] = [
+    # 0 — barely visible (Clear / Dry).
+    ("#CCCCCC", "#DDDDDD", "#ECECEC"),
+    # 1 — light (Mostly Sunny / Drizzle).
+    ("#AAAAAA", "#BBBBBB", "#ECECEC"),
+    # 2 — moderate (Partly Cloudy / Light rain).
+    ("#999999", "#BBBBBB", "#ECECEC"),
+    # 3 — dense (Mostly Cloudy / Moderate rain).
+    ("#888888", "#AAAAAA", "#ECECEC"),
+    # 4 — full strength (Overcast / Heavy rain; artist palette).
+    ("#666666", "#999999", "#ECECEC"),
+]
+
+# Per-SVG: which artist fill maps to which slot.
+_CLOUD_SLOTS = ("#666666", "#999999", "#BBBBBB")    # darkest, mid, lightest
+_RAIN_SLOTS  = ("#666666", "#BBBBBB", None)         # slashes, drops, (bg only)
+_SNOW_SLOTS  = ("#666666", "#999999", None)         # outline, body, (bg only)
+
+_SLOT_KEYS_BY_SVG = {
+    "bg-cloud.svg": _CLOUD_SLOTS,
+    "bg-rain.svg":  _RAIN_SLOTS,
+    "bg-snow.svg":  _SNOW_SLOTS,
+}
+
+# Back-compat shim for any callers still importing the old dict form. Each
+# entry is the bucket palette expressed as the cloud-shaped mapping.
 INTENSITY_BUCKETS: list[dict[str, str]] = [
-    # 0 — barely visible. Levels 12, 13, 13 — only 1-2 steps below the
-    # day bg (14). On night bg (13) the #DDD fills are invisible and
-    # the row reads as a single faint #CCC wash. Intentional: bucket 0
-    # is "no data", the pattern shouldn't compete with the message.
-    {"#666666": "#CCCCCC", "#999999": "#DDDDDD", "#BBBBBB": "#DDDDDD"},
-    # 1 — light. Levels 10, 11, 12.
-    {"#666666": "#AAAAAA", "#999999": "#BBBBBB", "#BBBBBB": "#CCCCCC"},
-    # 2 — moderate. Levels 9, 11, 12.
-    {"#666666": "#999999", "#999999": "#BBBBBB", "#BBBBBB": "#CCCCCC"},
-    # 3 — dense. Levels 8, 10, 11.
-    {"#666666": "#888888", "#999999": "#AAAAAA", "#BBBBBB": "#BBBBBB"},
-    # 4 — full strength (artist original). Levels 6, 9, 11.
-    {"#666666": "#666666", "#999999": "#999999", "#BBBBBB": "#BBBBBB"},
+    {_CLOUD_SLOTS[i]: p[i] for i in range(3)}
+    for p in BUCKET_PALETTES
 ]
 
 
@@ -109,28 +130,30 @@ _FILL_RE = re.compile(r'fill="(#[0-9A-Fa-f]+)"')
 def shaded_svg_url(svg_filename: str, bucket: int) -> str:
     """Return a data: URL of the SVG with fills shifted to the given bucket.
 
-    Implemented as a single-pass regex substitution. Earlier versions did
-    sequential `str.replace` calls per (orig, repl) pair — that cascades
-    when a target color is also a source key in the same mapping. For the
-    cloud SVG (which carries all three artist fills #666/#999/#BBB), the
-    bucket-1 mapping {#666→#999, #999→#BBB, #BBB→#CCC} collapsed every
-    fill to #CCC because the post-stage-1 #999 got caught by stage 2,
-    which then got caught by stage 3. The rain SVG escaped that bug
-    because it only has two of the three source fills.
-
-    Cached because the inputs are a tiny finite set (3 base SVGs × 5
-    buckets) and each render of the dashboard hits the same combos.
+    Single-pass regex substitution. Mapping is built from the SVG's slot
+    keys (which artist fill maps to which palette slot) — different SVGs
+    use different slots (cloud uses all 3, rain/snow use slots 0+1).
     """
     svg_path = ASSETS / svg_filename
     content = svg_path.read_text()
-    mapping = INTENSITY_BUCKETS[bucket]
-    # Normalize keys to uppercase for case-insensitive lookup.
-    mapping_upper = {k.upper(): v for k, v in mapping.items()}
+    palette = BUCKET_PALETTES[bucket]
+    slot_keys = _SLOT_KEYS_BY_SVG.get(svg_filename, _CLOUD_SLOTS)
+
+    mapping = {
+        slot_keys[i].upper(): palette[i]
+        for i in range(3) if slot_keys[i] is not None
+    }
 
     def _swap(m: re.Match) -> str:
         color = m.group(1).upper()
-        return f'fill="{mapping_upper.get(color, m.group(1))}"'
+        return f'fill="{mapping.get(color, m.group(1))}"'
 
     content = _FILL_RE.sub(_swap, content)
     encoded = b64encode(content.encode("utf-8")).decode("ascii")
     return f"data:image/svg+xml;base64,{encoded}"
+
+
+def row_bg_color(bucket: int) -> str:
+    """Return the row's background-color for a given intensity bucket.
+    This is slot 2 of the bucket palette."""
+    return BUCKET_PALETTES[bucket][2]

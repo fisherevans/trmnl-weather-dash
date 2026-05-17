@@ -17,7 +17,7 @@ from tempfile import NamedTemporaryFile
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from PIL import Image
 
-from .bg_shading import cloud_bucket, precip_bucket, shaded_svg_url
+from .bg_shading import cloud_bucket, precip_bucket, row_bg_color, shaded_svg_url
 
 ASSETS = Path(__file__).parent / "assets"
 WIDTH, HEIGHT = 1872, 1404
@@ -74,14 +74,17 @@ def render_html(data: dict) -> str:
     # offline fixture renders still produce density-shifted backgrounds
     # plus the matching no-data overlays.
     cloud_bg_url      = data.get("cloud_bg_url")
+    cloud_bg_color    = data.get("cloud_bg_color")
     cloud_empty_text  = data.get("cloud_empty_text")
     precip_bg_url     = data.get("precip_bg_url")
+    precip_bg_color   = data.get("precip_bg_color")
     precip_empty_text = data.get("precip_empty_text")
     precip_type       = data.get("precip_type", "rain")
     if not cloud_bg_url:
         avg_cloud = data.get("avg_cloud_pct", 0)
         c_bucket = cloud_bucket(avg_cloud)
         cloud_bg_url = shaded_svg_url("bg-cloud.svg", c_bucket)
+        cloud_bg_color = row_bg_color(c_bucket)
         if cloud_empty_text is None and c_bucket == 0:
             cloud_empty_text = "CLEAR SKIES"
     if not precip_bg_url:
@@ -89,6 +92,7 @@ def render_html(data: dict) -> str:
         total_mm = data.get("total_accumulation_mm", 0.0)
         p_bucket = precip_bucket(total_mm)
         precip_bg_url = shaded_svg_url(precip_svg, p_bucket)
+        precip_bg_color = row_bg_color(p_bucket)
         if precip_empty_text is None and p_bucket == 0:
             precip_empty_text = (
                 "NO SNOW FORECASTED" if precip_type == "snow" else "NO RAIN FORECASTED"
@@ -103,6 +107,8 @@ def render_html(data: dict) -> str:
            "updated_at": updated_at,
            "cloud_bg_url": cloud_bg_url,
            "precip_bg_url": precip_bg_url,
+           "cloud_bg_color": cloud_bg_color,
+           "precip_bg_color": precip_bg_color,
            "cloud_empty_text": cloud_empty_text,
            "precip_empty_text": precip_empty_text,
            "night_regions": [r for r in regions if r["is_night"]]}
