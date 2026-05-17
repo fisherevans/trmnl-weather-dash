@@ -108,8 +108,14 @@ def build_context(
     sunset_idx  = (weather.sun.sunset  - chart_start).total_seconds() / 3600
 
     # ── forecast high/low across the visible window ───────────────────────
+    # Peak/trough may fall on the next calendar day in the configured tz
+    # (e.g. at 9pm, today's peak already happened; the next 18h reaches
+    # tomorrow's peak). `tomorrow` flags that case so the template can
+    # show a "TMRW" badge — otherwise an 81°F high at 1pm reads as
+    # today's, which is misleading after sunset.
     high_h = max(weather.hourly, key=lambda h: h.temp_f)
     low_h  = min(weather.hourly, key=lambda h: h.temp_f)
+    today = now.date()
 
     # ── precip type drives bg-{rain,snow}.svg selection ───────────────────
     precip_type = "snow" if any(h.weather_code in SNOW_CODES for h in weather.hourly) else "rain"
@@ -136,8 +142,16 @@ def build_context(
             },
         },
         "forecast": {
-            "high": {"temp_f": round(high_h.temp_f), "time": _format_clock(high_h.timestamp)},
-            "low":  {"temp_f": round(low_h.temp_f),  "time": _format_clock(low_h.timestamp)},
+            "high": {
+                "temp_f":   round(high_h.temp_f),
+                "time":     _format_clock(high_h.timestamp),
+                "tomorrow": high_h.timestamp.date() != today,
+            },
+            "low": {
+                "temp_f":   round(low_h.temp_f),
+                "time":     _format_clock(low_h.timestamp),
+                "tomorrow": low_h.timestamp.date() != today,
+            },
         },
         "sun": {
             "sunrise": {"time": _format_clock(weather.sun.sunrise), "hour_index": sunrise_idx},

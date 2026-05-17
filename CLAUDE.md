@@ -75,6 +75,18 @@ Icon pipeline (one-time per pack):
   vs cool hues differently: warm (sun/moon/lightning yellow) → flat light
   grey (so it pops on dark cloud silhouettes); cool (cloud blues) → graduated
   mid/dark greys. Pure luminance doesn't give this hierarchy.
+  - **Exception:** `clear-day.svg` and `clear-night.svg` are *only* the sun
+    or moon (no cloud behind). The light-gray output makes them disappear
+    against the panel background — those two are manually remapped to a
+    dark mid-gray (`#5F5F5F`) so they read as a prominent icon on OUTSIDE.
+- **Background SVG palette: day and night never share gray values.**
+  Day shapes use {`#666666`, `#999999`, `#BBBBBB`}; night shapes use
+  {`#888888`, `#AAAAAA`, `#DDDDDD`}. When a value lived in both palettes,
+  the same shape appeared to "continue" across the day/night boundary
+  in the chart, just under different shading. Zero-overlap fixes that.
+  All three background SVGs (cloud, rain, snow) draw from these palettes
+  so the day region reads as one image and the night region reads as
+  another, regardless of which precip type is showing.
 
 ## Things to know before changing anything
 

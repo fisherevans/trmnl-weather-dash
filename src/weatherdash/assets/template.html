@@ -236,6 +236,22 @@
       font-size: 26px;
       font-weight: 700;
       letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    /* Small inverted pill, e.g. "TMRW", flagging that the high/low fell on
+       a different calendar day than "now". Only rendered when needed. */
+    .tempforecast .when .tag {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      background: var(--ink);
+      color: var(--panel);
+      padding: 2px 8px;
+      border-radius: 3px;
+      line-height: 1;
     }
 
     /* ============================================================
@@ -520,11 +536,17 @@
         <div class="card-body tempforecast">
           <div class="row">
             <div class="big"><span class="arrow">↑</span><span>{{ forecast.high.temp_f }}°F</span></div>
-            <div class="when">HIGH @ {{ forecast.high.time }}</div>
+            <div class="when">
+              <span>HIGH @ {{ forecast.high.time }}</span>
+              {%- if forecast.high.tomorrow %}<span class="tag">TMRW</span>{%- endif %}
+            </div>
           </div>
           <div class="row">
             <div class="big"><span class="arrow">↓</span><span>{{ forecast.low.temp_f }}°F</span></div>
-            <div class="when">LOW @ {{ forecast.low.time }}</div>
+            <div class="when">
+              <span>LOW @ {{ forecast.low.time }}</span>
+              {%- if forecast.low.tomorrow %}<span class="tag">TMRW</span>{%- endif %}
+            </div>
           </div>
         </div>
       </section>
