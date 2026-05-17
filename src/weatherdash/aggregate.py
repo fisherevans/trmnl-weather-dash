@@ -181,9 +181,13 @@ def build_context(
         "NO RAIN FORECASTED" if precip_b == 0 else None
     )
 
+    # Header time is rounded to the nearest 5 minutes — the device's
+    # Image Display poll floor on TRMNL+, so a precise minute can be up
+    # to ~5 min stale before the next poll. The "Updated" stamp in the
+    # bottom-right stays precise; it's the data-freshness indicator.
     return {
         "date_line": now.strftime("%A, %B %-d, %Y").upper(),
-        "time":      now.strftime("%-I:%M %p"),
+        "time":      _round_to_minutes(now, 5).strftime("%-I:%M %p"),
         "inside": {
             "temp_f":       _round_or_placeholder(in_temp),
             "humidity_pct": _round_or_placeholder(in_hum),
@@ -276,6 +280,24 @@ def _format_chart_hour(dt: datetime) -> str:
 def _format_clock(dt: datetime) -> str:
     """Format wall-clock time, e.g. '3:00 PM', '5:32 AM'."""
     return dt.strftime("%-I:%M %p")
+
+
+def _round_to_minutes(dt: datetime, minutes: int) -> datetime:
+    """Round `dt` to the nearest multiple of `minutes`. Used for the
+    header time display: TRMNL devices poll the dashboard every ~5 min
+    (Image Display floor on TRMNL+), so showing a precise minute makes
+    the clock feel "wrong" when the user looks at the panel 4 minutes
+    after the last poll. Rounding to a multiple of 5 reads as casually
+    approximate without losing utility."""
+    discard = timedelta(
+        minutes=dt.minute % minutes,
+        seconds=dt.second,
+        microseconds=dt.microsecond,
+    )
+    dt -= discard
+    if discard >= timedelta(minutes=minutes / 2):
+        dt += timedelta(minutes=minutes)
+    return dt
 
 
 def _cloud_description(pct: int) -> str:
