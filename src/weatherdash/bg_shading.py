@@ -32,16 +32,30 @@ ASSETS = Path(__file__).parent / "assets"
 # bg-snow) all draw from this set. Each bucket below maps these original
 # fills onto a progressively lighter set so SVG content fades toward
 # the panel color when intensity is low.
+# 4-bit grayscale constraints (see bg-palette math in PR notes):
+#  - 16 panel levels at integer multiples of 17; quantize snaps to nearest.
+#  - Day bg (--panel=#ECECEC) post-quantize sits at level 14 (#EEE).
+#  - Night bg (--night=#D8D8D8) post-quantize sits at level 13 (#DDD).
+#  - For a fill to render visibly in BOTH day and night regions it must
+#    quantize to level ≤ 12 (#CCC). Anything at level 13 vanishes on the
+#    night-shade; anything at level 14 vanishes on the day bg too.
+#  - Each bucket must have 3 distinct quantize levels so the SVG's three
+#    artist fills don't collapse into 2 colors.
+#
+# The progression below: darkest fill steps from level 6 (bucket 4) up to
+# level 10 (bucket 0); mid + light stagger one level each. Monotonic +
+# distinct + visible-everywhere.
 INTENSITY_BUCKETS: list[dict[str, str]] = [
-    # 0 — barely visible. Just a hint that the row carries a pattern.
-    {"#666666": "#DDDDDD", "#999999": "#EEEEEE", "#BBBBBB": "#EEEEEE"},
-    # 1 — light, "subtle but present".
-    {"#666666": "#BBBBBB", "#999999": "#DDDDDD", "#BBBBBB": "#EEEEEE"},
-    # 2 — moderate.
-    {"#666666": "#999999", "#999999": "#BBBBBB", "#BBBBBB": "#DDDDDD"},
-    # 3 — dense.
-    {"#666666": "#777777", "#999999": "#AAAAAA", "#BBBBBB": "#CCCCCC"},
-    # 4 — full strength (original artist palette).
+    # 0 — barely visible. Levels 10, 11, 12 — all 2-4 steps darker than the
+    # day bg (level 14) and 1-3 steps darker than the night bg (level 13).
+    {"#666666": "#AAAAAA", "#999999": "#BBBBBB", "#BBBBBB": "#CCCCCC"},
+    # 1 — light. Levels 9, 11, 12.
+    {"#666666": "#999999", "#999999": "#BBBBBB", "#BBBBBB": "#CCCCCC"},
+    # 2 — moderate. Levels 8, 10, 12.
+    {"#666666": "#888888", "#999999": "#AAAAAA", "#BBBBBB": "#CCCCCC"},
+    # 3 — dense. Levels 7, 9, 11.
+    {"#666666": "#777777", "#999999": "#999999", "#BBBBBB": "#BBBBBB"},
+    # 4 — full strength (artist original). Levels 6, 9, 11.
     {"#666666": "#666666", "#999999": "#999999", "#BBBBBB": "#BBBBBB"},
 ]
 

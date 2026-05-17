@@ -79,14 +79,23 @@ Icon pipeline (one-time per pack):
     or moon (no cloud behind). The light-gray output makes them disappear
     against the panel background — those two are manually remapped to a
     dark mid-gray (`#5F5F5F`) so they read as a prominent icon on OUTSIDE.
-- **Background SVG palette: day and night never share gray values.**
-  Day shapes use {`#666666`, `#999999`, `#BBBBBB`}; night shapes use
-  {`#888888`, `#AAAAAA`, `#DDDDDD`}. When a value lived in both palettes,
-  the same shape appeared to "continue" across the day/night boundary
-  in the chart, just under different shading. Zero-overlap fixes that.
-  All three background SVGs (cloud, rain, snow) draw from these palettes
-  so the day region reads as one image and the night region reads as
-  another, regardless of which precip type is showing.
+- **Background SVG palette: density-shifted at render time, capped at
+  level ≤ 12.** The chart's `bg-{cloud,rain,snow}.svg` files ship in the
+  artist's original 3-fill palette (`#666 / #999 / #BBB` = quantize levels
+  6 / 9 / 11). `bg_shading.py` rewrites these fills at render time per the
+  forecast intensity — bucket 4 keeps the artist values, bucket 0 lifts
+  them to `#AAA / #BBB / #CCC` (levels 10 / 11 / 12). The output is
+  inlined into the template as a `data:` URL.
+  - The level-12 ceiling is load-bearing: day bg quantizes to level 14,
+    night-shade (`#D8D8D8`) to level 13. A fill at level 13 vanishes
+    against the night-shade; a fill at 14 vanishes against the day bg.
+    Capping the lightest fill at 12 keeps shapes visible in both regions.
+  - Each bucket must hit 3 distinct quantize levels. If two fills round
+    to the same level the 3-color SVG collapses to 2 colors and shapes
+    that should be distinguishable merge.
+  - The night-shade reuses the same shaded SVG (same `--row-bg` CSS
+    variable) so the pattern continues unchanged across the day/night
+    boundary; only the background-color tints the region.
 
 ## Things to know before changing anything
 
