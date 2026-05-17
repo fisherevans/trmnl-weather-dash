@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pattern Studio</title>
+<style>
+  :root { --line:#000; --bg:#fafafa; --panel:#ececec; --night:#6a6a6a; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 14px/1.4 -apple-system, system-ui, sans-serif;
+    background: var(--bg);
+    color: #111;
+  }
+  header {
+    padding: 14px 24px;
+    border-bottom: 2px solid var(--line);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header h1 { margin: 0; font-size: 18px; font-weight: 900; letter-spacing: 0.04em; }
+  header .grow { flex: 1; }
+  button {
+    padding: 8px 16px;
+    background: #000;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+  }
+  button.ghost { background: #fff; color: #000; border: 1.5px solid #000; }
+  button:active { transform: translateY(1px); }
+  #status { font-size: 12px; color: #555; font-family: ui-monospace, Menlo, monospace; min-width: 220px; text-align: right; }
+
+  main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    padding: 20px;
+  }
+  .panel {
+    background: #fff;
+    border: 2px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .panel-header {
+    background: #000;
+    color: #fff;
+    padding: 10px 16px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    font-size: 14px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .panel-header .modes {
+    display: flex;
+    gap: 0;
+    margin-left: auto;
+    background: #222;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .panel-header .modes button {
+    background: transparent;
+    color: #aaa;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 0;
+  }
+  .panel-header .modes button.active { background: #fff; color: #000; }
+  .preview {
+    height: 320px;
+    background-color: var(--panel);
+    background-repeat: repeat;
+    background-position: center;
+    border-bottom: 2px solid var(--line);
+  }
+  .preview.night { background-color: var(--night); }
+  .knobs {
+    padding: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 18px;
+  }
+  .knob { display: flex; flex-direction: column; gap: 3px; }
+  .knob-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .knob label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #444;
+  }
+  .knob .value {
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 11px;
+    color: #000;
+    font-weight: 600;
+  }
+  .knob input[type=range] {
+    width: 100%;
+    accent-color: #000;
+  }
+  .swatch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .swatch input[type=color] {
+    width: 36px;
+    height: 28px;
+    border: 1.5px solid #000;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+  }
+  .swatch label { letter-spacing: 0.06em; font-size: 11px; font-weight: 800; }
+  .global-fills {
+    padding: 12px 24px;
+    border-top: 2px solid var(--line);
+    border-bottom: 2px solid var(--line);
+    background: #fff;
+    display: flex;
+    gap: 30px;
+    align-items: center;
+  }
+  .global-fills .lbl { font-size: 12px; font-weight: 800; letter-spacing: 0.06em; color: #444; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>PATTERN STUDIO</h1>
+  <span class="grow"></span>
+  <button class="ghost" id="reset">Reset to defaults</button>
+  <button id="save">Save to disk</button>
+  <span id="status">loading…</span>
+</header>
+
+<section class="global-fills">
+  <div class="swatch">
+    <span class="lbl">DAY FILL</span>
+    <input id="day-fill" type="color">
+  </div>
+  <div class="swatch">
+    <span class="lbl">NIGHT FILL</span>
+    <input id="night-fill" type="color">
+  </div>
+  <div class="knob" style="flex: 0 0 200px;">
+    <div class="knob-row">
+      <label>Night seed bump</label>
+      <span class="value" id="night-seed-bump-v">4</span>
+    </div>
+    <input type="range" min="0" max="32" step="1" value="4" id="night-seed-bump">
+  </div>
+</section>
+
+<main>
+  <section class="panel">
+    <div class="panel-header">
+      CLOUD PATTERN
+      <span class="modes" id="cloud-modes">
+        <button class="active" data-mode="day">DAY</button>
+        <button data-mode="night">NIGHT</button>
+      </span>
+    </div>
+    <div class="preview" id="preview-cloud"></div>
+    <div class="knobs" id="knobs-cloud"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      RAIN PATTERN
+      <span class="modes" id="rain-modes">
+        <button class="active" data-mode="day">DAY</button>
+        <button data-mode="night">NIGHT</button>
+      </span>
+    </div>
+    <div class="preview" id="preview-rain"></div>
+    <div class="knobs" id="knobs-rain"></div>
+  </section>
+</main>
+
+<script>
+// Range hints - for each knob, [min, max, step]. Bools/strings handled separately.
+const RANGES = {
+  tile_w:           [120, 1400, 10],
+  tile_h:           [120, 1000, 10],
+  count:            [0, 200, 1],         // target shapes; extras get dropped if no room
+  max_candidates:   [4, 128, 1],         // Mitchell's best-of-N per shape; higher = bluer noise
+  base_width_frac:  [0.10, 0.60, 0.01],  // cloud-only: base cloud width as fraction of tile_w
+  angle_min:        [-30, 60, 1],
+  angle_max:        [-30, 60, 1],
+  base_drop_w:      [4, 80, 1],
+  drop_stretch:     [0.4, 3, 0.05],
+  min_scale:        [0.2, 2, 0.05],
+  max_scale:        [0.2, 2, 0.05],
+  seed:             [0, 200, 1],
+};
+
+let defaults = null;
+let mode = { cloud: "day", rain: "day" };
+let dayFill = "#bdbdbd";
+let nightFill = "#a4a4a4";
+let nightSeedBump = 4;
+
+async function loadDefaults() {
+  const r = await fetch("/api/defaults");
+  defaults = await r.json();
+  dayFill = defaults.day_fill;
+  nightFill = defaults.night_fill;
+  document.getElementById("day-fill").value = dayFill;
+  document.getElementById("night-fill").value = nightFill;
+  buildKnobs("cloud", defaults.cloud);
+  buildKnobs("rain", defaults.rain);
+  refresh("cloud"); refresh("rain");
+  document.getElementById("status").textContent = "ready";
+}
+
+function buildKnobs(kind, params) {
+  const container = document.getElementById("knobs-" + kind);
+  container.innerHTML = "";
+  Object.entries(params).forEach(([name, def]) => {
+    const [min, max, step] = RANGES[name] ?? [0, 100, 1];
+    const div = document.createElement("div");
+    div.className = "knob";
+    div.innerHTML = `
+      <div class="knob-row">
+        <label>${name}</label>
+        <span class="value" data-of="${name}">${def}</span>
+      </div>
+      <input type="range" min="${min}" max="${max}" step="${step}" value="${def}" data-knob="${name}">
+    `;
+    container.appendChild(div);
+    const inp = div.querySelector("input");
+    inp.addEventListener("input", () => {
+      div.querySelector(".value").textContent = inp.value;
+      debounce(kind);
+    });
+  });
+}
+
+function readKnobs(kind) {
+  const out = {};
+  document.querySelectorAll(`#knobs-${kind} input[data-knob]`).forEach(inp => {
+    const v = Number(inp.value);
+    out[inp.dataset.knob] = Number.isFinite(v) ? v : inp.value;
+  });
+  return out;
+}
+
+const timers = {};
+function debounce(kind) {
+  clearTimeout(timers[kind]);
+  timers[kind] = setTimeout(() => refresh(kind), 80);
+}
+
+async function refresh(kind) {
+  const params = readKnobs(kind);
+  const isNight = mode[kind] === "night";
+  if (isNight) params.seed = (params.seed | 0) + (nightSeedBump | 0);
+  params.fill = isNight ? nightFill : dayFill;
+  const r = await fetch("/api/" + kind, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  const svg = await r.text();
+  const url = "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+  const prev = document.getElementById("preview-" + kind);
+  prev.style.backgroundImage = `url("${url}")`;
+  prev.classList.toggle("night", isNight);
+}
+
+["cloud", "rain"].forEach(kind => {
+  document.getElementById(kind + "-modes").addEventListener("click", e => {
+    const b = e.target.closest("button[data-mode]");
+    if (!b) return;
+    [...e.currentTarget.children].forEach(x => x.classList.remove("active"));
+    b.classList.add("active");
+    mode[kind] = b.dataset.mode;
+    refresh(kind);
+  });
+});
+
+document.getElementById("day-fill").addEventListener("input", e => {
+  dayFill = e.target.value;
+  refresh("cloud"); refresh("rain");
+});
+document.getElementById("night-fill").addEventListener("input", e => {
+  nightFill = e.target.value;
+  refresh("cloud"); refresh("rain");
+});
+document.getElementById("night-seed-bump").addEventListener("input", e => {
+  nightSeedBump = Number(e.target.value);
+  document.getElementById("night-seed-bump-v").textContent = nightSeedBump;
+  refresh("cloud"); refresh("rain");
+});
+
+document.getElementById("save").addEventListener("click", async () => {
+  const r = await fetch("/api/save", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      cloud: readKnobs("cloud"),
+      rain:  readKnobs("rain"),
+      day_fill: dayFill,
+      night_fill: nightFill,
+      night_seed_bump: nightSeedBump,
+    }),
+  });
+  const j = await r.json();
+  document.getElementById("status").textContent = "✓ saved " + new Date().toLocaleTimeString();
+});
+
+document.getElementById("reset").addEventListener("click", () => {
+  if (!defaults) return;
+  buildKnobs("cloud", defaults.cloud);
+  buildKnobs("rain", defaults.rain);
+  dayFill = defaults.day_fill; document.getElementById("day-fill").value = dayFill;
+  nightFill = defaults.night_fill; document.getElementById("night-fill").value = nightFill;
+  refresh("cloud"); refresh("rain");
+});
+
+loadDefaults();
+</script>
+</body>
+</html>

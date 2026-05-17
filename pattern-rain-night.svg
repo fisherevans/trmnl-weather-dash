@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 320">
+  <defs>
+    <symbol id="drop" viewBox="0.0 0.0 908.0 1280.0" preserveAspectRatio="xMidYMid meet">
+<g transform="translate(0.000000,1280.000000) scale(0.100000,-0.100000)" stroke="none">
+<path d="M4526 10235 c-11 -56 -84 -317 -126 -449 -128 -403 -267 -741 -469
+-1146 -235 -469 -420 -775 -978 -1620 -176 -267 -369 -565 -428 -664 -229
+-381 -363 -692 -420 -976 -22 -107 -29 -368 -16 -550 90 -1217 703 -2015 1726
+-2245 230 -52 393 -68 695 -69 281 -1 389 7 608 45 745 129 1291 528 1602
+1171 173 359 262 756 277 1233 9 297 -20 482 -113 732 -123 330 -261 572 -754
+1318 -575 872 -745 1154 -985 1635 -203 407 -336 731 -465 1136 -42 132 -115
+393 -126 449 -3 19 -10 35 -14 35 -4 0 -11 -16 -14 -35z"/>
+</g></symbol>
+  </defs>
+  <g fill="#a4a4a4">
+    <g transform="rotate(18.07 249.73 92.68)"><use href="#drop" x="235.96" y="50.96" width="27.53" height="83.43"/></g>
+    <g transform="rotate(18.07 -10.27 92.68)"><use href="#drop" x="-24.04" y="50.96" width="27.53" height="83.43"/></g>
+    <g transform="rotate(17.04 97.46 247.80)"><use href="#drop" x="82.42" y="202.24" width="30.07" height="91.13"/></g>
+    <g transform="rotate(16.33 209.28 294.46)"><use href="#drop" x="196.82" y="256.67" width="24.93" height="75.57"/></g>
+    <g transform="rotate(16.33 209.28 -25.54)"><use href="#drop" x="196.82" y="-63.33" width="24.93" height="75.57"/></g>
+    <g transform="rotate(13.56 128.56 90.66)"><use href="#drop" x="115.93" y="52.39" width="25.25" height="76.54"/></g>
+    <g transform="rotate(13.11 42.76 171.13)"><use href="#drop" x="28.17" y="126.91" width="29.18" height="88.45"/></g>
+    <g transform="rotate(10.79 223.03 157.66)"><use href="#drop" x="210.57" y="119.91" width="24.91" height="75.50"/></g>
+    <g transform="rotate(17.77 83.78 12.48)"><use href="#drop" x="69.80" y="-29.89" width="27.96" height="84.74"/></g>
+    <g transform="rotate(17.77 83.78 332.48)"><use href="#drop" x="69.80" y="290.11" width="27.96" height="84.74"/></g>
+    <g transform="rotate(19.28 22.19 260.75)"><use href="#drop" x="10.33" y="224.83" width="23.70" height="71.84"/></g>
+    <g transform="rotate(16.57 149.68 194.16)"><use href="#drop" x="136.64" y="154.64" width="26.08" height="79.04"/></g>
+    <g transform="rotate(18.28 194.37 42.62)"><use href="#drop" x="180.94" y="1.90" width="26.87" height="81.44"/></g>
+    <g transform="rotate(18.28 194.37 362.62)"><use href="#drop" x="180.94" y="321.90" width="26.87" height="81.44"/></g>
+    <g transform="rotate(13.62 67.04 116.76)"><use href="#drop" x="52.69" y="73.28" width="28.69" height="86.96"/></g>
+    <g transform="rotate(19.07 133.45 301.79)"><use href="#drop" x="120.48" y="262.46" width="25.95" height="78.66"/></g>
+    <g transform="rotate(19.07 133.45 -18.21)"><use href="#drop" x="120.48" y="-57.54" width="25.95" height="78.66"/></g>
+    <g transform="rotate(11.61 211.38 212.72)"><use href="#drop" x="197.07" y="169.34" width="28.63" height="86.76"/></g>
+    <g transform="rotate(18.87 189.32 107.55)"><use href="#drop" x="178.23" y="73.94" width="22.17" height="67.21"/></g>
+    <g transform="rotate(16.53 168.08 248.02)"><use href="#drop" x="152.13" y="199.68" width="31.90" height="96.68"/></g>
+    <g transform="rotate(16.51 26.11 32.33)"><use href="#drop" x="11.71" y="-11.32" width="28.80" height="87.30"/></g>
+    <g transform="rotate(16.51 26.11 352.33)"><use href="#drop" x="11.71" y="308.68" width="28.80" height="87.30"/></g>
+    <g transform="rotate(11.35 106.98 148.55)"><use href="#drop" x="92.84" y="105.70" width="28.27" height="85.69"/></g>
+    <g transform="rotate(12.34 15.91 306.29)"><use href="#drop" x="3.13" y="267.54" width="25.57" height="77.50"/></g>
+    <g transform="rotate(12.34 15.91 -13.71)"><use href="#drop" x="3.13" y="-52.46" width="25.57" height="77.50"/></g>
+    <g transform="rotate(15.78 96.13 196.66)"><use href="#drop" x="84.63" y="161.80" width="23.01" height="69.73"/></g>
+    <g transform="rotate(14.70 137.11 33.96)"><use href="#drop" x="123.30" y="-7.91" width="27.63" height="83.74"/></g>
+    <g transform="rotate(14.70 137.11 353.96)"><use href="#drop" x="123.30" y="312.09" width="27.63" height="83.74"/></g>
+    <g transform="rotate(15.73 45.65 219.58)"><use href="#drop" x="33.68" y="183.30" width="23.94" height="72.56"/></g>
+    <g transform="rotate(19.21 259.08 194.15)"><use href="#drop" x="245.05" y="151.63" width="28.06" height="85.04"/></g>
+    <g transform="rotate(19.21 -0.92 194.15)"><use href="#drop" x="-14.95" y="151.63" width="28.06" height="85.04"/></g>
+    <g transform="rotate(14.46 236.25 245.77)"><use href="#drop" x="224.77" y="210.96" width="22.97" height="69.61"/></g>
+    <g transform="rotate(17.05 142.07 121.34)"><use href="#drop" x="130.36" y="85.85" width="23.42" height="70.98"/></g>
+    <g transform="rotate(19.39 65.72 70.16)"><use href="#drop" x="51.07" y="25.75" width="29.30" height="88.81"/></g>
+    <g transform="rotate(16.26 236.43 41.31)"><use href="#drop" x="224.48" y="5.10" width="23.90" height="72.43"/></g>
+    <g transform="rotate(16.26 236.43 361.31)"><use href="#drop" x="224.48" y="325.10" width="23.90" height="72.43"/></g>
+    <g transform="rotate(12.66 18.41 122.25)"><use href="#drop" x="4.65" y="80.57" width="27.50" height="83.36"/></g>
+    <g transform="rotate(14.32 169.55 76.74)"><use href="#drop" x="155.90" y="35.37" width="27.30" height="82.73"/></g>
+    <g transform="rotate(16.87 176.58 9.97)"><use href="#drop" x="164.72" y="-25.97" width="23.72" height="71.88"/></g>
+    <g transform="rotate(16.87 176.58 329.97)"><use href="#drop" x="164.72" y="294.03" width="23.72" height="71.88"/></g>
+    <g transform="rotate(12.69 51.11 288.06)"><use href="#drop" x="34.97" y="239.15" width="32.28" height="97.83"/></g>
+    <g transform="rotate(12.69 51.11 -31.94)"><use href="#drop" x="34.97" y="-80.85" width="32.28" height="97.83"/></g>
+    <g transform="rotate(18.46 68.45 239.82)"><use href="#drop" x="56.87" y="204.73" width="23.16" height="70.18"/></g>
+    <g transform="rotate(14.72 105.52 55.15)"><use href="#drop" x="92.27" y="14.96" width="26.52" height="80.36"/></g>
+    <g transform="rotate(11.58 189.45 140.38)"><use href="#drop" x="175.96" y="99.48" width="26.99" height="81.79"/></g>
+    <g transform="rotate(16.76 239.49 318.12)"><use href="#drop" x="228.12" y="283.68" width="22.73" height="68.89"/></g>
+    <g transform="rotate(16.76 239.49 -1.88)"><use href="#drop" x="228.12" y="-36.32" width="22.73" height="68.89"/></g>
+    <g transform="rotate(12.48 33.43 71.39)"><use href="#drop" x="18.53" y="26.24" width="29.79" height="90.30"/></g>
+    <g transform="rotate(17.83 78.77 296.91)"><use href="#drop" x="67.39" y="262.42" width="22.76" height="68.98"/></g>
+    <g transform="rotate(17.83 78.77 -23.09)"><use href="#drop" x="67.39" y="-57.58" width="22.76" height="68.98"/></g>
+    <g transform="rotate(12.65 197.53 183.01)"><use href="#drop" x="183.30" y="139.88" width="28.46" height="86.26"/></g>
+    <g transform="rotate(17.19 23.62 190.67)"><use href="#drop" x="9.32" y="147.35" width="28.59" height="86.64"/></g>
+    <g transform="rotate(13.25 127.08 229.11)"><use href="#drop" x="113.33" y="187.43" width="27.51" height="83.37"/></g>
+    <g transform="rotate(19.17 101.72 274.27)"><use href="#drop" x="90.09" y="239.04" width="23.25" height="70.46"/></g>
+    <g transform="rotate(13.20 71.78 171.05)"><use href="#drop" x="58.50" y="130.80" width="26.56" height="80.50"/></g>
+    <g transform="rotate(15.85 56.03 318.53)"><use href="#drop" x="44.55" y="283.72" width="22.97" height="69.61"/></g>
+    <g transform="rotate(15.85 56.03 -1.47)"><use href="#drop" x="44.55" y="-36.28" width="22.97" height="69.61"/></g>
+    <g transform="rotate(16.72 99.94 113.80)"><use href="#drop" x="85.83" y="71.03" width="28.22" height="85.53"/></g>
+    <g transform="rotate(14.37 121.47 180.97)"><use href="#drop" x="106.68" y="136.14" width="29.58" height="89.67"/></g>
+    <g transform="rotate(10.47 211.69 29.63)"><use href="#drop" x="195.67" y="-18.94" width="32.05" height="97.13"/></g>
+    <g transform="rotate(10.47 211.69 349.63)"><use href="#drop" x="195.67" y="301.06" width="32.05" height="97.13"/></g>
+    <g transform="rotate(17.11 185.93 281.14)"><use href="#drop" x="170.35" y="233.93" width="31.15" height="94.41"/></g>
+    <g transform="rotate(17.11 185.93 -38.86)"><use href="#drop" x="170.35" y="-86.07" width="31.15" height="94.41"/></g>
+    <g transform="rotate(14.95 8.23 85.14)"><use href="#drop" x="-6.21" y="41.39" width="28.87" height="87.51"/></g>
+    <g transform="rotate(14.95 268.23 85.14)"><use href="#drop" x="253.79" y="41.39" width="28.87" height="87.51"/></g>
+    <g transform="rotate(14.25 134.56 267.72)"><use href="#drop" x="123.34" y="233.71" width="22.44" height="68.02"/></g>
+    <g transform="rotate(19.11 259.13 163.68)"><use href="#drop" x="247.76" y="129.20" width="22.75" height="68.95"/></g>
+    <g transform="rotate(19.11 -0.87 163.68)"><use href="#drop" x="-12.24" y="129.20" width="22.75" height="68.95"/></g>
+    <g transform="rotate(19.76 213.19 128.86)"><use href="#drop" x="198.66" y="84.81" width="29.07" height="88.10"/></g>
+    <g transform="rotate(15.71 259.21 226.98)"><use href="#drop" x="247.05" y="190.12" width="24.32" height="73.71"/></g>
+    <g transform="rotate(15.71 -0.79 226.98)"><use href="#drop" x="-12.95" y="190.12" width="24.32" height="73.71"/></g>
+    <g transform="rotate(17.66 259.72 31.96)"><use href="#drop" x="246.19" y="-9.05" width="27.06" height="82.01"/></g>
+    <g transform="rotate(17.66 -0.28 31.96)"><use href="#drop" x="-13.81" y="-9.05" width="27.06" height="82.01"/></g>
+    <g transform="rotate(17.66 259.72 351.96)"><use href="#drop" x="246.19" y="310.95" width="27.06" height="82.01"/></g>
+    <g transform="rotate(17.66 -0.28 351.96)"><use href="#drop" x="-13.81" y="310.95" width="27.06" height="82.01"/></g>
+    <g transform="rotate(11.27 152.71 223.64)"><use href="#drop" x="139.51" y="183.64" width="26.40" height="80.00"/></g>
+    <g transform="rotate(19.91 211.85 82.56)"><use href="#drop" x="200.05" y="46.78" width="23.61" height="71.56"/></g>
+    <g transform="rotate(12.15 238.18 175.83)"><use href="#drop" x="227.04" y="142.07" width="22.28" height="67.54"/></g>
+    <g transform="rotate(14.43 254.60 286.60)"><use href="#drop" x="242.93" y="251.24" width="23.34" height="70.73"/></g>
+    <g transform="rotate(14.43 -5.40 286.60)"><use href="#drop" x="-17.07" y="251.24" width="23.34" height="70.73"/></g>
+    <g transform="rotate(14.43 254.60 -33.40)"><use href="#drop" x="242.93" y="-68.76" width="23.34" height="70.73"/></g>
+    <g transform="rotate(14.43 -5.40 -33.40)"><use href="#drop" x="-17.07" y="-68.76" width="23.34" height="70.73"/></g>
+    <g transform="rotate(14.03 236.38 215.36)"><use href="#drop" x="225.18" y="181.43" width="22.39" height="67.87"/></g>
+    <g transform="rotate(15.12 164.10 149.32)"><use href="#drop" x="152.83" y="115.14" width="22.55" height="68.36"/></g>
+    <g transform="rotate(13.03 114.73 4.86)"><use href="#drop" x="100.43" y="-38.48" width="28.60" height="86.68"/></g>
+    <g transform="rotate(13.03 114.73 324.86)"><use href="#drop" x="100.43" y="281.52" width="28.60" height="86.68"/></g>
+    <g transform="rotate(15.68 54.22 48.59)"><use href="#drop" x="38.64" y="1.38" width="31.16" height="94.43"/></g>
+    <g transform="rotate(15.68 54.22 368.59)"><use href="#drop" x="38.64" y="321.38" width="31.16" height="94.43"/></g>
+    <g transform="rotate(16.55 169.10 171.93)"><use href="#drop" x="153.32" y="124.12" width="31.55" height="95.61"/></g>
+    <g transform="rotate(10.84 159.25 32.49)"><use href="#drop" x="146.19" y="-7.09" width="26.11" height="79.14"/></g>
+    <g transform="rotate(10.84 159.25 352.49)"><use href="#drop" x="146.19" y="312.91" width="26.11" height="79.14"/></g>
+  </g>
+</svg>

@@ -1,0 +1,19 @@
+# Rendered artifacts
+output.png
+output.html
+out-*.png
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# Local config / secrets (the deploy repo owns these)
+.env
+config.local.yaml
+
+# Tooling
+.DS_Store
+.idea/
+.vscode/

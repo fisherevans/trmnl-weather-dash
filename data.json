@@ -1,0 +1,44 @@
+{
+  "date_line": "FRIDAY, MAY 15, 2026",
+  "location": "Essex Junction, VT",
+  "time": "10:03 AM",
+  "inside": { "temp_f": 72, "humidity_pct": 45 },
+  "outside": {
+    "temp_f": 64,
+    "humidity_pct": 82,
+    "condition": "rain",
+    "wind": { "speed_mph": 8, "gust_mph": 14, "direction": "NW" }
+  },
+  "forecast": {
+    "high": { "temp_f": 72, "time": "3:00 PM" },
+    "low":  { "temp_f": 57, "time": "4:30 AM" }
+  },
+  "sun": {
+    "sunset":  { "time": "8:16 PM", "hour_index": 9.267 },
+    "sunrise": { "time": "5:32 AM", "hour_index": 18.533 }
+  },
+  "precip_type": "rain",
+  "total_accumulation_mm": 4.2,
+  "avg_cloud_pct": 40,
+  "cloud_description": "Partly Cloudy",
+  "hourly": [
+    { "hour": "11a", "precip_mm": 0.7,  "cloud_pct": 40, "is_night": false, "temp_f": 64 },
+    { "hour": "12p", "precip_mm": 0.7,  "cloud_pct": 40, "is_night": false, "temp_f": 67 },
+    { "hour": "1p",  "precip_mm": 1.2,  "cloud_pct": 40, "is_night": false, "temp_f": 70 },
+    { "hour": "2p",  "precip_mm": 12.0, "cloud_pct": 40, "is_night": false, "temp_f": 71 },
+    { "hour": "3p",  "precip_mm": 3.0,  "cloud_pct": 40, "is_night": false, "temp_f": 72 },
+    { "hour": "4p",  "precip_mm": 1.7,  "cloud_pct": 30, "is_night": false, "temp_f": 71 },
+    { "hour": "5p",  "precip_mm": 1.3,  "cloud_pct": 30, "is_night": false, "temp_f": 69 },
+    { "hour": "6p",  "precip_mm": 1.3,  "cloud_pct": 30, "is_night": false, "temp_f": 66 },
+    { "hour": "7p",  "precip_mm": 2.3,  "cloud_pct": 40, "is_night": false, "temp_f": 64 },
+    { "hour": "8p",  "precip_mm": 4.9,  "cloud_pct": 40, "is_night": false, "temp_f": 62 },
+    { "hour": "9p",  "precip_mm": 2.7,  "cloud_pct": 40, "is_night": true,  "temp_f": 61 },
+    { "hour": "10p", "precip_mm": 0.7,  "cloud_pct": 40, "is_night": true,  "temp_f": 60 },
+    { "hour": "11p", "precip_mm": 0.7,  "cloud_pct": 40, "is_night": true,  "temp_f": 59 },
+    { "hour": "12a", "precip_mm": 0.0,  "cloud_pct": 40, "is_night": true,  "temp_f": 58 },
+    { "hour": "1a",  "precip_mm": 0.0,  "cloud_pct": 30, "is_night": true,  "temp_f": 58 },
+    { "hour": "2a",  "precip_mm": 0.0,  "cloud_pct": 20, "is_night": true,  "temp_f": 57 },
+    { "hour": "3a",  "precip_mm": 0.1,  "cloud_pct": 20, "is_night": true,  "temp_f": 57 },
+    { "hour": "4a",  "precip_mm": 0.0,  "cloud_pct": 20, "is_night": true,  "temp_f": 57 }
+  ]
+}

@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>WeatherDash</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink:       #000;
+      --paper:     #ffffff;
+      --panel:     #ececec;
+      --bar:       #cfcfcf;
+      --night:     #6a6a6a;
+      --night-ink: #ffffff;
+      --night-bar: #2a2a2a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 1872px; height: 1404px; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      /* Uniform 36px gutter on all four sides. Body grid stretches the body
+         row to fill the remaining height so the cards naturally end exactly
+         36px above the bottom edge. */
+      padding: 36px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 32px;
+      font-feature-settings: "tnum" 1;
+      /* Anchor for the absolutely-positioned `.updated-at` element so its
+         offsets are measured against the page edge, not the viewport. */
+      position: relative;
+    }
+
+    /* Render-time stamp. Sits in the 36px bottom gutter, right-aligned to
+       the chart card's right edge (which is also 36px from the page edge).
+       Italic + low-contrast so it reads as metadata, not content. */
+    .updated-at {
+      position: absolute;
+      bottom: 0;
+      right: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      font-style: italic;
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      opacity: 0.55;
+    }
+
+    /* Header — serif so the date/time read as the editorial title bar.
+       `lnum` forces lining numerals so digits match cap height; without it
+       Playfair Display defaults to old-style figures and "10:03" sits lower
+       than the adjacent caps in "FRIDAY" and "AM". The vertical padding
+       gives the header more breathing room, pushing the widget block down
+       so the gutters around the cards read as roughly even on all sides. */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 28px 12px;
+      font-family: 'Playfair Display', 'Times New Roman', serif;
+      font-feature-settings: "tnum" 1, "lnum" 1;
+      font-variant-numeric: lining-nums tabular-nums;
+      white-space: nowrap;
+    }
+    .header .meta {
+      letter-spacing: 0.005em;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      line-height: 1;
+      gap: 6px;
+    }
+    .header .meta .dow  { font-size: 64px; font-weight: 900; }
+    .header .meta .date { font-size: 56px; font-weight: 600; }
+    .header .time {
+      font-size: 220px;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+
+    /* Body fills the page grid's 1fr row, so the cards extend to exactly the
+       bottom padding line and the gutter on all four sides reads as equal. */
+    .body {
+      display: grid;
+      grid-template-columns: 460px 1fr;
+      gap: 24px;
+    }
+    /* OUTSIDE gets the bulk of the left column; TEMP FORECAST sits a bit
+       shorter than OUTSIDE; INSIDE shrinks to its content at the bottom. */
+    .col-left  { display: grid; grid-template-rows: 1fr 0.65fr auto; gap: 24px; }
+
+    /* Card chrome */
+    .card {
+      border: 3px solid var(--ink);
+      background: var(--panel);
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .card-title {
+      background: var(--bar);
+      color: var(--ink);
+      padding: 8px 18px;
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      border-bottom: 3px solid var(--ink);
+      text-align: center;
+    }
+    .card-body {
+      flex: 1;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    /* OUTSIDE card layout: weather icon up top, reading anchored to the bottom,
+       wind line below it. The icon takes whatever space is left above. */
+    .outside-body {
+      padding: 14px 24px 16px !important;
+      justify-content: flex-end !important;
+      gap: 10px;
+    }
+    .outside-body .weather-icon {
+      flex: 1;
+      min-height: 0;
+      max-height: 240px;          /* hard cap so a tall icon can't push the rest off-screen */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--ink);
+      overflow: hidden;
+    }
+    .outside-body .weather-icon svg,
+    .outside-body .weather-icon img {
+      max-width: 80%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .outside-body .wind {
+      text-align: center;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      color: var(--ink);
+      opacity: 0.78;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      white-space: nowrap;
+    }
+    .outside-body .wind .sep { opacity: 0.4; font-weight: 400; }
+
+    /* Inside/Outside readings — bigger temp, smaller humidity */
+    .reading {
+      display: grid;
+      grid-template-columns: 1.4fr 3px 1fr;
+      align-items: center;
+      gap: 18px;
+    }
+    .reading .divider { background: var(--ink); align-self: stretch; }
+    .reading .temp {
+      font-size: 138px;
+      font-weight: 800;
+      line-height: 1;
+      text-align: center;
+      letter-spacing: -0.03em;
+    }
+    .reading .temp sup { font-size: 60px; font-weight: 700; top: -0.55em; }
+    .reading .hum { text-align: center; }
+    .reading .hum .val {
+      font-size: 70px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+    .reading .hum .lab {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      margin-top: 6px;
+    }
+
+    /* Compact INSIDE reading — secondary card, tighter & smaller */
+    .card-compact .card-title { font-size: 22px; padding: 6px 14px; letter-spacing: 0.06em; }
+    .card-compact .card-body  { padding: 14px 20px; }
+    .reading-compact {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 16px;
+      line-height: 1;
+    }
+    .reading-compact .temp { font-size: 64px; font-weight: 800; letter-spacing: -0.02em; }
+    .reading-compact .temp sup { font-size: 28px; font-weight: 700; top: -0.6em; }
+    .reading-compact .sep  { font-size: 44px; font-weight: 300; opacity: 0.5; }
+    .reading-compact .hum  { font-size: 52px; font-weight: 800; letter-spacing: -0.02em; }
+    .reading-compact .lab  { font-size: 15px; font-weight: 700; letter-spacing: 0.12em; align-self: center; }
+
+    /* Temperature forecast card */
+    .tempforecast { gap: 0; padding: 0; justify-content: stretch; }
+    .tempforecast .row {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 4px;
+    }
+    .tempforecast .row + .row { border-top: 2px solid var(--ink); }
+    .tempforecast .big {
+      font-size: 86px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+    .tempforecast .big .arrow {
+      font-size: 70px;
+      line-height: 1;
+    }
+    .tempforecast .when {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    /* ============================================================
+       Combined precip+cloud chart card.
+       Rows: markers strip / precip bars (grow up) / time axis / cloud bars (grow down) / footer.
+       All rows are full-width 18-column grids. Subtle SVG background
+       patterns identify each chart's quantity (rain or snow above,
+       clouds below). Markers are absolutely positioned and anchor to
+       fractional time positions across the full body width.
+       ============================================================ */
+    /* Flex column instead of grid: with grid + implicit columns, the column
+       track sized to chart-foot's intrinsic width and left empty space on the
+       right. Flex stretches every row to 100% width on the cross-axis. */
+    .chart-card .card-body {
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+    .chart-card .card-body > .chart-row { flex: 1 1 0; min-height: 0; }
+    .chart-card .card-body > .time-axis { flex: 0 0 46px; }
+    .chart-card .card-body > .chart-foot { flex: 0 0 52px; }
+    .chart-row {
+      position: relative;     /* no z-index — keep bar-col stackable above night-shade */
+      display: grid;
+      grid-template-columns: repeat(var(--cols), 1fr);
+      column-gap: 6px;
+      /* Opaque base — without this, the SVG's transparent areas reveal
+         the card's --panel background, but only inside the row's box. */
+      background-color: var(--panel);
+      background-repeat: no-repeat;
+      background-size: cover;
+      background-position: center;
+    }
+    /* No row padding: bars use the full row height so they get maximum
+       vertical resolution. The sunset/sunrise marker pill sits over the
+       precip-bars row at z-index 6 and can overlap a bar at its column;
+       on the cloud side, the 0→110 scale still leaves a small gutter
+       below 100% bars. */
+    .chart-row.precip-bars.precip-rain { background-image: url("bg-rain.svg"); }
+    .chart-row.precip-bars.precip-snow { background-image: url("bg-snow.svg"); }
+    .chart-row.cloud-bars              { background-image: url("bg-cloud.svg"); }
+
+    /* Per-row night shade. Sits behind bars (z-index 1) but above the row's day
+       pattern, and carries its own night-tinted SVG pattern so the texture
+       continues into the night region instead of going flat. */
+    .night-shade {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      background-color: var(--night);
+      background-repeat: no-repeat;
+      background-size: cover;
+      background-position: center;
+      z-index: 1;
+      pointer-events: none;
+    }
+    .chart-row.precip-bars.precip-rain .night-shade { background-image: url("bg-rain-night.svg"); }
+    .chart-row.precip-bars.precip-snow .night-shade { background-image: url("bg-snow-night.svg"); }
+    .chart-row.cloud-bars  .night-shade             { background-image: url("bg-cloud-night.svg"); }
+
+    /* Bar cells — bar + label in normal flow so the label snugs the bar. */
+    .bar-col {
+      position: relative;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 3;               /* above .night-shade */
+    }
+    .chart-row.precip-bars .bar-col { justify-content: flex-end; }
+    .chart-row.cloud-bars  .bar-col { justify-content: flex-start; }
+    /* Bars fill their column. column-gap on the row provides inter-bar spacing,
+       so the leftmost and rightmost bars sit flush against the chart edges. */
+    .bar {
+      position: relative;        /* anchor for inside labels */
+      width: 100%;
+      background: var(--ink);
+      min-height: 3px;
+      flex-shrink: 0;
+    }
+    .bar-col.is-night .bar { background: var(--ink); }
+    .bar-label {
+      font-size: 20px;
+      font-weight: 800;
+      white-space: nowrap;
+      line-height: 1;
+    }
+    /* Inside labels: ride the leading edge of the bar (top for precip
+       growing up, bottom for cloud growing down) with inverted color so
+       they read against the dark bar fill. */
+    .bar-label-inside {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      color: var(--panel);
+    }
+    .chart-row.precip-bars .bar-label-inside { top: 6px; }
+    /* Cloud labels need a little extra distance off the bar bottom — when a
+       40% bar's label sits between the PARTLY line and the bar bottom,
+       bottom:6 lands it noticeably closer to the bottom than the line. */
+    .chart-row.cloud-bars  .bar-label-inside { bottom: 11px; }
+    /* Intensity threshold lines. Stripe pattern (alternating --ink / --panel
+       dashes) so the line stays visible whether it crosses the row's bg
+       pattern, the night-shade, or a fully-extended black bar. Sits at
+       z-index 4 so the bar (z 3) doesn't bury it. The label pill is at
+       z-index 5 so it stays on top of everything in the row. */
+    .threshold-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 3px;
+      /* Black/white stripe at ~55% alpha. Strong enough to stay legible
+         across panel, black bar, and night-shade, but transparent enough
+         that inside-bar labels read through the line where they overlap. */
+      background: repeating-linear-gradient(
+        to right,
+        rgba(0, 0, 0, 0.55) 0,
+        rgba(0, 0, 0, 0.55) 5px,
+        rgba(255, 255, 255, 0.55) 5px,
+        rgba(255, 255, 255, 0.55) 10px
+      );
+      z-index: 4;
+      pointer-events: none;
+    }
+    .threshold-label {
+      position: absolute;
+      right: 14px;
+      background: var(--panel);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      padding: 2px 8px;
+      border: 1.5px solid var(--ink);
+      border-radius: 3px;
+      z-index: 5;
+      line-height: 1;
+    }
+    /* Rain band names (MODERATE, HEAVY) live in the band above their line.
+       Cloud band names (PARTLY, OVERCAST) sit below their line since cloud
+       bars grow downward — cloud_pct > threshold means the bar extends
+       BELOW the line on screen. */
+    .chart-row.precip-bars .threshold-label { top: -24px; }
+    .chart-row.cloud-bars  .threshold-label { top: 6px; }
+
+    /* Outside labels: sit above (precip) or below (cloud) the bar against the
+       row's background pattern. A knockout text-shadow pads each glyph so
+       the value reads regardless of the cloud / rain art behind it. */
+    .bar-label-outside {
+      color: var(--ink);
+      text-shadow:
+         1px  1px 0 var(--panel), -1px  1px 0 var(--panel),
+         1px -1px 0 var(--panel), -1px -1px 0 var(--panel),
+         0 0 4px var(--panel);
+    }
+    .bar-col.is-night .bar-label-outside {
+      color: var(--night-ink);
+      text-shadow:
+         1px  1px 0 var(--night), -1px  1px 0 var(--night),
+         1px -1px 0 var(--night), -1px -1px 0 var(--night),
+         0 0 4px var(--night);
+    }
+    .chart-row.precip-bars .bar-label-outside { margin-bottom: 4px; }
+    .chart-row.cloud-bars  .bar-label-outside { margin-top: 4px; }
+
+    /* Shared time axis */
+    .time-axis {
+      display: grid;
+      grid-template-columns: repeat(var(--cols), 1fr);
+      column-gap: 6px;
+      align-items: center;
+      border-top: 3px solid var(--ink);
+      border-bottom: 3px solid var(--ink);
+      background: var(--bar);
+      position: relative;
+      z-index: 4;
+    }
+    .time-axis .axis-cell {
+      text-align: center;
+      line-height: 1;
+    }
+    /* Hour labels: lightweight, uppercase, like the humidity tag. */
+    .time-axis .axis-cell.axis-hour {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      opacity: 0.7;
+    }
+    /* Temperature labels: bolder so they read as the dominant number. */
+    .time-axis .axis-cell.axis-temp {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    /* Footer */
+    .chart-foot {
+      border-top: 3px solid var(--ink);
+      padding: 0 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 26px;
+      font-weight: 800;
+      background: var(--bar);
+      gap: 32px;
+      position: relative;
+      z-index: 5;
+    }
+    .chart-foot .pair { display: flex; align-items: baseline; gap: 12px; }
+    .chart-foot .pair .label { letter-spacing: 0.04em; opacity: 0.75; font-weight: 700; }
+    .chart-foot .pair .val   { letter-spacing: -0.01em; }
+
+    /* Markers — absolutely positioned, anchored by --at fraction of card-body width */
+    .marker {
+      position: absolute;
+      top: 16px;
+      transform: translateX(-50%);
+      left: calc(100% * var(--at));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      z-index: 6;
+      width: max-content;
+      /* Pill background so the marker stays readable when it straddles the
+         day/night boundary (otherwise half the text falls on dark bg). */
+      background: var(--panel);
+      border: 2px solid var(--ink);
+      border-radius: 6px;
+      padding: 6px 14px 7px;
+      color: var(--ink);
+    }
+    .marker .name { font-size: 20px; font-weight: 900; letter-spacing: 0.08em; line-height: 1; }
+    .marker .when { font-size: 18px; font-weight: 700; line-height: 1; }
+    .marker svg   { width: 36px; height: 36px; display: block; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    {%- set _date_parts = date_line.split(', ', 1) %}
+    <div class="meta">
+      <span class="dow">{{ _date_parts[0] }}</span>
+      {%- if _date_parts|length > 1 %}
+      <span class="date">{{ _date_parts[1] }}</span>
+      {%- endif %}
+    </div>
+    <div class="time">{{ time }}</div>
+  </header>
+
+  <main class="body">
+    <!-- LEFT COLUMN: OUTSIDE prominent, TEMPERATURE FORECAST below, INSIDE compact at bottom -->
+    <div class="col-left">
+      <section class="card">
+        <div class="card-title">OUTSIDE</div>
+        <div class="card-body outside-body">
+          <div class="weather-icon">
+            <img src="makin-grey/{{ outside.condition }}.svg" alt="{{ outside.condition }}">
+          </div>
+          <div class="reading">
+            <div class="temp">{{ outside.temp_f }}<sup>°F</sup></div>
+            <div class="divider"></div>
+            <div class="hum">
+              <div class="val">{{ outside.humidity_pct }}%</div>
+              <div class="lab">HUMIDITY</div>
+            </div>
+          </div>
+          <div class="wind">
+            <span>WIND {{ outside.wind.speed_mph }}</span>
+            <span class="sep">·</span>
+            <span>GUST {{ outside.wind.gust_mph }}</span>
+            <span class="sep">·</span>
+            <span>{{ outside.wind.direction }}</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-title">TEMPERATURE FORECAST</div>
+        <div class="card-body tempforecast">
+          <div class="row">
+            <div class="big"><span class="arrow">↑</span><span>{{ forecast.high.temp_f }}°F</span></div>
+            <div class="when">HIGH @ {{ forecast.high.time }}</div>
+          </div>
+          <div class="row">
+            <div class="big"><span class="arrow">↓</span><span>{{ forecast.low.temp_f }}°F</span></div>
+            <div class="when">LOW @ {{ forecast.low.time }}</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card card-compact">
+        <div class="card-title">INSIDE</div>
+        <div class="card-body">
+          <div class="reading-compact">
+            <span class="temp">{{ inside.temp_f }}<sup>°F</sup></span>
+            <span class="sep">·</span>
+            <span class="hum">{{ inside.humidity_pct }}%</span>
+            <span class="lab">HUMIDITY</span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- RIGHT COLUMN: single shared chart card -->
+    {#- Snap sunset/sunrise markers to the column centre of the hour they fall in,
+       rather than the precise fractional time. Otherwise the marker pill lands
+       between two columns and reads as misaligned with the bars. -#}
+    {%- set sunset_at  = ((sun.sunset.hour_index  | int) + 0.5) / n_hours -%}
+    {%- set sunrise_at = ((sun.sunrise.hour_index | int) + 0.5) / n_hours -%}
+    <div>
+      <section class="card chart-card" style="height: 100%;">
+        <div class="card-title">PRECIPITATION &amp; CLOUD COVER FORECAST</div>
+
+        <div class="card-body" style="--cols: {{ n_hours }};">
+          <!-- Sunset & sunrise markers — only when inside the visible window. -->
+          {%- if 0.0 <= sunset_at <= 1.0 %}
+          <div class="marker" style="--at: {{ '%.4f'|format(sunset_at) }};">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <circle cx="16" cy="18" r="6"/>
+              <line x1="3" y1="26" x2="29" y2="26"/>
+              <path d="M13 21l3 3 3-3" fill="none"/>
+            </svg>
+            <div class="name">SUNSET</div>
+            <div class="when">{{ sun.sunset.time }}</div>
+          </div>
+          {%- endif %}
+
+          {%- if 0.0 <= sunrise_at <= 1.0 %}
+          <div class="marker" style="--at: {{ '%.4f'|format(sunrise_at) }};">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <circle cx="16" cy="18" r="6"/>
+              <line x1="3" y1="26" x2="29" y2="26"/>
+              <path d="M13 15l3-3 3 3" fill="none"/>
+            </svg>
+            <div class="name">SUNRISE</div>
+            <div class="when">{{ sun.sunrise.time }}</div>
+          </div>
+          {%- endif %}
+
+          <!-- row 1: precipitation bars (grow up). One night-shade per night region. -->
+          <div class="chart-row precip-bars precip-{{ precip_type }}">
+            {%- for r in night_regions %}
+            {%- set ns_w = r.end_at - r.start_at %}
+            <div class="night-shade"
+                 style="left: calc(100% * {{ '%.4f'|format(r.start_at) }});
+                        right: calc(100% * {{ '%.4f'|format(1 - r.end_at) }});
+                        background-size: {{ '%.2f'|format(100.0 / ns_w) }}% auto;
+                        background-position: {{ '%.2f'|format(r.start_at / (1.0 - ns_w) * 100.0) }}% center;"></div>
+            {%- endfor %}
+            {%- for line in rain_lines %}
+            <div class="threshold-line"
+                 style="bottom: {{ '%.2f'|format(line.bar_pct) }}%;">
+              <span class="threshold-label">{{ line.label }}</span>
+            </div>
+            {%- endfor %}
+            {% for h in hourly %}
+              <div class="bar-col {% if h.is_night %}is-night{% endif %}">
+                {%- if h.precip_h_pct > 0 %}
+                  {%- if h.precip_h_pct < 8 %}
+                  <span class="bar-label bar-label-outside">{{ h.precip_label }}</span>
+                  {%- endif %}
+                  <div class="bar" style="height: {{ h.precip_h_pct }}%;">
+                    {%- if h.precip_h_pct >= 8 %}
+                    <span class="bar-label bar-label-inside">{{ h.precip_label }}</span>
+                    {%- endif %}
+                  </div>
+                {%- endif %}
+              </div>
+            {% endfor %}
+          </div>
+
+          <!-- row 2: shared time axis. Each bucket shows EITHER its hour label
+               (lightweight, uppercased) OR its predicted temperature (bold, ° only),
+               alternating so the strip carries both signals without crowding. -->
+          <div class="time-axis">
+            {% for h in hourly %}
+              {% if loop.index0 is even %}
+                <div class="axis-cell axis-hour">{{ h.hour | upper }}</div>
+              {% else %}
+                <div class="axis-cell axis-temp">{{ h.temp_f }}°</div>
+              {% endif %}
+            {% endfor %}
+          </div>
+
+          <!-- row 3: cloud cover bars (grow down). One night-shade per night region. -->
+          <div class="chart-row cloud-bars">
+            {%- for r in night_regions %}
+            {%- set ns_w = r.end_at - r.start_at %}
+            <div class="night-shade"
+                 style="left: calc(100% * {{ '%.4f'|format(r.start_at) }});
+                        right: calc(100% * {{ '%.4f'|format(1 - r.end_at) }});
+                        background-size: {{ '%.2f'|format(100.0 / ns_w) }}% auto;
+                        background-position: {{ '%.2f'|format(r.start_at / (1.0 - ns_w) * 100.0) }}% center;"></div>
+            {%- endfor %}
+            {%- for line in cloud_lines %}
+            <div class="threshold-line"
+                 style="top: {{ '%.2f'|format(line.bar_pct) }}%;">
+              <span class="threshold-label">{{ line.label }}</span>
+            </div>
+            {%- endfor %}
+            {% for h in hourly %}
+              <div class="bar-col {% if h.is_night %}is-night{% endif %}">
+                {%- if h.cloud_h_pct > 0 %}
+                  <div class="bar" style="height: {{ h.cloud_h_pct }}%;">
+                    {%- if h.cloud_h_pct >= 8 %}
+                    <span class="bar-label bar-label-inside">{{ h.cloud_pct }}%</span>
+                    {%- endif %}
+                  </div>
+                  {%- if h.cloud_h_pct < 8 %}
+                  <span class="bar-label bar-label-outside">{{ h.cloud_pct }}%</span>
+                  {%- endif %}
+                {%- endif %}
+              </div>
+            {% endfor %}
+          </div>
+
+          <!-- row 5: combined footer -->
+          <div class="chart-foot">
+            <div class="pair">
+              <span class="label">TOTAL ACCUMULATION:</span>
+              <span class="val">{{ total_accumulation_mm }} mm</span>
+            </div>
+            <div class="pair">
+              <span class="label">AVG. CLOUD COVER:</span>
+              <span class="val">{{ avg_cloud_pct }}% &nbsp;·&nbsp; {{ cloud_description }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+  <div class="updated-at">Updated {{ updated_at }}</div>
+</body>
+</html>
