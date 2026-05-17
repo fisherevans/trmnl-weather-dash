@@ -50,33 +50,48 @@ def test_bucket_zero_has_at_least_one_visible_fill_on_day_bg():
 
 
 @pytest.mark.parametrize("bucket_idx", range(1, 5))
-def test_shape_fills_visible_on_night_shade(bucket_idx):
-    """Slots 0 and 1 (the SVG shape colors) must keep at quantize level
-    <= 12 so they render as darker shapes against the night-shade (level
-    13). Slot 2 is the row bg color, not a fill, so this constraint
-    doesn't apply to it. Bucket 0 is exempt — at "barely visible" the
-    shapes may approach the bg level by design."""
-    p = BUCKET_PALETTES[bucket_idx]
-    assert _hex_to_level(p[0]) <= 12, f"bucket {bucket_idx} slot 0 = {p[0]} too light"
-    assert _hex_to_level(p[1]) <= 12, f"bucket {bucket_idx} slot 1 = {p[1]} too light"
+@pytest.mark.parametrize("mode", ["day", "night"])
+def test_shape_fills_visible_on_night_shade(bucket_idx, mode):
+    """Slots 0 and 1 (the SVG shape colors) in each palette must stay
+    at quantize level <= 12 so they render as darker shapes against the
+    palette's bg (slot 2). Slot 2 is the bg itself; visibility doesn't
+    apply. Bucket 0 is exempt — at "barely visible" the shapes may
+    approach the bg level by design."""
+    palette = getattr(BUCKET_PALETTES[bucket_idx], mode)
+    assert _hex_to_level(palette[0]) <= 12, (
+        f"{mode} bucket {bucket_idx} slot 0 = {palette[0]} too light"
+    )
+    assert _hex_to_level(palette[1]) <= 12, (
+        f"{mode} bucket {bucket_idx} slot 1 = {palette[1]} too light"
+    )
 
 
 def test_buckets_progress_monotonically_lighter_to_subtle():
-    """As bucket index drops from 4 to 0, slot 0 (the darkest fill in each
-    bucket) must get lighter (no regressions)."""
-    darkest_levels = [_hex_to_level(p[0]) for p in BUCKET_PALETTES]
-    # bucket 4 (last) is the artist original (darkest), bucket 0 the lightest
-    for i in range(len(darkest_levels) - 1):
-        assert darkest_levels[i] >= darkest_levels[i + 1], (
-            f"bucket {i} darkest ({darkest_levels[i]}) should be ≥ "
-            f"bucket {i+1} darkest ({darkest_levels[i+1]})"
-        )
+    """As bucket index drops from 4 to 0, slot 0 (the darkest fill) in
+    both day AND night palettes must get lighter (no regressions)."""
+    for mode in ("day", "night"):
+        levels = [_hex_to_level(getattr(p, mode)[0]) for p in BUCKET_PALETTES]
+        for i in range(len(levels) - 1):
+            assert levels[i] >= levels[i + 1], (
+                f"{mode} bucket {i} darkest ({levels[i]}) should be ≥ "
+                f"{i+1} ({levels[i+1]})"
+            )
 
 
-def test_row_bg_color_returns_slot_2():
-    """row_bg_color(bucket) must equal BUCKET_PALETTES[bucket][2]."""
+def test_row_bg_color_returns_slot_2_per_mode():
+    """row_bg_color(bucket, mode) must equal palette[2] of the matching mode."""
     for b in range(5):
-        assert row_bg_color(b) == BUCKET_PALETTES[b][2]
+        assert row_bg_color(b, "day")   == BUCKET_PALETTES[b].day[2]
+        assert row_bg_color(b, "night") == BUCKET_PALETTES[b].night[2]
+
+
+def test_shaded_svg_url_differs_between_day_and_night():
+    """A bucket's day and night palettes are distinct (they at least have
+    different bg colors), so the shaded SVG content should differ too."""
+    for b in range(5):
+        d = shaded_svg_url("bg-cloud.svg", b, "day")
+        n = shaded_svg_url("bg-cloud.svg", b, "night")
+        assert d != n, f"bucket {b}: day and night URLs should differ"
 
 
 @pytest.mark.parametrize("avg_cloud,expected", [

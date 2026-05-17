@@ -73,26 +73,34 @@ def render_html(data: dict) -> str:
     # compute them here from the same fields the live pipeline uses, so
     # offline fixture renders still produce density-shifted backgrounds
     # plus the matching no-data overlays.
-    cloud_bg_url      = data.get("cloud_bg_url")
-    cloud_bg_color    = data.get("cloud_bg_color")
-    cloud_empty_text  = data.get("cloud_empty_text")
-    precip_bg_url     = data.get("precip_bg_url")
-    precip_bg_color   = data.get("precip_bg_color")
-    precip_empty_text = data.get("precip_empty_text")
-    precip_type       = data.get("precip_type", "rain")
-    if not cloud_bg_url:
+    cloud_bg_url_day      = data.get("cloud_bg_url_day")
+    cloud_bg_url_night    = data.get("cloud_bg_url_night")
+    cloud_bg_color_day    = data.get("cloud_bg_color_day")
+    cloud_bg_color_night  = data.get("cloud_bg_color_night")
+    cloud_empty_text      = data.get("cloud_empty_text")
+    precip_bg_url_day     = data.get("precip_bg_url_day")
+    precip_bg_url_night   = data.get("precip_bg_url_night")
+    precip_bg_color_day   = data.get("precip_bg_color_day")
+    precip_bg_color_night = data.get("precip_bg_color_night")
+    precip_empty_text     = data.get("precip_empty_text")
+    precip_type           = data.get("precip_type", "rain")
+    if not cloud_bg_url_day:
         avg_cloud = data.get("avg_cloud_pct", 0)
         c_bucket = cloud_bucket(avg_cloud)
-        cloud_bg_url = shaded_svg_url("bg-cloud.svg", c_bucket)
-        cloud_bg_color = row_bg_color(c_bucket)
+        cloud_bg_url_day     = shaded_svg_url("bg-cloud.svg", c_bucket, "day")
+        cloud_bg_url_night   = shaded_svg_url("bg-cloud.svg", c_bucket, "night")
+        cloud_bg_color_day   = row_bg_color(c_bucket, "day")
+        cloud_bg_color_night = row_bg_color(c_bucket, "night")
         if cloud_empty_text is None and c_bucket == 0:
             cloud_empty_text = "CLEAR SKIES"
-    if not precip_bg_url:
+    if not precip_bg_url_day:
         precip_svg = "bg-snow.svg" if precip_type == "snow" else "bg-rain.svg"
         total_mm = data.get("total_accumulation_mm", 0.0)
         p_bucket = precip_bucket(total_mm)
-        precip_bg_url = shaded_svg_url(precip_svg, p_bucket)
-        precip_bg_color = row_bg_color(p_bucket)
+        precip_bg_url_day     = shaded_svg_url(precip_svg, p_bucket, "day")
+        precip_bg_url_night   = shaded_svg_url(precip_svg, p_bucket, "night")
+        precip_bg_color_day   = row_bg_color(p_bucket, "day")
+        precip_bg_color_night = row_bg_color(p_bucket, "night")
         if precip_empty_text is None and p_bucket == 0:
             precip_empty_text = (
                 "NO SNOW FORECASTED" if precip_type == "snow" else "NO RAIN FORECASTED"
@@ -105,10 +113,14 @@ def render_html(data: dict) -> str:
            "rain_lines": rain_lines,
            "cloud_lines": cloud_lines,
            "updated_at": updated_at,
-           "cloud_bg_url": cloud_bg_url,
-           "precip_bg_url": precip_bg_url,
-           "cloud_bg_color": cloud_bg_color,
-           "precip_bg_color": precip_bg_color,
+           "cloud_bg_url_day": cloud_bg_url_day,
+           "cloud_bg_url_night": cloud_bg_url_night,
+           "precip_bg_url_day": precip_bg_url_day,
+           "precip_bg_url_night": precip_bg_url_night,
+           "cloud_bg_color_day": cloud_bg_color_day,
+           "cloud_bg_color_night": cloud_bg_color_night,
+           "precip_bg_color_day": precip_bg_color_day,
+           "precip_bg_color_night": precip_bg_color_night,
            "cloud_empty_text": cloud_empty_text,
            "precip_empty_text": precip_empty_text,
            "night_regions": [r for r in regions if r["is_night"]]}

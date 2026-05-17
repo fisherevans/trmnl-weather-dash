@@ -319,13 +319,12 @@
       display: grid;
       grid-template-columns: repeat(var(--cols), 1fr);
       column-gap: 6px;
-      /* `--row-bg` is set inline per-row to a data: URL whose SVG fills
-         have been shifted to match the forecast intensity (see
-         bg_shading.py). The night-shade inside the row inherits the
-         same data: URL via CSS variable inheritance so the pattern
-         continues unchanged across the day/night boundary. */
+      /* Day bg-image + bg-color set inline. Night-shade element overlays
+         the night region with its OWN bg-image + bg-color from the
+         bucket's night palette — so day and night can be tuned
+         independently via bg_shading.py. */
       background-color: var(--panel);
-      background-image: var(--row-bg);
+      background-image: var(--row-bg-day);
       background-repeat: no-repeat;
       background-size: cover;
       background-position: center;
@@ -387,14 +386,16 @@
     }
 
     /* Per-row night shade. Sits behind bars (z-index 1) but above the row's day
-       pattern. Reuses the row's --row-bg so the pattern continues; only the
-       background-color changes to mark night. */
+       pattern. Inherits --row-bg-night (data: URL of the night-palette SVG)
+       and --row-night-bg-color (the bucket's night bg color, slot 2 of the
+       night palette) from the chart-row, so each row's night region tunes
+       independently. Falls back to the global --night if not set. */
     .night-shade {
       position: absolute;
       top: 0;
       bottom: 0;
-      background-color: var(--night);
-      background-image: var(--row-bg);
+      background-color: var(--row-night-bg-color, var(--night));
+      background-image: var(--row-bg-night);
       background-repeat: no-repeat;
       background-size: cover;
       background-position: center;
@@ -696,7 +697,10 @@
 
           <!-- row 1: precipitation bars (grow up). One night-shade per night region. -->
           <div class="chart-row precip-bars precip-{{ precip_type }}"
-               style="--row-bg: url('{{ precip_bg_url }}'); background-color: {{ precip_bg_color }};">
+               style="--row-bg-day: url('{{ precip_bg_url_day }}');
+                      --row-bg-night: url('{{ precip_bg_url_night }}');
+                      --row-night-bg-color: {{ precip_bg_color_night }};
+                      background-color: {{ precip_bg_color_day }};">
             <div class="row-title">PRECIPITATION</div>
             {%- if precip_empty_text %}
             <div class="row-empty">{{ precip_empty_text }}</div>
@@ -746,7 +750,10 @@
 
           <!-- row 3: cloud cover bars (grow down). One night-shade per night region. -->
           <div class="chart-row cloud-bars"
-               style="--row-bg: url('{{ cloud_bg_url }}'); background-color: {{ cloud_bg_color }};">
+               style="--row-bg-day: url('{{ cloud_bg_url_day }}');
+                      --row-bg-night: url('{{ cloud_bg_url_night }}');
+                      --row-night-bg-color: {{ cloud_bg_color_night }};
+                      background-color: {{ cloud_bg_color_day }};">
             <div class="row-title">CLOUD COVER</div>
             {%- if cloud_empty_text %}
             <div class="row-empty">{{ cloud_empty_text }}</div>

@@ -160,11 +160,15 @@ def build_context(
     # data: URLs (see bg_shading.py).
     cloud_b = cloud_bucket(avg_cloud_pct)
     precip_b = precip_bucket(total_precip_mm)
-    cloud_bg_url    = shaded_svg_url("bg-cloud.svg", cloud_b)
-    precip_svg      = "bg-snow.svg" if precip_type == "snow" else "bg-rain.svg"
-    precip_bg_url   = shaded_svg_url(precip_svg, precip_b)
-    cloud_bg_color  = row_bg_color(cloud_b)
-    precip_bg_color = row_bg_color(precip_b)
+    precip_svg = "bg-snow.svg" if precip_type == "snow" else "bg-rain.svg"
+    cloud_bg_url_day    = shaded_svg_url("bg-cloud.svg", cloud_b, "day")
+    cloud_bg_url_night  = shaded_svg_url("bg-cloud.svg", cloud_b, "night")
+    precip_bg_url_day   = shaded_svg_url(precip_svg,    precip_b, "day")
+    precip_bg_url_night = shaded_svg_url(precip_svg,    precip_b, "night")
+    cloud_bg_color_day    = row_bg_color(cloud_b,  "day")
+    cloud_bg_color_night  = row_bg_color(cloud_b,  "night")
+    precip_bg_color_day   = row_bg_color(precip_b, "day")
+    precip_bg_color_night = row_bg_color(precip_b, "night")
 
     # ── no-data overlay text (only when bucket 0 = clear / dry) ──────────
     # Fills the row with a short message instead of leaving the eye to
@@ -216,10 +220,14 @@ def build_context(
         "total_accumulation_mm": round(total_precip_mm, 1),
         "avg_cloud_pct":         avg_cloud_pct,
         "cloud_description":     _cloud_description(avg_cloud_pct),
-        "cloud_bg_url":          cloud_bg_url,
-        "precip_bg_url":         precip_bg_url,
-        "cloud_bg_color":        cloud_bg_color,
-        "precip_bg_color":       precip_bg_color,
+        "cloud_bg_url_day":      cloud_bg_url_day,
+        "cloud_bg_url_night":    cloud_bg_url_night,
+        "precip_bg_url_day":     precip_bg_url_day,
+        "precip_bg_url_night":   precip_bg_url_night,
+        "cloud_bg_color_day":    cloud_bg_color_day,
+        "cloud_bg_color_night":  cloud_bg_color_night,
+        "precip_bg_color_day":   precip_bg_color_day,
+        "precip_bg_color_night": precip_bg_color_night,
         "cloud_empty_text":      cloud_empty_text,
         "precip_empty_text":     precip_empty_text,
         "hourly":                hourly,

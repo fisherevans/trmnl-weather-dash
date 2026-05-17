@@ -26,6 +26,7 @@ import re
 from base64 import b64encode
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal, NamedTuple
 
 ASSETS = Path(__file__).parent / "assets"
 
@@ -35,37 +36,60 @@ ASSETS = Path(__file__).parent / "assets"
 # the panel color when intensity is low.
 # 4-bit grayscale constraints (see bg-palette math in PR notes):
 #  - 16 panel levels at integer multiples of 17; quantize snaps to nearest.
-#  - Day bg (--panel=#ECECEC) post-quantize sits at level 14 (#EEE).
-#  - Night bg (--night=#D8D8D8) post-quantize sits at level 13 (#DDD).
 #  - Buckets must be monotonically lighter from 4 to 0.
 #
-# Each bucket carries a 3-slot palette. The slots have unified semantics
-# across cloud and rain rows so a picker can show the same controls for
-# both:
+# Each bucket carries TWO 3-slot palettes — one for the day region and
+# one for the night region. The slots have unified semantics so a picker
+# can show the same controls for both rain and cloud:
 #
 #   slot 0  →  darkest fill   →  cloud's #666666 / rain's #666666 (slashes)
 #   slot 1  →  mid fill       →  cloud's #999999 / rain's #BBBBBB (drops)
 #   slot 2  →  row bg + cloud's lightest fill (cloud's #BBBBBB)
 #
-# The reason slot 2 is BOTH the row bg and the cloud's lightest fill: the
-# user wants slot 2 to be "the background for the whole image". Having the
-# cloud's lightest highlight also land at this value makes those highlights
-# blend into bg (effectively invisible). Trade-off accepted — cloud loses
-# one tier of detail; rain gains a controllable bg.
+# slot 2 is BOTH the row bg and the cloud's lightest fill so those
+# highlights blend into bg. Rain only has two visible SVG fills
+# (slashes + drops), so its slot 2 is pure bg. Cloud has three fills,
+# with #BBB pinned to bg.
 #
-# Rain only has two visible SVG fills (slashes + drops), so its slot 2 is
-# pure bg. Cloud has three fills, with #BBB pinned to bg.
-BUCKET_PALETTES: list[tuple[str, str, str]] = [
+# Day vs night palettes let the picker tune contrast independently —
+# the day region typically wants dark shapes on a near-white bg; the
+# night region wants visible shapes against a slightly darker bg.
+
+
+class BucketPalette(NamedTuple):
+    day: tuple[str, str, str]
+    night: tuple[str, str, str]
+
+
+Mode = Literal["day", "night"]
+
+
+BUCKET_PALETTES: list[BucketPalette] = [
     # 0 — barely visible (Clear / Dry).
-    ("#CCCCCC", "#DDDDDD", "#ECECEC"),
+    BucketPalette(
+        day  =("#CCCCCC", "#DDDDDD", "#ECECEC"),
+        night=("#CCCCCC", "#DDDDDD", "#D8D8D8"),
+    ),
     # 1 — light (Mostly Sunny / Drizzle).
-    ("#AAAAAA", "#BBBBBB", "#ECECEC"),
+    BucketPalette(
+        day  =("#AAAAAA", "#BBBBBB", "#ECECEC"),
+        night=("#AAAAAA", "#BBBBBB", "#D8D8D8"),
+    ),
     # 2 — moderate (Partly Cloudy / Light rain).
-    ("#999999", "#BBBBBB", "#ECECEC"),
+    BucketPalette(
+        day  =("#999999", "#BBBBBB", "#ECECEC"),
+        night=("#999999", "#BBBBBB", "#D8D8D8"),
+    ),
     # 3 — dense (Mostly Cloudy / Moderate rain).
-    ("#888888", "#AAAAAA", "#ECECEC"),
+    BucketPalette(
+        day  =("#888888", "#AAAAAA", "#ECECEC"),
+        night=("#888888", "#AAAAAA", "#D8D8D8"),
+    ),
     # 4 — full strength (Overcast / Heavy rain; artist palette).
-    ("#666666", "#999999", "#ECECEC"),
+    BucketPalette(
+        day  =("#666666", "#999999", "#ECECEC"),
+        night=("#666666", "#999999", "#D8D8D8"),
+    ),
 ]
 
 # Per-SVG: which artist fill maps to which slot.
@@ -79,10 +103,11 @@ _SLOT_KEYS_BY_SVG = {
     "bg-snow.svg":  _SNOW_SLOTS,
 }
 
-# Back-compat shim for any callers still importing the old dict form. Each
-# entry is the bucket palette expressed as the cloud-shaped mapping.
+# Back-compat shim for any callers still importing the old dict form
+# (day-side mapping only). Each entry is the bucket's day palette
+# expressed as the cloud-shaped fill mapping.
 INTENSITY_BUCKETS: list[dict[str, str]] = [
-    {_CLOUD_SLOTS[i]: p[i] for i in range(3)}
+    {_CLOUD_SLOTS[i]: p.day[i] for i in range(3)}
     for p in BUCKET_PALETTES
 ]
 
@@ -126,9 +151,10 @@ def precip_bucket(total_mm: float) -> int:
 _FILL_RE = re.compile(r'fill="(#[0-9A-Fa-f]+)"')
 
 
-@lru_cache(maxsize=24)
-def shaded_svg_url(svg_filename: str, bucket: int) -> str:
-    """Return a data: URL of the SVG with fills shifted to the given bucket.
+@lru_cache(maxsize=48)
+def shaded_svg_url(svg_filename: str, bucket: int, mode: Mode = "day") -> str:
+    """Return a data: URL of the SVG with fills shifted to the given
+    bucket's day or night palette.
 
     Single-pass regex substitution. Mapping is built from the SVG's slot
     keys (which artist fill maps to which palette slot) — different SVGs
@@ -136,7 +162,8 @@ def shaded_svg_url(svg_filename: str, bucket: int) -> str:
     """
     svg_path = ASSETS / svg_filename
     content = svg_path.read_text()
-    palette = BUCKET_PALETTES[bucket]
+    palette_pair = BUCKET_PALETTES[bucket]
+    palette = palette_pair.day if mode == "day" else palette_pair.night
     slot_keys = _SLOT_KEYS_BY_SVG.get(svg_filename, _CLOUD_SLOTS)
 
     mapping = {
@@ -153,7 +180,8 @@ def shaded_svg_url(svg_filename: str, bucket: int) -> str:
     return f"data:image/svg+xml;base64,{encoded}"
 
 
-def row_bg_color(bucket: int) -> str:
-    """Return the row's background-color for a given intensity bucket.
-    This is slot 2 of the bucket palette."""
-    return BUCKET_PALETTES[bucket][2]
+def row_bg_color(bucket: int, mode: Mode = "day") -> str:
+    """Return the row's background-color (slot 2) for a given bucket + mode."""
+    palette_pair = BUCKET_PALETTES[bucket]
+    palette = palette_pair.day if mode == "day" else palette_pair.night
+    return palette[2]

@@ -187,17 +187,24 @@
 // 4-bit grayscale: 16 levels at multiples of 17.
 const LEVELS = Array.from({length: 16}, (_, i) => Math.round(i * 255 / 15));
 
-// Default palette — keep in sync with bg_shading.py BUCKET_PALETTES.
-// Each bucket: [slot 0, slot 1, slot 2]
-//   slot 0 = darkest fill   (cloud #666, rain #666)
+// Default palettes — keep in sync with bg_shading.py BUCKET_PALETTES.
+// Each bucket has separate day + night palettes:
+//   slot 0 = darkest fill   (cloud #666, rain #666 / slashes)
 //   slot 1 = mid fill       (cloud #999, rain #BBB / drops)
 //   slot 2 = row bg color   (also cloud's #BBB lightest fill)
-const DEFAULTS = {
+const DEFAULTS_DAY = {
   0: ["#CCCCCC", "#DDDDDD", "#ECECEC"],
   1: ["#AAAAAA", "#BBBBBB", "#ECECEC"],
   2: ["#999999", "#BBBBBB", "#ECECEC"],
   3: ["#888888", "#AAAAAA", "#ECECEC"],
   4: ["#666666", "#999999", "#ECECEC"],
+};
+const DEFAULTS_NIGHT = {
+  0: ["#CCCCCC", "#DDDDDD", "#D8D8D8"],
+  1: ["#AAAAAA", "#BBBBBB", "#D8D8D8"],
+  2: ["#999999", "#BBBBBB", "#D8D8D8"],
+  3: ["#888888", "#AAAAAA", "#D8D8D8"],
+  4: ["#666666", "#999999", "#D8D8D8"],
 };
 // Per-SVG: artist fill at each slot index. null = no SVG fill at this slot.
 const SLOT_KEYS = {
@@ -212,7 +219,10 @@ const BUCKET_LABELS = {
   4: "Full",
 };
 
-const palette = JSON.parse(JSON.stringify(DEFAULTS));   // working copy
+const palettes = {
+  day:   JSON.parse(JSON.stringify(DEFAULTS_DAY)),
+  night: JSON.parse(JSON.stringify(DEFAULTS_NIGHT)),
+};
 let selectedHex = null;
 
 const $swatches = document.getElementById("swatches");
@@ -267,27 +277,23 @@ function svgDataUrl(text) {
 }
 
 function rebuildBucketRow(bucketIdx) {
-  const fills = palette[bucketIdx];
-  const cloudUrl = svgDataUrl(shadedSvg("bg-cloud.svg", fills));
-  const rainUrl  = svgDataUrl(shadedSvg("bg-rain.svg",  fills));
-  const bgColor  = fills[2];   // slot 2 = row bg color (and cloud's lightest)
   ["day", "night"].forEach(mode => {
+    const fills = palettes[mode][bucketIdx];
+    const cloudUrl = svgDataUrl(shadedSvg("bg-cloud.svg", fills));
+    const rainUrl  = svgDataUrl(shadedSvg("bg-rain.svg",  fills));
+    const bgColor  = fills[2];
     document.querySelector(`#tile-${bucketIdx}-${mode}-cloud`).style.backgroundImage = `url(${cloudUrl})`;
     document.querySelector(`#tile-${bucketIdx}-${mode}-rain`).style.backgroundImage  = `url(${rainUrl})`;
-    // Tile-level bg color comes from slot 2 (day-mode tile only; night
-    // keeps --night for now until we add a night palette).
-    if (mode === "day") {
-      document.querySelector(`#tile-${bucketIdx}-day`).style.backgroundColor = bgColor;
-    }
-  });
-  // Update fill slot labels + bg swatch on each slot
-  for (let i = 0; i < 3; i++) {
-    document.querySelectorAll(`.slot-b${bucketIdx}-${i}`).forEach(slot => {
+    document.querySelector(`#tile-${bucketIdx}-${mode}`).style.backgroundColor = bgColor;
+    // Update fill slot labels + bg swatch — each tile has its own slots
+    for (let i = 0; i < 3; i++) {
+      const slot = document.querySelector(`#slot-${bucketIdx}-${mode}-${i}`);
+      if (!slot) continue;
       slot.style.background = fills[i];
       slot.style.color = parseInt(fills[i].slice(1, 3), 16) > 128 ? "#000" : "#fff";
       slot.textContent = fills[i];
-    });
-  }
+    }
+  });
 }
 
 function renderRows() {
@@ -309,22 +315,24 @@ function renderRows() {
           <div class="tile-svg" id="tile-${b}-${mode}-rain"></div>
         </div>
         <div class="tile-fills">
-          <div class="fill-slot slot-b${b}-0" data-bucket="${b}" data-idx="0"></div>
-          <div class="fill-slot slot-b${b}-1" data-bucket="${b}" data-idx="1"></div>
-          <div class="fill-slot slot-b${b}-2" data-bucket="${b}" data-idx="2"></div>
+          <div class="fill-slot" id="slot-${b}-${mode}-0" data-bucket="${b}" data-mode="${mode}" data-idx="0"></div>
+          <div class="fill-slot" id="slot-${b}-${mode}-1" data-bucket="${b}" data-mode="${mode}" data-idx="1"></div>
+          <div class="fill-slot" id="slot-${b}-${mode}-2" data-bucket="${b}" data-mode="${mode}" data-idx="2"></div>
         </div>
       `;
       $grid.appendChild(tile);
     }
     rebuildBucketRow(b);
   }
-  // Wire up click handlers on fill slots
+  // Wire up click handlers on fill slots — each click updates only its
+  // own (bucket, mode) palette, leaving the other mode untouched.
   document.querySelectorAll(".fill-slot").forEach(slot => {
     slot.addEventListener("click", () => {
       if (!selectedHex) { alert("Pick a swatch first."); return; }
       const b = parseInt(slot.dataset.bucket);
+      const mode = slot.dataset.mode;
       const i = parseInt(slot.dataset.idx);
-      palette[b][i] = selectedHex;
+      palettes[mode][b][i] = selectedHex;
       rebuildBucketRow(b);
     });
   });
@@ -332,12 +340,16 @@ function renderRows() {
 
 // ── actions ─────────────────────────────────────────────────────────────
 document.getElementById("export").addEventListener("click", () => {
-  // Emit a Python tuple list matching bg_shading.BUCKET_PALETTES.
-  let lines = ["BUCKET_PALETTES: list[tuple[str, str, str]] = ["];
+  // Emit a Python BucketPalette list matching bg_shading.BUCKET_PALETTES.
+  const triple = (arr) => `("${arr[0]}", "${arr[1]}", "${arr[2]}")`;
+  const lines = ["BUCKET_PALETTES: list[BucketPalette] = ["];
   for (let b = 0; b <= 4; b++) {
-    const fills = palette[b];
+    const d = palettes.day[b], n = palettes.night[b];
     lines.push(`    # ${b} — ${BUCKET_LABELS[b]}`);
-    lines.push(`    ("${fills[0]}", "${fills[1]}", "${fills[2]}"),`);
+    lines.push(`    BucketPalette(`);
+    lines.push(`        day  =${triple(d)},`);
+    lines.push(`        night=${triple(n)},`);
+    lines.push(`    ),`);
   }
   lines.push("]");
   $output.textContent = lines.join("\n");
@@ -345,7 +357,8 @@ document.getElementById("export").addEventListener("click", () => {
 });
 
 document.getElementById("reset").addEventListener("click", () => {
-  Object.assign(palette, JSON.parse(JSON.stringify(DEFAULTS)));
+  Object.assign(palettes.day,   JSON.parse(JSON.stringify(DEFAULTS_DAY)));
+  Object.assign(palettes.night, JSON.parse(JSON.stringify(DEFAULTS_NIGHT)));
   for (let b = 0; b <= 4; b++) rebuildBucketRow(b);
   $output.classList.add("hidden");
 });
