@@ -35,14 +35,14 @@
       position: relative;
     }
 
-    /* Render-time stamp. Sits in the 36px bottom gutter, right-aligned to
-       the chart card's right edge (which is also 36px from the page edge).
-       Italic + low-contrast so it reads as metadata, not content. */
+    /* Render-time stamp. Sits in the bottom gutter, right-aligned to the
+       chart card's right edge. Italic + low-contrast so it reads as
+       metadata, not content. `bottom: 8px` so the italic descender on
+       "p" doesn't kiss the panel edge. */
     .updated-at {
       position: absolute;
-      bottom: 0;
+      bottom: 8px;
       right: 36px;
-      height: 36px;
       display: flex;
       align-items: center;
       font-style: italic;
@@ -79,7 +79,7 @@
     .header .meta .dow  { font-size: 64px; font-weight: 900; }
     .header .meta .date { font-size: 56px; font-weight: 600; }
     .header .time {
-      font-size: 220px;
+      font-size: 180px;
       font-weight: 900;
       letter-spacing: -0.02em;
       line-height: 1;

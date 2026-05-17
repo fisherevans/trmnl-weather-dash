@@ -17,7 +17,7 @@ Source-precedence rules (set in trmnl-weather-dash#5 design):
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from .config import Config, SensorRef, as_sensor_list
@@ -108,14 +108,21 @@ def build_context(
     sunset_idx  = (weather.sun.sunset  - chart_start).total_seconds() / 3600
 
     # ── forecast high/low across the visible window ───────────────────────
-    # Peak/trough may fall on the next calendar day in the configured tz
-    # (e.g. at 9pm, today's peak already happened; the next 18h reaches
-    # tomorrow's peak). `tomorrow` flags that case so the template can
-    # show a "TMRW" badge — otherwise an 81°F high at 1pm reads as
-    # today's, which is misleading after sunset.
+    # `tomorrow` flags add a "TMRW" badge in the template. Rules differ for
+    # high vs low because of how the diurnal cycle reads:
+    #   - High: peaks mid-afternoon. After today's peak, the window's
+    #     next high is tomorrow's. Flag any high timestamp on a later
+    #     date than `now`.
+    #   - Low: troughs in the pre-dawn hours. A 5am low *technically* on
+    #     tomorrow's date is still "tonight's overnight low" colloquially
+    #     — flagging it as TMRW is noisy. Only flag if the low is past
+    #     noon tomorrow (a rare day-cooling event).
     high_h = max(weather.hourly, key=lambda h: h.temp_f)
     low_h  = min(weather.hourly, key=lambda h: h.temp_f)
     today = now.date()
+    noon_tomorrow = (now + timedelta(days=1)).replace(
+        hour=12, minute=0, second=0, microsecond=0
+    )
 
     # ── precip type drives bg-{rain,snow}.svg selection ───────────────────
     precip_type = "snow" if any(h.weather_code in SNOW_CODES for h in weather.hourly) else "rain"
@@ -150,7 +157,7 @@ def build_context(
             "low": {
                 "temp_f":   round(low_h.temp_f),
                 "time":     _format_clock(low_h.timestamp),
-                "tomorrow": low_h.timestamp.date() != today,
+                "tomorrow": low_h.timestamp >= noon_tomorrow,
             },
         },
         "sun": {
