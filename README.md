@@ -37,11 +37,31 @@ docker compose up -d
 ```
 
 The dashboard is served at `http://<host>:8090/<secret_path>/dashboard.png`.
-Point a TRMNL Image Display plugin at that URL with a 15-minute refresh
-interval and you're done.
+Point a TRMNL Image Display plugin at that URL and you're done.
 
 Images are published to `ghcr.io/fisherevans/trmnl-weather-dash`. Pin to a
 versioned tag (`v0.1.0`) for stable deploys; use `:edge` to track `main`.
+
+## TRMNL refresh cadence
+
+The server re-renders once per minute (configurable via `render.refresh_minutes`
+in `config.yaml`). What the device displays is gated by how often *it* polls
+the URL, which depends on your TRMNL plan:
+
+| Plan | Image Display minimum refresh | Worst-case staleness |
+|---|---|---|
+| Free | 60 min | ~60 min |
+| [TRMNL+](https://help.trmnl.com/en/articles/11861887-trmnl-faq) ($5/mo/device, sometimes bundled free with new hardware) | 5 min | ~5 min |
+
+The 60-min cap on the Image Display plugin specifically (not the 15-min
+TRMNL-wide default) is a server-side constraint TRMNL imposes for free-tier
+resource budgeting; nothing on this end can override it. If real-time freshness
+matters, TRMNL+ is the lever — the server's 1-min render cadence already feeds
+a 5-min device poll comfortably.
+
+If you don't need sub-hour freshness, bump `render.refresh_minutes` up to 30
+or 60 to save the host a few percent of CPU and a small fraction of the
+weather API's free-tier quota — nothing the device sees will change.
 
 ## Configuration
 
