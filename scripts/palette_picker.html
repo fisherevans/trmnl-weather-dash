@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>weatherdash · bg palette picker</title>
+<style>
+  :root {
+    --ink: #111;
+    --panel: #ECECEC;
+    --night: #D8D8D8;
+    --line: #ddd;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    color: var(--ink);
+    background: #fafafa;
+    padding: 16px 24px 48px;
+  }
+  h1 { font-size: 18px; margin: 4px 0 2px; }
+  .hint { font-size: 12px; color: #666; margin-bottom: 14px; }
+
+  /* ── 16-level swatch picker ─────────────────────────────────────────── */
+  .swatches {
+    position: sticky;
+    top: 0;
+    background: #fafafa;
+    padding: 10px 0 14px;
+    border-bottom: 1px solid var(--line);
+    z-index: 10;
+  }
+  .swatches-row { display: flex; gap: 4px; align-items: center; }
+  .swatch {
+    width: 56px;
+    height: 32px;
+    border: 2px solid #aaa;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    color: #000;
+    padding-bottom: 1px;
+    transition: transform 60ms ease;
+  }
+  .swatch:hover { transform: translateY(-2px); }
+  .swatch.selected { border-color: #d33; border-width: 3px; }
+  .swatch .lab { background: rgba(255,255,255,0.7); padding: 0 3px; border-radius: 2px; }
+  .selected-label {
+    margin-left: 12px;
+    font-size: 13px;
+    color: #333;
+    font-family: ui-monospace, Menlo, monospace;
+  }
+
+  /* ── bucket grid ────────────────────────────────────────────────────── */
+  .grid {
+    display: grid;
+    grid-template-columns: 80px 1fr 1fr;
+    gap: 12px 16px;
+    margin-top: 18px;
+    align-items: stretch;
+  }
+  .grid > .h { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #888; padding-top: 8px; }
+
+  .bucket-row {
+    display: contents;
+  }
+  .bucket-row .label {
+    font-weight: 700;
+    font-size: 13px;
+    padding-top: 8px;
+  }
+  .bucket-row .label .lvl {
+    display: block;
+    font-size: 10px;
+    color: #888;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 2px;
+  }
+
+  /* ── preview tiles ──────────────────────────────────────────────────── */
+  .tile {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--panel);
+    display: flex;
+    flex-direction: column;
+  }
+  .tile.night { background: var(--night); }
+  .tile-svgs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .tile-svg {
+    height: 90px;
+    background-size: cover;
+    background-position: center;
+    border-right: 1px solid rgba(0,0,0,0.04);
+  }
+  .tile-svg:last-child { border-right: 0; }
+  .tile-fills {
+    display: flex;
+    gap: 4px;
+    padding: 6px 8px;
+    background: rgba(255,255,255,0.65);
+    border-top: 1px solid var(--line);
+  }
+  .fill-slot {
+    flex: 1;
+    height: 22px;
+    border: 1.5px solid #999;
+    border-radius: 3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    font-family: ui-monospace, Menlo, monospace;
+    color: #000;
+  }
+  .fill-slot:hover { border-color: #444; }
+
+  /* ── action bar ─────────────────────────────────────────────────────── */
+  .actions { margin-top: 24px; display: flex; gap: 12px; align-items: center; }
+  button {
+    background: #111;
+    color: #fff;
+    border: 0;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.secondary { background: #fff; color: #111; border: 1px solid var(--line); }
+  pre {
+    background: #1d1d1d;
+    color: #f1f1f1;
+    padding: 14px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: ui-monospace, Menlo, monospace;
+    overflow-x: auto;
+    line-height: 1.4;
+    margin-top: 16px;
+  }
+  pre.hidden { display: none; }
+</style>
+</head>
+<body>
+
+<h1>weatherdash · bg palette picker</h1>
+<div class="hint">
+  Click a swatch to select it. Click any fill slot under a preview to apply.
+  Previews update live. <strong>Export</strong> dumps the
+  <code>INTENSITY_BUCKETS</code> dict for <code>bg_shading.py</code>.
+</div>
+
+<div class="swatches">
+  <div class="swatches-row" id="swatches"></div>
+  <div class="selected-label">Selected: <span id="picked-hex">(none)</span> · level <span id="picked-lvl">—</span></div>
+</div>
+
+<div class="grid">
+  <div class="h">Bucket</div>
+  <div class="h">Day preview (cloud + rain)</div>
+  <div class="h">Night preview (cloud + rain)</div>
+
+  <!-- one .bucket-row per intensity bucket; injected via JS below for cleaner DRY -->
+</div>
+
+<div class="actions">
+  <button id="export">Export Python dict</button>
+  <button class="secondary" id="reset">Reset to current</button>
+</div>
+<pre id="output" class="hidden"></pre>
+
+<script>
+// 4-bit grayscale: 16 levels at multiples of 17.
+const LEVELS = Array.from({length: 16}, (_, i) => Math.round(i * 255 / 15));
+
+// Default palette — keep in sync with bg_shading.py INTENSITY_BUCKETS.
+const DEFAULTS = {
+  0: ["#CCCCCC", "#DDDDDD", "#DDDDDD"],
+  1: ["#AAAAAA", "#BBBBBB", "#CCCCCC"],
+  2: ["#999999", "#BBBBBB", "#CCCCCC"],
+  3: ["#888888", "#AAAAAA", "#BBBBBB"],
+  4: ["#666666", "#999999", "#BBBBBB"],
+};
+// Original artist palette — the keys of INTENSITY_BUCKETS dicts.
+const ARTIST_FILLS = ["#666666", "#999999", "#BBBBBB"];
+const BUCKET_LABELS = {
+  0: "Clear / Dry",
+  1: "Light",
+  2: "Moderate",
+  3: "Dense",
+  4: "Full",
+};
+
+const palette = JSON.parse(JSON.stringify(DEFAULTS));   // working copy
+let selectedHex = null;
+
+const $swatches = document.getElementById("swatches");
+const $grid = document.querySelector(".grid");
+const $output = document.getElementById("output");
+
+// ── swatches ────────────────────────────────────────────────────────────
+LEVELS.forEach((val, lvl) => {
+  const hex = "#" + val.toString(16).padStart(2, "0").toUpperCase().repeat(3);
+  const el = document.createElement("div");
+  el.className = "swatch";
+  el.style.background = hex;
+  el.style.color = val > 128 ? "#000" : "#fff";
+  el.innerHTML = `<span class="lab">${lvl}</span>`;
+  el.title = `${hex} · level ${lvl}`;
+  el.addEventListener("click", () => {
+    selectedHex = hex;
+    document.querySelectorAll(".swatch").forEach(s => s.classList.remove("selected"));
+    el.classList.add("selected");
+    document.getElementById("picked-hex").textContent = hex;
+    document.getElementById("picked-lvl").textContent = lvl;
+  });
+  $swatches.appendChild(el);
+});
+
+// ── bucket rows ─────────────────────────────────────────────────────────
+let svgTexts = {};   // raw svg text per filename
+
+async function loadSvgs() {
+  for (const name of ["bg-cloud.svg", "bg-rain.svg"]) {
+    const r = await fetch("/svg/" + name);
+    svgTexts[name] = await r.text();
+  }
+}
+
+function shadedSvg(filename, mapping) {
+  // Replace each fill="#ORIG" with the mapped value, single-pass regex.
+  let s = svgTexts[filename];
+  return s.replace(/fill="(#[0-9A-Fa-f]+)"/g, (m, color) => {
+    const target = mapping[color.toUpperCase()] || color;
+    return `fill="${target}"`;
+  });
+}
+
+function svgDataUrl(text) {
+  return "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(text)));
+}
+
+function rebuildBucketRow(bucketIdx) {
+  // Find the tile elements for this bucket and update their backgrounds
+  // and fill slot displays.
+  const fills = palette[bucketIdx];
+  // mapping is keyed by the artist's original fills
+  const mapping = {
+    [ARTIST_FILLS[0]]: fills[0],
+    [ARTIST_FILLS[1]]: fills[1],
+    [ARTIST_FILLS[2]]: fills[2],
+  };
+  const cloudUrl = svgDataUrl(shadedSvg("bg-cloud.svg", mapping));
+  const rainUrl  = svgDataUrl(shadedSvg("bg-rain.svg",  mapping));
+  ["day", "night"].forEach(mode => {
+    document.querySelector(`#tile-${bucketIdx}-${mode}-cloud`).style.backgroundImage = `url(${cloudUrl})`;
+    document.querySelector(`#tile-${bucketIdx}-${mode}-rain`).style.backgroundImage  = `url(${rainUrl})`;
+  });
+  // Update fill slot labels + bg
+  for (let i = 0; i < 3; i++) {
+    document.querySelectorAll(`.slot-b${bucketIdx}-${i}`).forEach(slot => {
+      slot.style.background = fills[i];
+      slot.style.color = parseInt(fills[i].slice(1, 3), 16) > 128 ? "#000" : "#fff";
+      slot.textContent = fills[i];
+    });
+  }
+}
+
+function renderRows() {
+  // Remove any existing bucket rows (re-renders idempotent).
+  document.querySelectorAll(".bucket-row").forEach(r => r.remove());
+  for (let b = 4; b >= 0; b--) {        // render full -> subtle for readability
+    const labelEl = document.createElement("div");
+    labelEl.className = "bucket-row label";
+    labelEl.innerHTML = `Bucket ${b}<span class="lvl">${BUCKET_LABELS[b]}</span>`;
+    $grid.appendChild(labelEl);
+
+    for (const mode of ["day", "night"]) {
+      const tile = document.createElement("div");
+      tile.className = `bucket-row tile ${mode}`;
+      tile.innerHTML = `
+        <div class="tile-svgs">
+          <div class="tile-svg" id="tile-${b}-${mode}-cloud"></div>
+          <div class="tile-svg" id="tile-${b}-${mode}-rain"></div>
+        </div>
+        <div class="tile-fills">
+          <div class="fill-slot slot-b${b}-0" data-bucket="${b}" data-idx="0"></div>
+          <div class="fill-slot slot-b${b}-1" data-bucket="${b}" data-idx="1"></div>
+          <div class="fill-slot slot-b${b}-2" data-bucket="${b}" data-idx="2"></div>
+        </div>
+      `;
+      $grid.appendChild(tile);
+    }
+    rebuildBucketRow(b);
+  }
+  // Wire up click handlers on fill slots
+  document.querySelectorAll(".fill-slot").forEach(slot => {
+    slot.addEventListener("click", () => {
+      if (!selectedHex) { alert("Pick a swatch first."); return; }
+      const b = parseInt(slot.dataset.bucket);
+      const i = parseInt(slot.dataset.idx);
+      palette[b][i] = selectedHex;
+      rebuildBucketRow(b);
+    });
+  });
+}
+
+// ── actions ─────────────────────────────────────────────────────────────
+document.getElementById("export").addEventListener("click", () => {
+  // Emit a Python-formatted dict matching bg_shading.INTENSITY_BUCKETS.
+  let lines = ["INTENSITY_BUCKETS: list[dict[str, str]] = ["];
+  for (let b = 0; b <= 4; b++) {
+    const fills = palette[b];
+    lines.push(`    # ${b} — ${BUCKET_LABELS[b]}`);
+    lines.push(
+      `    {"${ARTIST_FILLS[0]}": "${fills[0]}", ` +
+      `"${ARTIST_FILLS[1]}": "${fills[1]}", ` +
+      `"${ARTIST_FILLS[2]}": "${fills[2]}"},`
+    );
+  }
+  lines.push("]");
+  $output.textContent = lines.join("\n");
+  $output.classList.remove("hidden");
+});
+
+document.getElementById("reset").addEventListener("click", () => {
+  Object.assign(palette, JSON.parse(JSON.stringify(DEFAULTS)));
+  for (let b = 0; b <= 4; b++) rebuildBucketRow(b);
+  $output.classList.add("hidden");
+});
+
+// ── bootstrap ───────────────────────────────────────────────────────────
+loadSvgs().then(renderRows);
+</script>
+</body>
+</html>
