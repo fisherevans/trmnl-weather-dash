@@ -65,30 +65,30 @@ Mode = Literal["day", "night"]
 
 
 BUCKET_PALETTES: list[BucketPalette] = [
-    # 0 — barely visible (Clear / Dry).
+    # 0 — Clear / Dry
     BucketPalette(
-        day  =("#CCCCCC", "#DDDDDD", "#ECECEC"),
-        night=("#CCCCCC", "#DDDDDD", "#D8D8D8"),
+        day  =("#DDDDDD", "#EEEEEE", "#FFFFFF"),
+        night=("#BBBBBB", "#CCCCCC", "#DDDDDD"),
     ),
-    # 1 — light (Mostly Sunny / Drizzle).
+    # 1 — Light
     BucketPalette(
-        day  =("#AAAAAA", "#BBBBBB", "#ECECEC"),
-        night=("#AAAAAA", "#BBBBBB", "#D8D8D8"),
+        day  =("#CCCCCC", "#DDDDDD", "#EEEEEE"),
+        night=("#AAAAAA", "#BBBBBB", "#CCCCCC"),
     ),
-    # 2 — moderate (Partly Cloudy / Light rain).
+    # 2 — Moderate
     BucketPalette(
-        day  =("#999999", "#BBBBBB", "#ECECEC"),
-        night=("#999999", "#BBBBBB", "#D8D8D8"),
+        day  =("#BBBBBB", "#DDDDDD", "#EEEEEE"),
+        night=("#999999", "#BBBBBB", "#CCCCCC"),
     ),
-    # 3 — dense (Mostly Cloudy / Moderate rain).
+    # 3 — Dense
     BucketPalette(
-        day  =("#888888", "#AAAAAA", "#ECECEC"),
-        night=("#888888", "#AAAAAA", "#D8D8D8"),
+        day  =("#BBBBBB", "#CCCCCC", "#DDDDDD"),
+        night=("#999999", "#AAAAAA", "#BBBBBB"),
     ),
-    # 4 — full strength (Overcast / Heavy rain; artist palette).
+    # 4 — Full
     BucketPalette(
-        day  =("#666666", "#999999", "#ECECEC"),
-        night=("#666666", "#999999", "#D8D8D8"),
+        day  =("#AAAAAA", "#BBBBBB", "#DDDDDD"),
+        night=("#888888", "#999999", "#BBBBBB"),
     ),
 ]
 

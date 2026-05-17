@@ -49,21 +49,19 @@ def test_bucket_zero_has_at_least_one_visible_fill_on_day_bg():
     )
 
 
-@pytest.mark.parametrize("bucket_idx", range(1, 5))
+@pytest.mark.parametrize("bucket_idx", range(5))
 @pytest.mark.parametrize("mode", ["day", "night"])
-def test_shape_fills_visible_on_night_shade(bucket_idx, mode):
-    """Slots 0 and 1 (the SVG shape colors) in each palette must stay
-    at quantize level <= 12 so they render as darker shapes against the
-    palette's bg (slot 2). Slot 2 is the bg itself; visibility doesn't
-    apply. Bucket 0 is exempt — at "barely visible" the shapes may
-    approach the bg level by design."""
+def test_shape_fills_visible_against_own_bg(bucket_idx, mode):
+    """Slots 0 and 1 (the SVG shape colors) must quantize to a level
+    *different from* slot 2 (the row's bg). If a shape fill matches the
+    bg level, those shapes disappear after the 4-bit quantize step."""
     palette = getattr(BUCKET_PALETTES[bucket_idx], mode)
-    assert _hex_to_level(palette[0]) <= 12, (
-        f"{mode} bucket {bucket_idx} slot 0 = {palette[0]} too light"
-    )
-    assert _hex_to_level(palette[1]) <= 12, (
-        f"{mode} bucket {bucket_idx} slot 1 = {palette[1]} too light"
-    )
+    bg_level = _hex_to_level(palette[2])
+    for slot in (0, 1):
+        assert _hex_to_level(palette[slot]) != bg_level, (
+            f"{mode} bucket {bucket_idx} slot {slot} = {palette[slot]} "
+            f"matches bg level {bg_level} — shapes will be invisible"
+        )
 
 
 def test_buckets_progress_monotonically_lighter_to_subtle():
