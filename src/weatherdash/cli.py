@@ -45,6 +45,21 @@ def cmd_validate(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_serve(args: argparse.Namespace) -> int:
+    path = Path(args.config) if args.config else None
+    try:
+        cfg = load_config(path)
+    except ConfigError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    # Long-running service — bump default log level to INFO so the per-render
+    # timing lines from server.py are visible without --verbose.
+    logging.getLogger().setLevel(logging.INFO)
+    from .server import run_server
+    run_server(cfg)
+    return 0
+
+
 def cmd_render_live(args: argparse.Namespace) -> int:
     path = Path(args.config) if args.config else None
     try:
@@ -111,6 +126,11 @@ def main(argv: list[str] | None = None) -> int:
     p_live.add_argument("--no-quantize", action="store_true",
                         help="skip the 16-gray snap (faster iteration)")
     p_live.set_defaults(func=cmd_render_live)
+
+    p_serve = sub.add_parser("serve", help="long-running scheduler + HTTP server")
+    p_serve.add_argument("--config", default=None,
+                         help="path to config.yaml (or set WEATHERDASH_CONFIG)")
+    p_serve.set_defaults(func=cmd_serve)
 
     p_setup = sub.add_parser("setup", help="install bundled chromium then exit")
     p_setup.set_defaults(func=cmd_setup)
