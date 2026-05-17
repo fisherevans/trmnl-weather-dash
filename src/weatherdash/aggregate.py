@@ -220,6 +220,7 @@ def build_context(
         "total_accumulation_mm": round(total_precip_mm, 1),
         "avg_cloud_pct":         avg_cloud_pct,
         "cloud_description":     _cloud_description(avg_cloud_pct),
+        "precip_description":    _precip_description(total_precip_mm, precip_type),
         "cloud_bg_url_day":      cloud_bg_url_day,
         "cloud_bg_url_night":    cloud_bg_url_night,
         "precip_bg_url_day":     precip_bg_url_day,
@@ -287,3 +288,16 @@ def _cloud_description(pct: int) -> str:
     if pct < 88:
         return "Mostly Cloudy"
     return "Overcast"
+
+
+def _precip_description(total_mm: float, precip_type: str) -> str:
+    """Short textual condition for the precip row's corner label.
+    Tiers loosely match precip_bucket() thresholds in bg_shading.py."""
+    label = "Snow" if precip_type == "snow" else "Rain"
+    if total_mm < 1.0:
+        return f"No {label}"
+    if total_mm < 5.0:
+        return f"Light {label}"
+    if total_mm < 15.0:
+        return f"Moderate {label}"
+    return f"Heavy {label}"

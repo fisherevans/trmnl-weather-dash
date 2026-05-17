@@ -105,6 +105,11 @@ def render_html(data: dict) -> str:
             precip_empty_text = (
                 "NO SNOW FORECASTED" if precip_type == "snow" else "NO RAIN FORECASTED"
             )
+    # Derive precip_description if not provided (offline fixtures).
+    if not data.get("precip_description"):
+        from .aggregate import _precip_description
+        total_mm = data.get("total_accumulation_mm", 0.0)
+        data = {**data, "precip_description": _precip_description(total_mm, precip_type)}
 
     ctx = {**data, "hourly": enriched,
            "max_precip": max_precip,
