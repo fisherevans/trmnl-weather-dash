@@ -73,6 +73,7 @@
       font-feature-settings: "tnum" 1, "lnum" 1;
       font-variant-numeric: lining-nums tabular-nums;
       white-space: nowrap;
+      position: relative;          /* anchor for .time-approx */
     }
     .header .meta {
       letter-spacing: 0.005em;
@@ -84,32 +85,35 @@
     }
     .header .meta .dow  { font-size: 64px; font-weight: 900; }
     .header .meta .date { font-size: 56px; font-weight: 600; }
-    .header .time-stack {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      line-height: 1;
-      gap: 4px;
-    }
     .header .time {
       font-size: 180px;
       font-weight: 900;
       letter-spacing: -0.02em;
       line-height: 1;
     }
-    /* "approximate" caption pinned under the time. Sans-serif italic at
-       low opacity, matching the bottom-right "Updated …" stamp's vibe —
-       both are metadata about a number rather than the number itself.
-       Signals to a close reader that the time is rounded (to the nearest
-       5 min, which is the device's poll cadence on TRMNL+). */
+    /* "approximate" caption — anchored to the bottom-right of the header
+       with absolute positioning, so it doesn't contribute to the
+       header's natural height (avoids pushing the widget block down).
+       Same italic-Inter-low-opacity treatment as the bottom-right
+       "Updated …" stamp, signaling "metadata about a number". The Playfair
+       digits have no descenders, so this can sit close to the time's
+       baseline without colliding visually. */
     .header .time-approx {
+      position: absolute;
+      /* Visually centered in the gap between the time's baseline and
+         the widget block below. Negative `bottom` lets the text extend
+         past the header's natural bottom into the body grid's gap. The
+         text is all lowercase so the x-height sits below cap height —
+         nudged up a few px to optically center rather than geometrically. */
+      bottom: -8px;
+      right: 12px;
       font-family: 'Inter', sans-serif;
       font-style: italic;
-      font-size: 22px;
+      font-size: 28px;
       font-weight: 500;
       letter-spacing: 0.04em;
       opacity: 0.55;
-      margin-right: 6px;
+      line-height: 1;
     }
 
     /* Body fills the page grid's 1fr row, so the cards extend to exactly the
@@ -578,10 +582,8 @@
       <span class="date">{{ _date_parts[1] }}</span>
       {%- endif %}
     </div>
-    <div class="time-stack">
-      <div class="time">{{ time }}</div>
-      <div class="time-approx">approximate</div>
-    </div>
+    <div class="time">{{ time }}</div>
+    <div class="time-approx">approximate</div>
   </header>
 
   <main class="body">
