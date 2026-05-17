@@ -84,11 +84,32 @@
     }
     .header .meta .dow  { font-size: 64px; font-weight: 900; }
     .header .meta .date { font-size: 56px; font-weight: 600; }
+    .header .time-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      line-height: 1;
+      gap: 4px;
+    }
     .header .time {
       font-size: 180px;
       font-weight: 900;
       letter-spacing: -0.02em;
       line-height: 1;
+    }
+    /* "approximate" caption pinned under the time. Sans-serif italic at
+       low opacity, matching the bottom-right "Updated …" stamp's vibe —
+       both are metadata about a number rather than the number itself.
+       Signals to a close reader that the time is rounded (to the nearest
+       5 min, which is the device's poll cadence on TRMNL+). */
+    .header .time-approx {
+      font-family: 'Inter', sans-serif;
+      font-style: italic;
+      font-size: 22px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      opacity: 0.55;
+      margin-right: 6px;
     }
 
     /* Body fills the page grid's 1fr row, so the cards extend to exactly the
@@ -557,7 +578,10 @@
       <span class="date">{{ _date_parts[1] }}</span>
       {%- endif %}
     </div>
-    <div class="time">{{ time }}</div>
+    <div class="time-stack">
+      <div class="time">{{ time }}</div>
+      <div class="time-approx">approximate</div>
+    </div>
   </header>
 
   <main class="body">
