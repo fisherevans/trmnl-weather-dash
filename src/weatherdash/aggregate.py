@@ -185,7 +185,10 @@ def build_context(
     # Image Display poll floor on TRMNL+, so a precise minute can be up
     # to ~5 min stale before the next poll. The "Updated" stamp in the
     # bottom-right stays precise; it's the data-freshness indicator.
+    # Both come from the same tz-aware `now` so they're consistent even
+    # when the container's host TZ defaults to UTC.
     return {
+        "updated_at": now.strftime("%-I:%M %p"),
         "date_line": now.strftime("%A, %B %-d, %Y").upper(),
         "time":      _round_to_minutes(now, 5).strftime("%-I:%M %p"),
         "inside": {
