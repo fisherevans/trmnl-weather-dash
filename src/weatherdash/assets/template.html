@@ -98,9 +98,10 @@
       grid-template-columns: 460px 1fr;
       gap: 24px;
     }
-    /* OUTSIDE gets the bulk of the left column; TEMP FORECAST sits a bit
-       shorter than OUTSIDE; INSIDE shrinks to its content at the bottom. */
-    .col-left  { display: grid; grid-template-rows: 1fr 0.65fr auto; gap: 24px; }
+    /* OUTSIDE gets the bulk of the left column; TEMP FORECAST takes more
+       room now that the values are larger; INSIDE shrinks to its content
+       at the bottom. */
+    .col-left  { display: grid; grid-template-rows: 1fr 0.8fr auto; gap: 24px; }
 
     /* Card chrome */
     .card {
@@ -248,12 +249,18 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
+      position: relative;     /* anchor for the arrow chip */
     }
     .tempforecast .row + .row { border-top: 2px solid var(--ink); }
+    /* Tinted bands so HIGH/LOW read as distinct cells at a glance. The
+       HIGH row gets a slightly darker tint than the panel; the LOW
+       row stays panel-light. Subtle but enough to mark the call-out. */
+    .tempforecast .row.high { background: #DCDCDC; }
+    .tempforecast .row.low  { background: var(--panel); }
     .tempforecast .big {
-      font-size: 86px;
-      font-weight: 800;
+      font-size: 104px;
+      font-weight: 900;
       letter-spacing: -0.02em;
       line-height: 1;
       display: flex;
@@ -261,11 +268,11 @@
       gap: 12px;
     }
     .tempforecast .big .arrow {
-      font-size: 70px;
+      font-size: 88px;
       line-height: 1;
     }
     .tempforecast .when {
-      font-size: 26px;
+      font-size: 28px;
       font-weight: 700;
       letter-spacing: 0.05em;
       display: flex;
@@ -328,6 +335,55 @@
        precip-bars row at z-index 6 and can overlap a bar at its column;
        on the cloud side, the 0→110 scale still leaves a small gutter
        below 100% bars. */
+
+    /* Row title (PRECIPITATION / CLOUD COVER). Anchored to the corner
+       opposite from where the bars grow:
+         - precip row: top-left (bars grow up from the bottom)
+         - cloud row:  bottom-left (bars grow down from the top)
+       Halo via text-shadow so the title stays readable even if a marker
+       or threshold-line label crosses it. */
+    .row-title {
+      position: absolute;
+      left: 14px;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.10em;
+      color: var(--ink);
+      z-index: 5;
+      pointer-events: none;
+      text-shadow:
+         1px  1px 0 var(--panel), -1px  1px 0 var(--panel),
+         1px -1px 0 var(--panel), -1px -1px 0 var(--panel),
+         0  2px 0 var(--panel),  0 -2px 0 var(--panel),
+         2px  0  0 var(--panel), -2px  0  0 var(--panel);
+    }
+    .chart-row.precip-bars .row-title { top: 8px; }
+    .chart-row.cloud-bars  .row-title { bottom: 8px; }
+
+    /* No-data overlay: "CLEAR SKIES" / "NO RAIN FORECAST" centered in
+       a row when the intensity bucket falls to 0. Replaces the blank
+       feeling with a brief explanation of what the (mostly empty) row
+       is showing. Halo for legibility against any small bars that
+       happen to exist. */
+    .row-empty {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 60px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      color: var(--ink);
+      opacity: 0.70;
+      z-index: 4;
+      pointer-events: none;
+      text-shadow:
+         3px  3px 0 var(--panel), -3px  3px 0 var(--panel),
+         3px -3px 0 var(--panel), -3px -3px 0 var(--panel),
+         0  4px 0 var(--panel),  0 -4px 0 var(--panel),
+         4px  0  0 var(--panel), -4px  0  0 var(--panel);
+    }
 
     /* Per-row night shade. Sits behind bars (z-index 1) but above the row's day
        pattern. Reuses the row's --row-bg so the pattern continues; only the
@@ -571,14 +627,14 @@
       <section class="card">
         <div class="card-title">TEMPERATURE FORECAST</div>
         <div class="card-body tempforecast">
-          <div class="row">
+          <div class="row high">
             <div class="big"><span class="arrow">↑</span><span>{{ forecast.high.temp_f }}°F</span></div>
             <div class="when">
               <span>HIGH @ {{ forecast.high.time }}</span>
               {%- if forecast.high.tomorrow %}<span class="tag">TMRW</span>{%- endif %}
             </div>
           </div>
-          <div class="row">
+          <div class="row low">
             <div class="big"><span class="arrow">↓</span><span>{{ forecast.low.temp_f }}°F</span></div>
             <div class="when">
               <span>LOW @ {{ forecast.low.time }}</span>
@@ -640,6 +696,10 @@
           <!-- row 1: precipitation bars (grow up). One night-shade per night region. -->
           <div class="chart-row precip-bars precip-{{ precip_type }}"
                style="--row-bg: url('{{ precip_bg_url }}');">
+            <div class="row-title">PRECIPITATION</div>
+            {%- if precip_empty_text %}
+            <div class="row-empty">{{ precip_empty_text }}</div>
+            {%- endif %}
             {%- for r in night_regions %}
             {%- set ns_w = r.end_at - r.start_at %}
             <div class="night-shade"
@@ -686,6 +746,10 @@
           <!-- row 3: cloud cover bars (grow down). One night-shade per night region. -->
           <div class="chart-row cloud-bars"
                style="--row-bg: url('{{ cloud_bg_url }}');">
+            <div class="row-title">CLOUD COVER</div>
+            {%- if cloud_empty_text %}
+            <div class="row-empty">{{ cloud_empty_text }}</div>
+            {%- endif %}
             {%- for r in night_regions %}
             {%- set ns_w = r.end_at - r.start_at %}
             <div class="night-shade"

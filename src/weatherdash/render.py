@@ -71,16 +71,28 @@ def render_html(data: dict) -> str:
     # Pre-computed bg URLs from the aggregation layer take priority. For
     # static `data*.json` renders (which skip the aggregation layer), we
     # compute them here from the same fields the live pipeline uses, so
-    # offline fixture renders still produce density-shifted backgrounds.
-    cloud_bg_url = data.get("cloud_bg_url")
+    # offline fixture renders still produce density-shifted backgrounds
+    # plus the matching no-data overlays.
+    cloud_bg_url      = data.get("cloud_bg_url")
+    cloud_empty_text  = data.get("cloud_empty_text")
+    precip_bg_url     = data.get("precip_bg_url")
+    precip_empty_text = data.get("precip_empty_text")
+    precip_type       = data.get("precip_type", "rain")
     if not cloud_bg_url:
         avg_cloud = data.get("avg_cloud_pct", 0)
-        cloud_bg_url = shaded_svg_url("bg-cloud.svg", cloud_bucket(avg_cloud))
-    precip_bg_url = data.get("precip_bg_url")
+        c_bucket = cloud_bucket(avg_cloud)
+        cloud_bg_url = shaded_svg_url("bg-cloud.svg", c_bucket)
+        if cloud_empty_text is None and c_bucket == 0:
+            cloud_empty_text = "CLEAR SKIES"
     if not precip_bg_url:
-        precip_svg = "bg-snow.svg" if data.get("precip_type") == "snow" else "bg-rain.svg"
+        precip_svg = "bg-snow.svg" if precip_type == "snow" else "bg-rain.svg"
         total_mm = data.get("total_accumulation_mm", 0.0)
-        precip_bg_url = shaded_svg_url(precip_svg, precip_bucket(total_mm))
+        p_bucket = precip_bucket(total_mm)
+        precip_bg_url = shaded_svg_url(precip_svg, p_bucket)
+        if precip_empty_text is None and p_bucket == 0:
+            precip_empty_text = (
+                "NO SNOW FORECAST" if precip_type == "snow" else "NO RAIN FORECAST"
+            )
 
     ctx = {**data, "hourly": enriched,
            "max_precip": max_precip,
@@ -91,6 +103,8 @@ def render_html(data: dict) -> str:
            "updated_at": updated_at,
            "cloud_bg_url": cloud_bg_url,
            "precip_bg_url": precip_bg_url,
+           "cloud_empty_text": cloud_empty_text,
+           "precip_empty_text": precip_empty_text,
            "night_regions": [r for r in regions if r["is_night"]]}
     return env.get_template("template.html").render(**ctx)
 

@@ -158,9 +158,22 @@ def build_context(
     # Cloud-row darkness scales with avg cloud %, precip-row scales with
     # total mm. SVG fills get swapped at render time and inlined as
     # data: URLs (see bg_shading.py).
-    cloud_bg_url  = shaded_svg_url("bg-cloud.svg", cloud_bucket(avg_cloud_pct))
+    cloud_b = cloud_bucket(avg_cloud_pct)
+    precip_b = precip_bucket(total_precip_mm)
+    cloud_bg_url  = shaded_svg_url("bg-cloud.svg", cloud_b)
     precip_svg    = "bg-snow.svg" if precip_type == "snow" else "bg-rain.svg"
-    precip_bg_url = shaded_svg_url(precip_svg, precip_bucket(total_precip_mm))
+    precip_bg_url = shaded_svg_url(precip_svg, precip_b)
+
+    # ── no-data overlay text (only when bucket 0 = clear / dry) ──────────
+    # Fills the row with a short message instead of leaving the eye to
+    # parse a near-empty chart. Cloud overlay also triggers when cloud
+    # cover is genuinely low even if bucket > 0 in edge cases, but
+    # tying to the bucket keeps the rule simple.
+    cloud_empty_text  = "CLEAR SKIES"       if cloud_b == 0 else None
+    precip_empty_text = (
+        "NO SNOW FORECAST" if (precip_b == 0 and precip_type == "snow") else
+        "NO RAIN FORECAST" if precip_b == 0 else None
+    )
 
     return {
         "date_line": now.strftime("%A, %B %-d, %Y").upper(),
@@ -203,6 +216,8 @@ def build_context(
         "cloud_description":     _cloud_description(avg_cloud_pct),
         "cloud_bg_url":          cloud_bg_url,
         "precip_bg_url":         precip_bg_url,
+        "cloud_empty_text":      cloud_empty_text,
+        "precip_empty_text":     precip_empty_text,
         "hourly":                hourly,
     }
 
