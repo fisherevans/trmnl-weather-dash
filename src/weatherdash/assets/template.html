@@ -436,14 +436,15 @@
     .chart-row.cloud-bars  .bar-col { justify-content: flex-start; }
     /* Bars fill their column. column-gap on the row provides inter-bar spacing,
        so the leftmost and rightmost bars sit flush against the chart edges. */
-    /* Outer .bar is a flex column container for two stacked segments —
-       rain on top, snow on bottom. Solid-color bg is on the segments, not
-       the outer; .bar itself just sets the total height for label
-       positioning. Rain at #444 (level 4), snow at #888 (level 8) so the
-       two read as visually distinct on the panel without dithering. */
+    /* Outer .bar carries a default solid fill (#444, level 4) which is what
+       cloud bars use — they have no inner segments. Precip bars stack two
+       segments inside: rain on top (#444), snow on bottom (#888). Snow at
+       level 8 is distinct from rain's level 4 after 4-bit quantize. The
+       segments always sum to 100% so they fully cover the outer bg. */
     .bar {
       position: relative;        /* anchor for inside labels */
       width: 100%;
+      background: #444444;
       min-height: 3px;
       flex-shrink: 0;
       display: flex;
