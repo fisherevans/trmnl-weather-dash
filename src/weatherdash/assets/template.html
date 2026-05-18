@@ -708,7 +708,7 @@
                  style="left: calc(100% * {{ '%.4f'|format(r.start_at) }});
                         right: calc(100% * {{ '%.4f'|format(1 - r.end_at) }});
                         background-size: {{ '%.2f'|format(100.0 / ns_w) }}% auto;
-                        background-position: {{ '%.2f'|format(r.start_at / (1.0 - ns_w) * 100.0) }}% center;"></div>
+                        background-position: {{ '%.2f'|format((r.start_at / (1.0 - ns_w) * 100.0) if ns_w < 1.0 else 0.0) }}% center;"></div>
             {%- endfor %}
             {%- for line in rain_lines %}
             <div class="threshold-line"
@@ -763,7 +763,7 @@
                  style="left: calc(100% * {{ '%.4f'|format(r.start_at) }});
                         right: calc(100% * {{ '%.4f'|format(1 - r.end_at) }});
                         background-size: {{ '%.2f'|format(100.0 / ns_w) }}% auto;
-                        background-position: {{ '%.2f'|format(r.start_at / (1.0 - ns_w) * 100.0) }}% center;"></div>
+                        background-position: {{ '%.2f'|format((r.start_at / (1.0 - ns_w) * 100.0) if ns_w < 1.0 else 0.0) }}% center;"></div>
             {%- endfor %}
             {%- for line in cloud_lines %}
             <div class="threshold-line"

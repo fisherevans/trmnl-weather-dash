@@ -76,12 +76,16 @@ def build_context(
     config: Config,
     weather: NormalizedForecast,
     ha: dict[str, SensorReading],
+    _now: datetime | None = None,
 ) -> dict:
     if not weather.hourly:
         raise ValueError("weather.hourly is empty — provider returned no data")
 
     tz = ZoneInfo(config.location.timezone)
-    now = datetime.now(tz=tz)
+    # `_now` lets tests/scenario generators pin a specific clock time so
+    # the same input renders deterministically. Production passes None
+    # and falls through to datetime.now().
+    now = _now if _now is not None else datetime.now(tz=tz)
     chart_start = weather.hourly[0].timestamp
     n_hours = len(weather.hourly)
 
