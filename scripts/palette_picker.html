@@ -193,18 +193,18 @@ const LEVELS = Array.from({length: 16}, (_, i) => Math.round(i * 255 / 15));
 //   slot 1 = mid fill       (cloud #999, rain #BBB / drops)
 //   slot 2 = row bg color   (also cloud's #BBB lightest fill)
 const DEFAULTS_DAY = {
-  0: ["#DDDDDD", "#EEEEEE", "#FFFFFF"],
-  1: ["#CCCCCC", "#DDDDDD", "#EEEEEE"],
-  2: ["#BBBBBB", "#DDDDDD", "#EEEEEE"],
-  3: ["#BBBBBB", "#CCCCCC", "#DDDDDD"],
-  4: ["#AAAAAA", "#BBBBBB", "#DDDDDD"],
+  0: ["#EEEEEE", "#FFFFFF", "#FFFFFF"],
+  1: ["#DDDDDD", "#EEEEEE", "#FFFFFF"],
+  2: ["#CCCCCC", "#DDDDDD", "#EEEEEE"],
+  3: ["#BBBBBB", "#DDDDDD", "#EEEEEE"],
+  4: ["#BBBBBB", "#CCCCCC", "#DDDDDD"],
 };
 const DEFAULTS_NIGHT = {
-  0: ["#BBBBBB", "#CCCCCC", "#DDDDDD"],
-  1: ["#AAAAAA", "#BBBBBB", "#CCCCCC"],
-  2: ["#999999", "#BBBBBB", "#CCCCCC"],
-  3: ["#999999", "#AAAAAA", "#BBBBBB"],
-  4: ["#888888", "#999999", "#BBBBBB"],
+  0: ["#CCCCCC", "#DDDDDD", "#DDDDDD"],
+  1: ["#BBBBBB", "#CCCCCC", "#DDDDDD"],
+  2: ["#AAAAAA", "#BBBBBB", "#CCCCCC"],
+  3: ["#999999", "#BBBBBB", "#CCCCCC"],
+  4: ["#999999", "#AAAAAA", "#BBBBBB"],
 };
 // Per-SVG: artist fill at each slot index. null = no SVG fill at this slot.
 const SLOT_KEYS = {

@@ -67,28 +67,28 @@ Mode = Literal["day", "night"]
 BUCKET_PALETTES: list[BucketPalette] = [
     # 0 — Clear / Dry
     BucketPalette(
+        day  =("#EEEEEE", "#FFFFFF", "#FFFFFF"),
+        night=("#CCCCCC", "#DDDDDD", "#DDDDDD"),
+    ),
+    # 1 — Light
+    BucketPalette(
         day  =("#DDDDDD", "#EEEEEE", "#FFFFFF"),
         night=("#BBBBBB", "#CCCCCC", "#DDDDDD"),
     ),
-    # 1 — Light
+    # 2 — Moderate
     BucketPalette(
         day  =("#CCCCCC", "#DDDDDD", "#EEEEEE"),
         night=("#AAAAAA", "#BBBBBB", "#CCCCCC"),
     ),
-    # 2 — Moderate
+    # 3 — Dense
     BucketPalette(
         day  =("#BBBBBB", "#DDDDDD", "#EEEEEE"),
         night=("#999999", "#BBBBBB", "#CCCCCC"),
     ),
-    # 3 — Dense
+    # 4 — Full
     BucketPalette(
         day  =("#BBBBBB", "#CCCCCC", "#DDDDDD"),
         night=("#999999", "#AAAAAA", "#BBBBBB"),
-    ),
-    # 4 — Full
-    BucketPalette(
-        day  =("#AAAAAA", "#BBBBBB", "#DDDDDD"),
-        night=("#888888", "#999999", "#BBBBBB"),
     ),
 ]
 
