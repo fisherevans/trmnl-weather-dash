@@ -119,10 +119,14 @@ def build_context(
         )
 
     # ── hourly slice ──────────────────────────────────────────────────────
+    # snow_cm shares the y-axis with precip_mm in the chart (1 cm snow
+    # ≈ 1 mm liquid rain at the loose-pack ratio TRMNL displays at).
+    # Stacked bars in the template render snow under rain.
     hourly = [
         {
             "hour":      _format_chart_hour(h.timestamp),
             "precip_mm": round(h.precip_mm, 1),
+            "snow_cm":   round(h.snow_cm, 1),
             "cloud_pct": h.cloud_pct,
             "is_night":  not h.is_day,
             "temp_f":    round(h.temp_f),
@@ -152,10 +156,27 @@ def build_context(
     )
 
     # ── precip type drives bg-{rain,snow}.svg selection ───────────────────
-    precip_type = "snow" if any(h.weather_code in SNOW_CODES for h in weather.hourly) else "rain"
+    # The bg chooses one or the other; bars themselves stack snow under
+    # rain regardless, so a mixed forecast still shows both quantities.
+    # Prefer the larger magnitude; if neither has volumetric data,
+    # fall back to weather-code presence (covers NWS-like providers
+    # that don't expose mm/cm at all).
+    total_rain_mm = sum(h.precip_mm for h in weather.hourly)
+    total_snow_cm = sum(h.snow_cm for h in weather.hourly)
+    if total_snow_cm > total_rain_mm:
+        precip_type = "snow"
+    elif total_rain_mm > 0:
+        precip_type = "rain"
+    elif any(h.weather_code in SNOW_CODES for h in weather.hourly):
+        precip_type = "snow"
+    else:
+        precip_type = "rain"
 
     # ── chart-footer summary ──────────────────────────────────────────────
-    total_precip_mm = sum(h.precip_mm for h in weather.hourly)
+    # `total_precip_mm` is now total chart UNITS (mm rain + cm snow, with
+    # 1 cm snow ≈ 1 mm rain in liquid equivalent, so they share a y-axis
+    # in the chart even though the units are reported separately).
+    total_precip_mm = total_rain_mm + total_snow_cm
     avg_cloud_pct   = round(sum(h.cloud_pct for h in weather.hourly) / n_hours)
 
     # ── group hourly into day/night regions for the chart ─────────────────
@@ -405,8 +426,9 @@ def _precip_description(total_mm: float, precip_type: str) -> str:
 
 
 def _region_precip_label(points, precip_type: str) -> str:
-    """Short label centered inside a chart region on the precip row."""
-    total = sum(p.precip_mm for p in points)
+    """Short label centered inside a chart region on the precip row.
+    Magnitude combines rain (mm) and snow (cm) on the same axis."""
+    total = sum(p.precip_mm for p in points) + sum(p.snow_cm for p in points)
     return _precip_description(total, precip_type)
 
 
@@ -461,34 +483,63 @@ def _forecast_chunks(hourly, precip_type: str) -> list[dict]:
     return chunks
 
 
+def _feel_for_temp(temp_f: float, month: int) -> str:
+    """Map a reference temperature to a casual feel word, scaled by season.
+
+    Tuned for a Northeastern US (Vermont / New Hampshire) climate where
+    winter acclimation drops the "freezing" threshold significantly —
+    a Vermont local doesn't call 30°F freezing in February. Swap the
+    thresholds if the deployment is in a different climate.
+
+    Bands:
+        Winter (Dec-Feb): frigid < 10, cold < 25, chilly < 38, mild < 50,
+                          warm < 65, hot >= 65 (rare).
+        Summer (Jun-Aug): cool < 60, comfortable < 75, warm < 85,
+                          hot < 95, very hot >= 95.
+        Spring/Fall: between the two extremes.
+    """
+    if month in (12, 1, 2):
+        if temp_f < 10:  return "frigid"
+        if temp_f < 25:  return "cold"
+        if temp_f < 38:  return "chilly"
+        if temp_f < 50:  return "mild"
+        if temp_f < 65:  return "warm"
+        return "hot"
+    if month in (6, 7, 8):
+        if temp_f < 55:  return "cool"
+        if temp_f < 70:  return "comfortable"
+        if temp_f < 80:  return "warm"
+        if temp_f < 92:  return "hot"
+        return "very hot"
+    # Shoulder seasons (Mar-May, Sep-Nov)
+    if temp_f < 25:  return "cold"
+    if temp_f < 40:  return "chilly"
+    if temp_f < 58:  return "cool"
+    if temp_f < 72:  return "comfortable"
+    if temp_f < 82:  return "warm"
+    return "hot"
+
+
 def _summarize(points, precip_type: str, is_day: bool) -> str:
     """Short natural-prose summary, e.g. 'warm and sunny',
     'muggy with scattered thunderstorms', 'cold and some light snow'.
 
     Combines a temperature/humidity feel word with either a sky
-    descriptor (when no precip) or a precip phrase (when there is)."""
+    descriptor (when no precip) or a precip phrase (when there is).
+    Feel words are season-aware — 30°F reads as 'mild' in February
+    and 'freezing' in May because acclimation shifts."""
     temps = [p.temp_f for p in points]
     humidities = [p.humidity_pct for p in points if p.humidity_pct is not None]
     avg_cloud = sum(p.cloud_pct for p in points) / len(points)
-    total_precip = sum(p.precip_mm for p in points)
+    # Combine rain (mm) and snow (cm) for the precip magnitude — same axis.
+    total_precip = sum(p.precip_mm for p in points) + sum(p.snow_cm for p in points)
 
     # Temperature feel — use the day's high or the night's low as the
     # reference, since that's the peak felt-temperature for the period.
+    # Season comes from the chunk's first timestamp.
     ref_temp = max(temps) if is_day else min(temps)
-    if ref_temp < 32:
-        feel = "freezing"
-    elif ref_temp < 45:
-        feel = "cold"
-    elif ref_temp < 60:
-        feel = "cool"
-    elif ref_temp < 75:
-        feel = "comfortable"
-    elif ref_temp < 85:
-        feel = "warm"
-    elif ref_temp < 95:
-        feel = "hot"
-    else:
-        feel = "very hot"
+    month = points[0].timestamp.month
+    feel = _feel_for_temp(ref_temp, month)
 
     # Override with humidity-driven feel when relevant.
     if humidities:

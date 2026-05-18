@@ -36,11 +36,13 @@ def render_html(data: dict) -> str:
     )
     hourly = data["hourly"]
     n_hours = len(hourly)
-    # Rain scale: anchor at 10mm by default; bump only if reality exceeds it,
-    # so light-rain days don't squash the bar heights against the floor. We
-    # reserve a 10% gutter at the top, so the tallest bar maxes at 90% of
-    # the bar area and never collides with the row's top edge.
-    max_precip = max(10.0, *(h["precip_mm"] for h in hourly))
+    # Y-axis scale: anchor at 10 units by default; bump only if reality
+    # exceeds it. Per-hour "units" is rain_mm + snow_cm — same axis,
+    # since 1 cm snow ≈ 1 mm liquid rain in the chart's loose-pack
+    # convention. The tallest bar maxes at 90% of the bar area so the
+    # row's top edge stays clear of bars.
+    per_hour_units = lambda h: h["precip_mm"] + h.get("snow_cm", 0.0)
+    max_precip = max(10.0, *(per_hour_units(h) for h in hourly))
     # Cloud scale: anchored at 110% so a real 100% cloud cover only fills
     # 100/110 ≈ 90.9% of the bar area, leaving a small gutter below the
     # tallest bar.
@@ -56,11 +58,21 @@ def render_html(data: dict) -> str:
     ]
     enriched = []
     for h in hourly:
+        rain_mm = h["precip_mm"]
+        snow_cm = h.get("snow_cm", 0.0)
+        total = rain_mm + snow_cm
+        # Outer bar height drives label position; inner segment heights are
+        # expressed as percentages of the OUTER bar so they stack correctly.
+        precip_h_pct = (total / max_precip) * 90.0
+        rain_seg_pct = (rain_mm / total * 100.0) if total > 0 else 0.0
+        snow_seg_pct = 100.0 - rain_seg_pct if total > 0 else 0.0
         enriched.append({
             **h,
-            "precip_h_pct": (h["precip_mm"] / max_precip) * 90.0,
+            "precip_h_pct": precip_h_pct,
+            "rain_seg_pct": rain_seg_pct,
+            "snow_seg_pct": snow_seg_pct,
             "cloud_h_pct": float(h["cloud_pct"]) / cloud_scale_max * 100.0,
-            "precip_label": format_precip(h["precip_mm"]),
+            "precip_label": format_precip_mixed(rain_mm, snow_cm),
         })
     # Honor pre-computed regions (carries the per-region labels) when the
     # aggregation layer supplied them; otherwise recompute for the offline
@@ -146,6 +158,18 @@ def format_precip(mm: float) -> str:
     if mm >= 10:
         return f"{mm:.0f}mm"
     return f"{mm:.1f}m"
+
+
+def format_precip_mixed(rain_mm: float, snow_cm: float) -> str:
+    """Single label for a stacked bar. Uses the dominant component's unit."""
+    if rain_mm == 0 and snow_cm == 0:
+        return "0"
+    if snow_cm > rain_mm:
+        # Snow dominant: use cm.
+        if snow_cm >= 10:
+            return f"{snow_cm:.0f}cm"
+        return f"{snow_cm:.1f}c"
+    return format_precip(rain_mm)
 
 
 def screenshot(html: str, out: Path) -> None:

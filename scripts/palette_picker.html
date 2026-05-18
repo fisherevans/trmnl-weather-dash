@@ -96,7 +96,7 @@
   .tile.night { background: var(--night); }
   .tile-svgs {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
   }
   .tile-svg {
     height: 90px;
@@ -171,8 +171,8 @@
 
 <div class="grid">
   <div class="h">Bucket</div>
-  <div class="h">Day preview (cloud + rain)</div>
-  <div class="h">Night preview (cloud + rain)</div>
+  <div class="h">Day preview (cloud · rain · snow)</div>
+  <div class="h">Night preview (cloud · rain · snow)</div>
 
   <!-- one .bucket-row per intensity bucket; injected via JS below for cleaner DRY -->
 </div>
@@ -210,6 +210,7 @@ const DEFAULTS_NIGHT = {
 const SLOT_KEYS = {
   "bg-cloud.svg": ["#666666", "#999999", "#BBBBBB"],
   "bg-rain.svg":  ["#666666", "#BBBBBB", null],
+  "bg-snow.svg":  ["#666666", "#999999", null],
 };
 const BUCKET_LABELS = {
   0: "Clear / Dry",
@@ -252,7 +253,7 @@ LEVELS.forEach((val, lvl) => {
 let svgTexts = {};   // raw svg text per filename
 
 async function loadSvgs() {
-  for (const name of ["bg-cloud.svg", "bg-rain.svg"]) {
+  for (const name of ["bg-cloud.svg", "bg-rain.svg", "bg-snow.svg"]) {
     const r = await fetch("/svg/" + name);
     svgTexts[name] = await r.text();
   }
@@ -281,11 +282,12 @@ function rebuildBucketRow(bucketIdx) {
     const fills = palettes[mode][bucketIdx];
     const cloudUrl = svgDataUrl(shadedSvg("bg-cloud.svg", fills));
     const rainUrl  = svgDataUrl(shadedSvg("bg-rain.svg",  fills));
+    const snowUrl  = svgDataUrl(shadedSvg("bg-snow.svg",  fills));
     const bgColor  = fills[2];
     document.querySelector(`#tile-${bucketIdx}-${mode}-cloud`).style.backgroundImage = `url(${cloudUrl})`;
     document.querySelector(`#tile-${bucketIdx}-${mode}-rain`).style.backgroundImage  = `url(${rainUrl})`;
+    document.querySelector(`#tile-${bucketIdx}-${mode}-snow`).style.backgroundImage  = `url(${snowUrl})`;
     document.querySelector(`#tile-${bucketIdx}-${mode}`).style.backgroundColor = bgColor;
-    // Update fill slot labels + bg swatch — each tile has its own slots
     for (let i = 0; i < 3; i++) {
       const slot = document.querySelector(`#slot-${bucketIdx}-${mode}-${i}`);
       if (!slot) continue;
@@ -313,6 +315,7 @@ function renderRows() {
         <div class="tile-svgs">
           <div class="tile-svg" id="tile-${b}-${mode}-cloud"></div>
           <div class="tile-svg" id="tile-${b}-${mode}-rain"></div>
+          <div class="tile-svg" id="tile-${b}-${mode}-snow"></div>
         </div>
         <div class="tile-fills">
           <div class="fill-slot" id="slot-${b}-${mode}-0" data-bucket="${b}" data-mode="${mode}" data-idx="0"></div>

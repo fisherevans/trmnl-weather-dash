@@ -25,11 +25,12 @@ class ForecastError(Exception):
 class HourlyPoint:
     timestamp: datetime         # tz-aware, in the configured timezone
     temp_f: float
-    precip_mm: float
+    precip_mm: float            # rain (mm)
     cloud_pct: int              # 0..100
     weather_code: int           # WMO code
     is_day: bool
     humidity_pct: int | None = None    # not all providers expose hourly humidity
+    snow_cm: float = 0.0        # snow accumulation (cm; ~10x rain mm at equal volume)
 
 
 @dataclass(frozen=True)

@@ -436,14 +436,21 @@
     .chart-row.cloud-bars  .bar-col { justify-content: flex-start; }
     /* Bars fill their column. column-gap on the row provides inter-bar spacing,
        so the leftmost and rightmost bars sit flush against the chart edges. */
+    /* Outer .bar is a flex column container for two stacked segments —
+       rain on top, snow on bottom. Solid-color bg is on the segments, not
+       the outer; .bar itself just sets the total height for label
+       positioning. Rain at #444 (level 4), snow at #888 (level 8) so the
+       two read as visually distinct on the panel without dithering. */
     .bar {
       position: relative;        /* anchor for inside labels */
       width: 100%;
-      background: #444444;
       min-height: 3px;
       flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
     }
-    .bar-col.is-night .bar { background: #444444; }
+    .bar > .seg-rain { width: 100%; background: #444444; flex-shrink: 0; }
+    .bar > .seg-snow { width: 100%; background: #888888; flex-shrink: 0; }
     .bar-label {
       font-size: 20px;
       font-weight: 800;
@@ -725,6 +732,12 @@
                   <div class="bar" style="height: {{ h.precip_h_pct }}%;">
                     {%- if h.precip_h_pct >= 8 %}
                     <span class="bar-label bar-label-inside">{{ h.precip_label }}</span>
+                    {%- endif %}
+                    {%- if h.rain_seg_pct > 0 %}
+                    <div class="seg-rain" style="height: {{ h.rain_seg_pct }}%;"></div>
+                    {%- endif %}
+                    {%- if h.snow_seg_pct > 0 %}
+                    <div class="seg-snow" style="height: {{ h.snow_seg_pct }}%;"></div>
                     {%- endif %}
                   </div>
                 {%- endif %}

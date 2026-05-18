@@ -45,7 +45,7 @@ class OpenMeteoProvider:
             "temperature_unit": "fahrenheit",
             "wind_speed_unit": "mph",
             "precipitation_unit": "mm",
-            "hourly": ("temperature_2m,relative_humidity_2m,precipitation,"
+            "hourly": ("temperature_2m,relative_humidity_2m,rain,snowfall,"
                        "cloud_cover,weather_code,is_day"),
             "current": ("temperature_2m,relative_humidity_2m,wind_speed_10m,"
                         "wind_gusts_10m,wind_direction_10m,weather_code,is_day"),
@@ -95,7 +95,8 @@ class OpenMeteoProvider:
             HourlyPoint(
                 timestamp=times[i],
                 temp_f=float(h["temperature_2m"][i]),
-                precip_mm=float(h["precipitation"][i]),
+                precip_mm=float(h["rain"][i]),
+                snow_cm=float(h["snowfall"][i]),
                 cloud_pct=int(h["cloud_cover"][i]),
                 weather_code=int(h["weather_code"][i]),
                 is_day=bool(h["is_day"][i]),

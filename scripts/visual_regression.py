@@ -83,6 +83,7 @@ def _hourly(
     humidity: int = 50,
     precip_window: tuple[int, int] | None = None,    # (start_hour_idx, end_hour_idx)
     precip_intensity: float = 0.0,
+    precip_kind: str = "rain",       # "rain" -> precip_mm, "snow" -> snow_cm
     code_during_precip: int | None = None,
 ) -> list[HourlyPoint]:
     """Generate hourly forecast points with a diurnal temp curve and optional
@@ -93,19 +94,23 @@ def _hourly(
         is_day = sunrise <= _wall(ts, sunrise) < sunset
         # Sinusoidal temp around base_temp, peaking ~3-4pm.
         hour_frac = (ts.hour + ts.minute / 60.0) / 24.0
-        # Center peak at 15:00 local
         phase = (hour_frac - (15 / 24.0)) * 2 * 3.14159
         temp = base_temp + diurnal_swing / 2 * _cos(phase)
-        precip = base_precip
+        rain = base_precip
+        snow = 0.0
         code = weather_code
         if precip_window is not None and precip_window[0] <= i < precip_window[1]:
-            precip += precip_intensity
+            if precip_kind == "snow":
+                snow = precip_intensity
+            else:
+                rain += precip_intensity
             if code_during_precip is not None:
                 code = code_during_precip
         out.append(HourlyPoint(
             timestamp=ts,
             temp_f=temp,
-            precip_mm=precip,
+            precip_mm=rain,
+            snow_cm=snow,
             cloud_pct=base_cloud,
             weather_code=code,
             is_day=is_day,
@@ -293,20 +298,21 @@ def scenarios() -> list[Scenario]:
         sunset=ss,
     ))
 
-    # 10. Cold and snowy
-    now = today.replace(hour=14, minute=0)
-    sr, ss = _sun(today, 7.0, 17.0)  # winter sun
+    # 10. Cold and snowy — set in mid-February to engage winter feel words.
+    now = today.replace(month=2, day=15, hour=14, minute=0)
+    sr, ss = _sun(now.replace(hour=12), 7.0, 17.0)
     out.append(Scenario(
         slug="cold-light-snow",
-        title="Cold with light snow",
-        description="Winter scene. Light snow throughout the visible window.",
+        title="Cold with light snow (Feb)",
+        description="Winter scene. Light snow throughout, ~25°F. Season-aware feel.",
         now=now,
         hourly=_hourly(now, 18, sunrise=sr, sunset=ss,
-                       base_temp=28, diurnal_swing=8, base_cloud=85,
+                       base_temp=25, diurnal_swing=8, base_cloud=85,
                        weather_code=71, humidity=70,
-                       precip_window=(0, 18), precip_intensity=0.2,
+                       precip_window=(0, 18), precip_intensity=0.3,
+                       precip_kind="snow",
                        code_during_precip=71),
-        current=_current(26, humidity=72, code=71, is_day=True),
+        current=_current(23, humidity=72, code=71, is_day=True),
         sunrise=sr,
         sunset=ss,
     ))
@@ -418,49 +424,51 @@ def scenarios() -> list[Scenario]:
 
     # === Structural edge cases ==================================================
 
-    # 16. Window with only one transition (sunset visible, sunrise not)
+    # 16. Late afternoon — sunset early in the chart, then long night,
+    # then sunrise just before the end. Tests both transitions present.
     now = today.replace(hour=17, minute=0)
     sr, ss = _sun(today, 5.5, 20.1)
     out.append(Scenario(
-        slug="sunset-only",
-        title="Sunset only in window",
-        description="Window starts in day, ends in night. Single transition (sunset).",
+        slug="late-afternoon",
+        title="Late afternoon (5 PM)",
+        description="Window covers sunset, full night, then early morning. Tests both sun markers.",
         now=now,
-        hourly=_hourly(now, 12, sunrise=sr, sunset=ss,    # shorter window
+        hourly=_hourly(now, 18, sunrise=sr, sunset=ss,
                        base_temp=72, diurnal_swing=14, base_cloud=30),
         current=_current(72, code=1, is_day=True),
         sunrise=sr,
         sunset=ss,
     ))
 
-    # 17. Window with no transitions (all night)
-    now = today.replace(hour=23, minute=0)
-    sr, ss = _sun(today, 5.5, 20.1)
-    # Custom window: 8 hours all in the night
+    # 17. Winter long night — start late evening, sun stays down until ~7am
+    now = today.replace(month=12, day=15, hour=21, minute=0)
+    winter_day = now.replace(hour=12)
+    sr, ss = _sun(winter_day, 7.3, 16.4)   # winter short days
     out.append(Scenario(
-        slug="all-night",
-        title="All-night window",
-        description="Short window entirely within the night region. No sun markers.",
+        slug="long-winter-night",
+        title="Long winter night (9 PM, Dec)",
+        description="Late evening into winter morning. Sunrise around hour 10. Cold all night.",
         now=now,
-        hourly=_hourly(now, 6, sunrise=sr, sunset=ss,
-                       base_temp=58, diurnal_swing=4, base_cloud=15),
-        current=_current(60, code=0, is_day=False),
+        hourly=_hourly(now, 18, sunrise=sr, sunset=ss,
+                       base_temp=18, diurnal_swing=12, base_cloud=40),
+        current=_current(20, code=2, is_day=False),
         sunrise=sr,
         sunset=ss,
     ))
 
-    # 18. Long heavy snow into clearing
-    now = today.replace(hour=8, minute=0)
-    sr, ss = _sun(today, 7.0, 17.0)
+    # 18. Long heavy snow into clearing — winter
+    now = today.replace(month=12, day=15, hour=8, minute=0)
+    sr, ss = _sun(now.replace(hour=12), 7.0, 17.0)
     h = _hourly(now, 18, sunrise=sr, sunset=ss,
                 base_temp=24, diurnal_swing=10, base_cloud=90,
                 weather_code=75, humidity=75,
                 precip_window=(0, 12), precip_intensity=2.5,
+                precip_kind="snow",
                 code_during_precip=75)
     for i in range(len(h)):
         if i >= 12:
             h[i] = HourlyPoint(h[i].timestamp, h[i].temp_f, 0.0,
-                              30, 1, h[i].is_day, 55)
+                              30, 1, h[i].is_day, 55, 0.0)
     out.append(Scenario(
         slug="heavy-snow-then-sun",
         title="Heavy snow then clearing",
