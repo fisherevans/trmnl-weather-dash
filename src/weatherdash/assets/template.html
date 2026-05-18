@@ -66,15 +66,14 @@
        so the gutters around the cards read as roughly even on all sides. */
     .header {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      gap: 28px;
       padding: 13px 12px;
       font-family: 'Playfair Display', 'Times New Roman', serif;
       font-feature-settings: "tnum" 1, "lnum" 1;
       font-variant-numeric: lining-nums tabular-nums;
-      white-space: nowrap;
-      position: relative;          /* anchor for .time-approx */
     }
+    .header .meta { flex-shrink: 0; }
     .header .meta {
       letter-spacing: 0.005em;
       display: flex;
@@ -85,35 +84,45 @@
     }
     .header .meta .dow  { font-size: 64px; font-weight: 900; }
     .header .meta .date { font-size: 56px; font-weight: 600; }
-    .header .time {
-      font-size: 180px;
-      font-weight: 900;
-      letter-spacing: -0.02em;
-      line-height: 1;
+    /* Forecast prose replaces the old big-time display. TRMNL devices
+       refresh on a 5+ minute cadence so an exact clock was almost always
+       slightly stale; trading it for a one-sentence summary of the
+       coming periods (TODAY / TONIGHT / TOMORROW) gives a more useful
+       at-a-glance read. Each chunk is its own column inline with the
+       date stack, separated by thin vertical dividers. */
+    .header .sep {
+      width: 2px;
+      height: 100px;
+      background: rgba(0, 0, 0, 0.18);
+      flex-shrink: 0;
+      align-self: center;
     }
-    /* "approximate" caption — anchored to the bottom-right of the header
-       with absolute positioning, so it doesn't contribute to the
-       header's natural height (avoids pushing the widget block down).
-       Same italic-Inter-low-opacity treatment as the bottom-right
-       "Updated …" stamp, signaling "metadata about a number". The Playfair
-       digits have no descenders, so this can sit close to the time's
-       baseline without colliding visually. */
-    .header .time-approx {
-      position: absolute;
-      /* Visually centered in the gap between the time's baseline and
-         the widget block below. Negative `bottom` lets the text extend
-         past the header's natural bottom into the body grid's gap. The
-         text is all lowercase so the x-height sits below cap height —
-         nudged up a few px to optically center rather than geometrically. */
-      bottom: -8px;
-      right: 12px;
+    .header .chunk {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 8px;
+      flex: 1;
+      min-width: 0;     /* allow text to truncate rather than overflow */
+    }
+    .header .chunk-label {
       font-family: 'Inter', sans-serif;
-      font-style: italic;
-      font-size: 28px;
-      font-weight: 500;
-      letter-spacing: 0.04em;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
       opacity: 0.55;
       line-height: 1;
+    }
+    .header .chunk-text {
+      font-family: 'Playfair Display', 'Times New Roman', serif;
+      font-size: 48px;
+      font-weight: 500;
+      letter-spacing: -0.005em;
+      line-height: 1;
+      font-feature-settings: "tnum" 1, "lnum" 1;
+      font-variant-numeric: lining-nums tabular-nums;
+      white-space: normal;
     }
 
     /* Body fills the page grid's 1fr row, so the cards extend to exactly the
@@ -367,17 +376,22 @@
        on the cloud side, the 0→110 scale still leaves a small gutter
        below 100% bars. */
 
-    /* In-row condition + stat labels. Anchored to the corner opposite
-       from where the bars grow, so they sit in the row's "buffer" space:
+    /* Per-region condition label. One per visible day-or-night block in
+       each row, centered horizontally within its region's x-span. Sits
+       in the row's "buffer" space opposite from where the bars grow:
          - precip row: top edge (bars grow up from the bottom)
          - cloud row:  bottom edge (bars grow down from the top)
-       Left corner = condition string (.row-title), right corner = stat
-       value (.row-meta). Halo via text-shadow keeps them readable
-       across markers, threshold pill labels, and the bg pattern. */
-    .row-corner {
+       Halo via text-shadow keeps it readable across markers, threshold
+       pill labels, and the bg pattern. Width is set inline per region;
+       internally flex-centered so the text is centered in the region. */
+    .region-label {
       position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
       font-weight: 800;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.02em;
       color: var(--ink);
       z-index: 5;
       pointer-events: none;
@@ -388,12 +402,8 @@
          0  2px 0 var(--panel),  0 -2px 0 var(--panel),
          2px  0  0 var(--panel), -2px  0  0 var(--panel);
     }
-    .row-title { font-size: 26px; }
-    .row-meta  { font-size: 26px; letter-spacing: -0.01em; }
-    .chart-row.precip-bars .row-title { top: 10px; left: 14px; }
-    .chart-row.precip-bars .row-meta  { top: 10px; right: 14px; }
-    .chart-row.cloud-bars  .row-title { bottom: 10px; left: 14px; }
-    .chart-row.cloud-bars  .row-meta  { bottom: 10px; right: 14px; }
+    .chart-row.precip-bars .region-label { top: 10px; }
+    .chart-row.cloud-bars  .region-label { bottom: 10px; }
 
     /* Per-row night shade. Sits behind bars (z-index 1) but above the row's day
        pattern. Inherits --row-bg-night (data: URL of the night-palette SVG)
@@ -582,8 +592,13 @@
       <span class="date">{{ _date_parts[1] }}</span>
       {%- endif %}
     </div>
-    <div class="time">{{ time }}</div>
-    <div class="time-approx">approximate</div>
+    {%- for c in forecast_chunks %}
+    <div class="sep"></div>
+    <div class="chunk">
+      <div class="chunk-label">{{ c.label }}</div>
+      <div class="chunk-text">{{ c.text }}</div>
+    </div>
+    {%- endfor %}
   </header>
 
   <main class="body">
@@ -653,40 +668,27 @@
     </div>
 
     <!-- RIGHT COLUMN: single shared chart card -->
-    {#- Snap sunset/sunrise markers to the column centre of the hour they fall in,
-       rather than the precise fractional time. Otherwise the marker pill lands
-       between two columns and reads as misaligned with the bars. -#}
-    {%- set sunset_at  = ((sun.sunset.hour_index  | int) + 0.5) / n_hours -%}
-    {%- set sunrise_at = ((sun.sunrise.hour_index | int) + 0.5) / n_hours -%}
     <div>
       <section class="card chart-card" style="height: 100%;">
         <div class="card-title">PRECIPITATION</div>
 
         <div class="card-body" style="--cols: {{ n_hours }};">
-          <!-- Sunset & sunrise markers — only when inside the visible window. -->
-          {%- if 0.0 <= sunset_at <= 1.0 %}
-          <div class="marker" style="--at: {{ '%.4f'|format(sunset_at) }};">
+          <!-- Sun-event markers — anchored to the day/night background
+               transition rather than the precise hour-axis position. The
+               wall-clock time in the marker pill remains the actual
+               event time; only the visual position is snapped. -->
+          {%- for m in sun_markers %}
+          <div class="marker" style="--at: {{ '%.4f'|format(m.at) }};">
             <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
               <circle cx="16" cy="18" r="6"/>
               <line x1="3" y1="26" x2="29" y2="26"/>
-              <path d="M13 21l3 3 3-3" fill="none"/>
+              {%- if m.label == "SUNSET" %}<path d="M13 21l3 3 3-3" fill="none"/>
+              {%- else %}<path d="M13 15l3-3 3 3" fill="none"/>{%- endif %}
             </svg>
-            <div class="name">SUNSET</div>
-            <div class="when">{{ sun.sunset.time }}</div>
+            <div class="name">{{ m.label }}</div>
+            <div class="when">{{ m.time }}</div>
           </div>
-          {%- endif %}
-
-          {%- if 0.0 <= sunrise_at <= 1.0 %}
-          <div class="marker" style="--at: {{ '%.4f'|format(sunrise_at) }};">
-            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <circle cx="16" cy="18" r="6"/>
-              <line x1="3" y1="26" x2="29" y2="26"/>
-              <path d="M13 15l3-3 3 3" fill="none"/>
-            </svg>
-            <div class="name">SUNRISE</div>
-            <div class="when">{{ sun.sunrise.time }}</div>
-          </div>
-          {%- endif %}
+          {%- endfor %}
 
           <!-- row 1: precipitation bars (grow up). One night-shade per night region. -->
           <div class="chart-row precip-bars precip-{{ precip_type }}"
@@ -694,8 +696,12 @@
                       --row-bg-night: url('{{ precip_bg_url_night }}');
                       --row-night-bg-color: {{ precip_bg_color_night }};
                       background-color: {{ precip_bg_color_day }};">
-            <div class="row-corner row-title">{{ precip_description }}</div>
-            <div class="row-corner row-meta">{{ total_accumulation_mm }} mm</div>
+            {%- for r in regions if r.precip_label %}
+            <div class="region-label" style="left: calc(100% * {{ '%.4f'|format(r.start_at) }});
+                                              width: calc(100% * {{ '%.4f'|format(r.end_at - r.start_at) }});">
+              {{ r.precip_label }}
+            </div>
+            {%- endfor %}
             {%- for r in night_regions %}
             {%- set ns_w = r.end_at - r.start_at %}
             <div class="night-shade"
@@ -745,8 +751,12 @@
                       --row-bg-night: url('{{ cloud_bg_url_night }}');
                       --row-night-bg-color: {{ cloud_bg_color_night }};
                       background-color: {{ cloud_bg_color_day }};">
-            <div class="row-corner row-title">{{ cloud_description }}</div>
-            <div class="row-corner row-meta">{{ avg_cloud_pct }}%</div>
+            {%- for r in regions if r.cloud_label %}
+            <div class="region-label" style="left: calc(100% * {{ '%.4f'|format(r.start_at) }});
+                                              width: calc(100% * {{ '%.4f'|format(r.end_at - r.start_at) }});">
+              {{ r.cloud_label }}
+            </div>
+            {%- endfor %}
             {%- for r in night_regions %}
             {%- set ns_w = r.end_at - r.start_at %}
             <div class="night-shade"

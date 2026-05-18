@@ -62,7 +62,10 @@ def render_html(data: dict) -> str:
             "cloud_h_pct": float(h["cloud_pct"]) / cloud_scale_max * 100.0,
             "precip_label": format_precip(h["precip_mm"]),
         })
-    regions = compute_regions(hourly, n_hours)
+    # Honor pre-computed regions (carries the per-region labels) when the
+    # aggregation layer supplied them; otherwise recompute for the offline
+    # `weatherdash render --data data.json` path.
+    regions = data.get("regions") or compute_regions(hourly, n_hours)
     # `updated_at` is the render-time stamp (not part of the data file) so a
     # stale image is visually obvious on the panel. %-I drops the leading
     # zero on the hour to match the header's "10:03 AM" style.
@@ -132,24 +135,9 @@ def render_html(data: dict) -> str:
     return env.get_template("template.html").render(**ctx)
 
 
-def compute_regions(hourly: list, n_hours: int) -> list:
-    """Group contiguous hours by is_night into regions covering the chart width."""
-    if not hourly:
-        return []
-    regions = []
-    cur_start = 0
-    cur_night = hourly[0]["is_night"]
-    for i, h in enumerate(hourly):
-        if h["is_night"] != cur_night:
-            regions.append({"start": cur_start, "end": i, "is_night": cur_night})
-            cur_start = i
-            cur_night = h["is_night"]
-    regions.append({"start": cur_start, "end": len(hourly), "is_night": cur_night})
-    for r in regions:
-        r["start_at"] = r["start"] / n_hours
-        r["end_at"]   = r["end"]   / n_hours
-        r["width_at"] = r["end_at"] - r["start_at"]
-    return regions
+# compute_regions moved to aggregate.py — re-exported here for any
+# external caller that still imports from this module.
+from .aggregate import compute_regions  # noqa: E402,F401
 
 
 def format_precip(mm: float) -> str:

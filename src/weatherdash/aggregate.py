@@ -154,6 +154,51 @@ def build_context(
     total_precip_mm = sum(h.precip_mm for h in weather.hourly)
     avg_cloud_pct   = round(sum(h.cloud_pct for h in weather.hourly) / n_hours)
 
+    # ── group hourly into day/night regions for the chart ─────────────────
+    enriched_for_regions = [
+        {"is_night": not h.is_day} for h in weather.hourly
+    ]
+    regions = compute_regions(enriched_for_regions, n_hours)
+
+    # ── per-region labels (centered inside each visible day/night block) ──
+    # Each region is a contiguous run of same-is_day hours. Width < 4 hrs
+    # gets a None label — too cramped to render legibly without clipping
+    # at the card edge or wrapping a two-word label like "Partly Cloudy".
+    for r in regions:
+        pts = weather.hourly[r["start"]:r["end"]]
+        if (r["end"] - r["start"]) < 4:
+            r["precip_label"] = None
+            r["cloud_label"] = None
+        else:
+            r["precip_label"] = _region_precip_label(pts, precip_type)
+            r["cloud_label"]  = _region_cloud_label(pts)
+
+    # ── sun-event markers at the day/night background transition rather
+    # than the precise hour-axis position. Markers land on the obvious
+    # tonal break in the chart instead of slightly to one side of it,
+    # which reads as askew. Clamped 4-96% so a transition right at the
+    # chart edge doesn't get clipped. The wall-clock time in the marker
+    # pill stays the real sunrise/sunset time.
+    sun_markers = []
+    for i in range(len(regions) - 1):
+        a, b = regions[i], regions[i + 1]
+        at = max(0.04, min(0.96, a["end_at"]))
+        if a["is_night"] and not b["is_night"]:
+            sun_markers.append({
+                "label": "SUNRISE",
+                "at":    at,
+                "time":  _format_clock(weather.sun.sunrise),
+            })
+        elif (not a["is_night"]) and b["is_night"]:
+            sun_markers.append({
+                "label": "SUNSET",
+                "at":    at,
+                "time":  _format_clock(weather.sun.sunset),
+            })
+
+    # ── forecast prose chunks (TODAY/TONIGHT/TOMORROW summaries) ──────────
+    forecast_chunks = _forecast_chunks(weather.hourly, precip_type)
+
     # ── density-shifted background SVGs ───────────────────────────────────
     # Cloud-row darkness scales with avg cloud %, precip-row scales with
     # total mm. SVG fills get swapped at render time and inlined as
@@ -238,6 +283,10 @@ def build_context(
         "precip_bg_color_night": precip_bg_color_night,
         "cloud_empty_text":      cloud_empty_text,
         "precip_empty_text":     precip_empty_text,
+        "forecast_chunks":       forecast_chunks,
+        "sun_markers":           sun_markers,
+        "regions":               regions,
+        "night_regions":         [r for r in regions if r["is_night"]],
         "hourly":                hourly,
     }
 
@@ -285,6 +334,29 @@ def _format_clock(dt: datetime) -> str:
     return dt.strftime("%-I:%M %p")
 
 
+def compute_regions(hourly: list, n_hours: int) -> list:
+    """Group contiguous hours by is_night into regions covering the chart width.
+    Operates on the enriched-hourly dicts produced by `build_context` /
+    render-time enrichment (each item has a `is_night` bool).
+    """
+    if not hourly:
+        return []
+    regions = []
+    cur_start = 0
+    cur_night = hourly[0]["is_night"]
+    for i, h in enumerate(hourly):
+        if h["is_night"] != cur_night:
+            regions.append({"start": cur_start, "end": i, "is_night": cur_night})
+            cur_start = i
+            cur_night = h["is_night"]
+    regions.append({"start": cur_start, "end": len(hourly), "is_night": cur_night})
+    for r in regions:
+        r["start_at"] = r["start"] / n_hours
+        r["end_at"]   = r["end"]   / n_hours
+        r["width_at"] = r["end_at"] - r["start_at"]
+    return regions
+
+
 def _round_to_minutes(dt: datetime, minutes: int) -> datetime:
     """Round `dt` to the nearest multiple of `minutes`. Used for the
     header time display: TRMNL devices poll the dashboard every ~5 min
@@ -326,3 +398,132 @@ def _precip_description(total_mm: float, precip_type: str) -> str:
     if total_mm < 15.0:
         return f"Moderate {label}"
     return f"Heavy {label}"
+
+
+def _region_precip_label(points, precip_type: str) -> str:
+    """Short label centered inside a chart region on the precip row."""
+    total = sum(p.precip_mm for p in points)
+    return _precip_description(total, precip_type)
+
+
+def _region_cloud_label(points) -> str:
+    """Short label centered inside a chart region on the cloud row."""
+    avg = sum(p.cloud_pct for p in points) / len(points)
+    return _cloud_description(int(round(avg)))
+
+
+def _forecast_chunks(hourly, precip_type: str) -> list[dict]:
+    """Group `hourly` into 2 contiguous day-or-night periods and produce
+    a short prose forecast for each.
+
+    Typical output:
+      - currently daytime:  [TODAY summary, TONIGHT summary]
+      - currently nighttime: [TONIGHT summary, TOMORROW summary]
+
+    Chunks shorter than ~3 hours are skipped — not enough data to
+    summarize meaningfully.
+    """
+    if not hourly:
+        return []
+
+    # Walk hourly and group contiguous same-is_day points.
+    groups: list[list] = []
+    current: list = [hourly[0]]
+    for p in hourly[1:]:
+        if p.is_day == current[0].is_day:
+            current.append(p)
+        else:
+            groups.append(current)
+            current = [p]
+    groups.append(current)
+
+    # Trim short tail chunks (typical 18h window starting in day might
+    # produce [today, tonight, ~2h of tomorrow] — chop the tail).
+    groups = [g for g in groups if len(g) >= 3]
+    if not groups:
+        return []
+
+    chunks = []
+    for i, g in enumerate(groups[:2]):
+        is_day = g[0].is_day
+        if i == 0:
+            label = "TODAY" if is_day else "TONIGHT"
+        else:
+            label = "TOMORROW" if is_day else "TONIGHT"
+        chunks.append({
+            "label": label,
+            "text":  _summarize(g, precip_type, is_day),
+        })
+    return chunks
+
+
+def _summarize(points, precip_type: str, is_day: bool) -> str:
+    """Short natural-prose summary, e.g. 'warm and sunny',
+    'muggy with scattered thunderstorms', 'cold and some light snow'.
+
+    Combines a temperature/humidity feel word with either a sky
+    descriptor (when no precip) or a precip phrase (when there is)."""
+    temps = [p.temp_f for p in points]
+    humidities = [p.humidity_pct for p in points if p.humidity_pct is not None]
+    avg_cloud = sum(p.cloud_pct for p in points) / len(points)
+    total_precip = sum(p.precip_mm for p in points)
+
+    # Temperature feel — use the day's high or the night's low as the
+    # reference, since that's the peak felt-temperature for the period.
+    ref_temp = max(temps) if is_day else min(temps)
+    if ref_temp < 32:
+        feel = "freezing"
+    elif ref_temp < 45:
+        feel = "cold"
+    elif ref_temp < 60:
+        feel = "cool"
+    elif ref_temp < 75:
+        feel = "comfortable"
+    elif ref_temp < 85:
+        feel = "warm"
+    elif ref_temp < 95:
+        feel = "hot"
+    else:
+        feel = "very hot"
+
+    # Override with humidity-driven feel when relevant.
+    if humidities:
+        avg_humidity = sum(humidities) / len(humidities)
+        if avg_humidity >= 75 and ref_temp >= 68:
+            feel = "muggy"
+        elif avg_humidity >= 80 and ref_temp < 50:
+            feel = "damp and cold"
+
+    # Sky descriptor for no-precip case.
+    if avg_cloud < 20:
+        sky = "sunny" if is_day else "clear"
+    elif avg_cloud < 45:
+        sky = "partly cloudy"
+    elif avg_cloud < 75:
+        sky = "mostly cloudy"
+    else:
+        sky = "overcast"
+
+    # Precip phrase when there's notable precip.
+    precip_phrase = None
+    if total_precip >= 0.5:
+        if precip_type == "snow":
+            if total_precip < 3:
+                precip_phrase = "some light snow"
+            elif total_precip < 10:
+                precip_phrase = "snow"
+            else:
+                precip_phrase = "heavy snow"
+        else:
+            if total_precip < 3:
+                precip_phrase = "some showers"
+            elif total_precip < 10:
+                precip_phrase = "showers"
+            elif total_precip < 20:
+                precip_phrase = "heavy rain"
+            else:
+                precip_phrase = "thunderstorms"
+
+    if precip_phrase:
+        return f"{feel} with {precip_phrase}"
+    return f"{feel} and {sky}"
