@@ -524,11 +524,17 @@ def _region_precip_label(points, precip_type: str) -> str:
         return ""
     avg_prob = sum(p.precip_prob_pct for p in points) / len(points)
     label = "Snow" if precip_type == "snow" else "Rain"
-    if avg_prob < 25:
+    # Thresholds: NWS commonly reports 5-12% PoP even on "clear" days
+    # (baseline forecaster uncertainty), so the dry floor sits at 15.
+    # Above that, treat 15-40 as Chance and 40-70 as Likely so the
+    # label tracks the chart's per-hour threshold lines (30/60/85) at
+    # roughly half the value — appropriate because the region label
+    # averages over the whole window and avg is typically below max.
+    if avg_prob < 15:
         return f"No {label}"
-    if avg_prob < 50:
+    if avg_prob < 40:
         return f"Chance of {label}"
-    if avg_prob < 80:
+    if avg_prob < 70:
         return f"{label} Likely"
     return label
 
