@@ -601,18 +601,20 @@
       text-align: center;
       line-height: 1;
     }
-    /* Hour labels: lightweight, uppercase, like the humidity tag. */
+    /* Hour labels are the primary at-a-glance signal on the axis —
+       bold + uppercased so you can scan times quickly. */
     .time-axis .axis-cell.axis-hour {
-      font-size: 18px;
-      font-weight: 600;
-      letter-spacing: 0.12em;
-      opacity: 0.7;
-    }
-    /* Temperature labels: bolder so they read as the dominant number. */
-    .time-axis .axis-cell.axis-temp {
       font-size: 24px;
       font-weight: 800;
+      letter-spacing: 0.06em;
+    }
+    /* Temperature labels are the secondary signal — present but
+       less dominant so the axis doesn't compete with the bars. */
+    .time-axis .axis-cell.axis-temp {
+      font-size: 18px;
+      font-weight: 600;
       letter-spacing: -0.01em;
+      opacity: 0.7;
     }
 
     /* Markers — absolutely positioned, anchored by --at fraction of card-body width */
