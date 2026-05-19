@@ -132,10 +132,13 @@
       grid-template-columns: 460px 1fr;
       gap: 24px;
     }
-    /* OUTSIDE gets the bulk of the left column; TEMP FORECAST takes more
-       room now that the values are larger; INSIDE shrinks to its content
-       at the bottom. */
-    .col-left  { display: grid; grid-template-rows: 1fr 0.8fr auto; gap: 24px; }
+    /* Left column heights are tuned so OUTSIDE_bottom + gap ≈ hour-bar
+       top in the chart card, putting TEMP FORECAST's title visually
+       aligned with the time-axis. OUTSIDE gets a slight edge over
+       TEMP FORECAST (1.15fr vs 1fr) to offset the 16px row gap that
+       the chart card doesn't have between title + chart-row. INSIDE
+       autosizes to its compact content at the bottom. */
+    .col-left  { display: grid; grid-template-rows: 1.15fr 1fr auto; gap: 16px; }
 
     /* Card chrome */
     .card {
@@ -146,27 +149,33 @@
       flex-direction: column;
       overflow: hidden;
     }
+    /* Named title bars (OUTSIDE / TEMPERATURE FORECAST / PRECIPITATION /
+       CLOUD COVER) all share this fixed height + flex centering so the
+       layout reads as a clean grid. Height is decoupled from font-size
+       via flex alignment, which lets the chart titles use bigger text
+       without expanding the bar. INSIDE keeps its compact override
+       below. */
     .card-title {
       background: var(--bar);
       color: var(--ink);
-      padding: 8px 18px;
-      font-size: 28px;
+      height: 56px;
+      padding: 0 18px;
+      font-size: 30px;
       font-weight: 800;
       letter-spacing: 0.05em;
+      white-space: nowrap;
       border-bottom: 3px solid var(--ink);
-      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
     }
     /* Chart card's two titles (PRECIPITATION top, CLOUD COVER bottom)
-       are larger than other card titles so they read as the dominant
-       label of each chart half. Title text is left-aligned with a
-       secondary text slot on the right (precip-total / wind outlook).
-       Both lines share the same baseline. */
+       inherit the 56px height but use bigger primary text + a secondary
+       text slot on the right (precip-total / wind outlook). */
     .chart-card .card-title {
-      font-size: 38px;
-      padding: 8px 22px;
-      text-align: left;
-      display: flex;
-      align-items: baseline;
+      font-size: 32px;
+      padding: 0 22px;
       justify-content: space-between;
       gap: 18px;
     }
@@ -199,7 +208,7 @@
     .outside-body .weather-icon {
       flex: 1;
       min-height: 0;
-      max-height: 240px;          /* hard cap so a tall icon can't push the rest off-screen */
+      max-height: 200px;          /* hard cap so a tall icon can't push the rest off-screen */
       display: flex;
       align-items: center;
       justify-content: center;
@@ -284,8 +293,14 @@
       margin-top: 6px;
     }
 
-    /* Compact INSIDE reading — secondary card, tighter & smaller */
-    .card-compact .card-title { font-size: 22px; padding: 6px 14px; letter-spacing: 0.06em; }
+    /* Compact INSIDE reading — secondary card, intentionally shorter than
+       the named title bars above to keep the visual hierarchy. */
+    .card-compact .card-title {
+      height: 40px;
+      padding: 0 14px;
+      font-size: 22px;
+      letter-spacing: 0.06em;
+    }
     .card-compact .card-body  { padding: 14px 20px; }
     .reading-compact {
       display: flex;
@@ -371,7 +386,7 @@
       overflow: hidden;
     }
     .chart-card .card-body > .chart-row { flex: 1 1 0; min-height: 0; }
-    .chart-card .card-body > .time-axis { flex: 0 0 46px; }
+    .chart-card .card-body > .time-axis { flex: 0 0 56px; }
     .chart-row {
       position: relative;     /* no z-index — keep bar-col stackable above night-shade */
       display: grid;

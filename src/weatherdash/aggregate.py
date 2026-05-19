@@ -524,17 +524,18 @@ def _region_precip_label(points, precip_type: str) -> str:
         return ""
     avg_prob = sum(p.precip_prob_pct for p in points) / len(points)
     label = "Snow" if precip_type == "snow" else "Rain"
-    # Thresholds: NWS commonly reports 5-12% PoP even on "clear" days
-    # (baseline forecaster uncertainty), so the dry floor sits at 15.
-    # Above that, treat 15-40 as Chance and 40-70 as Likely so the
-    # label tracks the chart's per-hour threshold lines (30/60/85) at
-    # roughly half the value — appropriate because the region label
-    # averages over the whole window and avg is typically below max.
-    if avg_prob < 15:
+    # 5-tier ladder driven by region avg PoP. "Slight Chance" kicks in at
+    # 5% so even NWS's baseline-uncertain forecasts (often 5-12% on
+    # clear days) surface a soft signal — the dashboard always tells
+    # you whether there's *any* chance worth knowing about. Only
+    # genuinely-clear forecasts (<5%) read as "No Rain".
+    if avg_prob < 5:
         return f"No {label}"
-    if avg_prob < 40:
+    if avg_prob < 20:
+        return f"Slight Chance of {label}"
+    if avg_prob < 50:
         return f"Chance of {label}"
-    if avg_prob < 70:
+    if avg_prob < 75:
         return f"{label} Likely"
     return label
 
