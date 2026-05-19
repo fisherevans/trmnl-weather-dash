@@ -335,7 +335,11 @@ def build_context(
     # Cloud title (right): wind outlook over the visible window.
     # "Breezy · 12-18 mph S" style. Pulls hourly wind fields; null when
     # no wind data is available (older sources without hourly wind).
-    wind_outlook_text = _wind_outlook_text(weather.hourly)
+    # Scope wind to the FIRST forecast chunk (TODAY or TONIGHT) so the
+    # outlook reads as "what's the wind like for the next stretch" —
+    # complementary to OUTSIDE's current-reading wind, not redundant.
+    first_chunk_hours = _first_chunk_hours(weather.hourly)
+    wind_outlook_text = _wind_outlook_text(first_chunk_hours)
 
     # Header time is rounded to the nearest 5 minutes — the device's
     # Image Display poll floor on TRMNL+, so a precise minute can be up
@@ -605,13 +609,33 @@ def _wind_outlook_text(hourly: list) -> str:
 
 
 def _wind_descriptor(mph: float) -> str:
-    """Sustained-speed -> casual word. Beaufort-loose, US English."""
+    """Sustained-speed -> casual phrase. Beaufort-loose, US English.
+    Each tier includes a 'wind/winds' suffix when the adjective alone
+    would be ambiguous on a chart-title line (e.g. 'Light' without a
+    noun reads as ambiguous; 'Breezy' is self-contained)."""
     if mph < 4:    return "Calm"
-    if mph < 8:    return "Light"
+    if mph < 8:    return "Light wind"
     if mph < 13:   return "Breezy"
     if mph < 19:   return "Windy"
-    if mph < 32:   return "Strong"
-    return "Gale"
+    if mph < 32:   return "Strong winds"
+    return "Gale-force"
+
+
+def _first_chunk_hours(hourly: list) -> list:
+    """Return the contiguous run of hours starting at hourly[0] that
+    share its is_day flag — i.e. the hours that make up the FIRST
+    forecast chunk (TODAY or TONIGHT, whichever is currently active).
+    Used to scope the wind outlook so it summarizes 'the next stretch'
+    rather than the whole visible window."""
+    if not hourly:
+        return []
+    first_is_day = hourly[0].is_day
+    out = []
+    for h in hourly:
+        if h.is_day != first_is_day:
+            break
+        out.append(h)
+    return out
 
 
 def _dominant_direction(dirs: list[str]) -> str:
