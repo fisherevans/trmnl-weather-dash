@@ -611,17 +611,21 @@
     /* Temperature labels are the secondary signal — present but
        less dominant so the axis doesn't compete with the bars. */
     .time-axis .axis-cell.axis-temp {
-      font-size: 18px;
+      font-size: 21px;
       font-weight: 600;
       letter-spacing: -0.01em;
       opacity: 0.7;
     }
 
-    /* Markers — absolutely positioned, anchored by --at fraction of card-body width */
+    /* Markers — absolutely positioned inside the precip chart row.
+       Vertically centered between the row's top edge and the
+       DEFINITE threshold line (at bottom: 76.5% i.e. 23.5% from top),
+       so center y = 11.75% from row top. Horizontal anchor via the
+       --at fraction. */
     .marker {
       position: absolute;
-      top: 16px;
-      transform: translateX(-50%);
+      top: 11.75%;
+      transform: translate(-50%, -50%);
       left: calc(100% * var(--at));
       display: flex;
       flex-direction: column;
@@ -737,29 +741,27 @@
         </div>
 
         <div class="card-body" style="--cols: {{ n_hours }};">
-          <!-- Sun-event markers — anchored to the day/night background
-               transition rather than the precise hour-axis position. The
-               wall-clock time in the marker pill remains the actual
-               event time; only the visual position is snapped. -->
-          {%- for m in sun_markers %}
-          <div class="marker" style="--at: {{ '%.4f'|format(m.at) }};">
-            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <circle cx="16" cy="18" r="6"/>
-              <line x1="3" y1="26" x2="29" y2="26"/>
-              {%- if m.label == "SUNSET" %}<path d="M13 21l3 3 3-3" fill="none"/>
-              {%- else %}<path d="M13 15l3-3 3 3" fill="none"/>{%- endif %}
-            </svg>
-            <div class="name">{{ m.label }}</div>
-            <div class="when">{{ m.time }}</div>
-          </div>
-          {%- endfor %}
-
-          <!-- row 1: precipitation bars (grow up). One night-shade per night region. -->
+          <!-- row 1: precipitation bars (grow up). One night-shade per night region.
+               Sun-event markers live inside this row so their vertical
+               position is a percentage of row height, matching the
+               threshold-line positioning scale. -->
           <div class="chart-row precip-bars precip-{{ precip_type }}"
                style="--row-bg-day: url('{{ precip_bg_url_day }}');
                       --row-bg-night: url('{{ precip_bg_url_night }}');
                       --row-night-bg-color: {{ precip_bg_color_night }};
                       background-color: {{ precip_bg_color_day }};">
+            {%- for m in sun_markers %}
+            <div class="marker" style="--at: {{ '%.4f'|format(m.at) }};">
+              <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <circle cx="16" cy="18" r="6"/>
+                <line x1="3" y1="26" x2="29" y2="26"/>
+                {%- if m.label == "SUNSET" %}<path d="M13 21l3 3 3-3" fill="none"/>
+                {%- else %}<path d="M13 15l3-3 3 3" fill="none"/>{%- endif %}
+              </svg>
+              <div class="name">{{ m.label }}</div>
+              <div class="when">{{ m.time }}</div>
+            </div>
+            {%- endfor %}
             {%- for r in regions if r.precip_label %}
             <div class="region-label" style="left: calc(100% * {{ '%.4f'|format(r.precip_label_left) }});
                                               width: calc(100% * {{ '%.4f'|format(r.precip_label_width) }});">
