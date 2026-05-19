@@ -268,12 +268,15 @@ def build_context(
         day_uv = [h.uv_index for h in weather.hourly
                   if h.is_day and h.uv_index is not None]
         uv_index_max = max(day_uv) if day_uv else None
-    # Append optional metadata (peak UV, AQI, pollen) to the first chunk
-    # when above the noteworthy threshold. The chip-style "· UV 9" reads
-    # as supplementary at-a-glance context without crowding the prose.
+    # Optional health-metric chips appended to the FIRST chunk's small
+    # label line (e.g. "TODAY · HIGH UV · BAD AIR · HIGH POLLEN"). Each
+    # chip uses a stepped descriptor word — number-free so the reader
+    # doesn't have to know what "AQI 128" means at a glance. Chips are
+    # only emitted when the underlying metric is above a noteworthy
+    # tier; quiet days stay as just "TODAY".
     if forecast_chunks:
-        forecast_chunks[0]["text"] = _append_chunk_metadata(
-            forecast_chunks[0]["text"],
+        forecast_chunks[0]["label"] = _append_chunk_chips(
+            forecast_chunks[0]["label"],
             uv=uv_index_max, aqi=aqi, pollen=pollen_index,
         )
     # Header flex hints. Default: both chunks share width proportionally.
@@ -491,32 +494,58 @@ def _round_to_minutes(dt: datetime, minutes: int) -> datetime:
     return dt
 
 
-# Header-chunk metadata thresholds — surface a value only when it's
-# noteworthy enough to act on. Tuned to standard agency scales:
-#   UV >= 6 = high (sunscreen advised)
-#   AQI >= 100 = unhealthy-for-sensitive
-#   Pollen >= 7 = high on the 0-12 allergy index
-UV_CHIP_THRESHOLD = 6
-AQI_CHIP_THRESHOLD = 100
-POLLEN_CHIP_THRESHOLD = 7
+def _uv_chip(uv: int | None) -> str | None:
+    """UV scale (WHO/EPA): 0-2 low, 3-5 moderate, 6-7 high, 8-10 very
+    high, 11+ extreme. Surface from 'high' upward — that's when
+    sunscreen is actually advised."""
+    if uv is None or uv < 6:
+        return None
+    if uv < 8:
+        return "HIGH UV"
+    if uv < 11:
+        return "V.HIGH UV"
+    return "EXTREME UV"
 
 
-def _append_chunk_metadata(text: str, *, uv: int | None = None,
-                           aqi: int | None = None,
-                           pollen: int | None = None) -> str:
-    """Append ' · UV 9 · AQI 128' style chips when the corresponding
-    metric is above threshold. Each chip is short and the dot separator
-    matches the bullet rhythm used elsewhere in the header."""
-    extras: list[str] = []
-    if uv is not None and uv >= UV_CHIP_THRESHOLD:
-        extras.append(f"UV {uv}")
-    if aqi is not None and aqi >= AQI_CHIP_THRESHOLD:
-        extras.append(f"AQI {aqi}")
-    if pollen is not None and pollen >= POLLEN_CHIP_THRESHOLD:
-        extras.append(f"Pollen {pollen}")
-    if not extras:
-        return text
-    return text + " · " + " · ".join(extras)
+def _aqi_chip(aqi: int | None) -> str | None:
+    """US AQI scale: 0-50 good, 51-100 moderate, 101-150 unhealthy
+    for sensitive groups, 151-200 unhealthy, 201-300 very unhealthy,
+    301+ hazardous. Surface from USG upward."""
+    if aqi is None or aqi < 100:
+        return None
+    if aqi < 150:
+        return "POOR AIR"
+    if aqi < 200:
+        return "BAD AIR"
+    if aqi < 300:
+        return "V.BAD AIR"
+    return "HAZARDOUS"
+
+
+def _pollen_chip(p: int | None) -> str | None:
+    """Common 0-12 pollen index: <2.5 low, <4.9 moderate, <7.3 high,
+    <9.7 very high, 9.7+ extreme. Surface from moderate upward —
+    moderate is when allergy sufferers start to feel it."""
+    if p is None or p < 4:
+        return None
+    if p < 7:
+        return "SOME POLLEN"
+    if p < 10:
+        return "HIGH POLLEN"
+    return "HEAVY POLLEN"
+
+
+def _append_chunk_chips(label: str, *, uv: int | None = None,
+                        aqi: int | None = None,
+                        pollen: int | None = None) -> str:
+    """Append ' · HIGH UV · BAD AIR · HEAVY POLLEN' style descriptors
+    to a chunk label. Each chip is a stepped word — no raw numbers —
+    so the reader doesn't have to remember scales (e.g. is AQI 128
+    bad?). Chips render in the small uppercase chunk-label line."""
+    chips = [c for c in (_uv_chip(uv), _aqi_chip(aqi), _pollen_chip(pollen)) if c]
+    if not chips:
+        return label
+    return label + " · " + " · ".join(chips)
 
 
 def _precip_total_text(total_rain_mm: float, total_snow_cm: float,
