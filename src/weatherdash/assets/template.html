@@ -229,7 +229,12 @@
     .outside-body .weather-icon {
       flex: 1;
       min-height: 0;
-      max-height: 200px;          /* hard cap so a tall icon can't push the rest off-screen */
+      max-height: 240px;          /* bigger than the old 200 to absorb most
+                                     of the flex-end slack (which used to dump
+                                     ~120px above the icon), but small enough
+                                     that the OUTSIDE box's min-content still
+                                     fits inside the widget area on a
+                                     worst-case 3-line prose header. */
       display: flex;
       align-items: center;
       justify-content: center;
