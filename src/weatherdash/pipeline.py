@@ -14,7 +14,8 @@ from pathlib import Path
 from .aggregate import build_context
 from .config import Config, ConfigError, as_sensor_list
 from .render import render_to_png
-from .sources.factory import make_weather_source
+from .sources.base import ForecastError
+from .sources.factory import make_forecast_source, make_weather_source
 from .sources.homeassistant import HomeAssistantError, make_ha_client
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,21 @@ def run_once(config: Config, out_path: Path, *, quantize: bool = True) -> Render
     t0 = time.monotonic()
     weather_src = make_weather_source(config.weather, timezone=config.location.timezone)
     weather = weather_src.fetch(config.location.lat, config.location.lon, config.weather.hours)
+    forecast_periods = None
+    forecast_src = make_forecast_source(
+        config.weather,
+        timezone=config.location.timezone,
+        hourly_source=weather_src,
+    )
+    if forecast_src is not None:
+        try:
+            forecast_periods = forecast_src.fetch_periods(
+                config.location.lat, config.location.lon
+            )
+        except ForecastError as e:
+            # Period prose is non-essential — log and fall through to the
+            # _summarize-derived chunks. The chart still renders fully.
+            logger.warning("forecast prose unavailable: %s — falling back to derived summary", e)
     stats.weather_ms = (time.monotonic() - t0) * 1000
 
     # ── Home Assistant (optional / best-effort) ──────────────────────────
@@ -74,7 +90,7 @@ def run_once(config: Config, out_path: Path, *, quantize: bool = True) -> Render
 
     # ── Aggregate ────────────────────────────────────────────────────────
     t0 = time.monotonic()
-    ctx = build_context(config, weather, ha_readings)
+    ctx = build_context(config, weather, ha_readings, forecast_periods=forecast_periods)
     stats.aggregate_ms = (time.monotonic() - t0) * 1000
 
     # ── Render ───────────────────────────────────────────────────────────

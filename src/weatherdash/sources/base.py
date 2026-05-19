@@ -57,9 +57,42 @@ class NormalizedForecast:
     sun: SunInfo
 
 
+@dataclass(frozen=True)
+class ForecastPeriod:
+    """A multi-hour forecast period with human-written prose.
+
+    NWS exposes these natively as 12-hour day/night blocks ("Today",
+    "Tonight", "Tuesday Night", ...). Open-Meteo has no equivalent;
+    aggregate.py derives a stand-in summary from the hourly numerics
+    when no ForecastSource is configured.
+
+    Two roles for `label`:
+      - Day chunks: the provider's own day name ("Today", "Tuesday").
+      - Night chunks: the provider's night name ("Tonight", "Tuesday
+        Night"). Aggregate normalizes these to "TODAY" / "TONIGHT" /
+        "TOMORROW" in the header chip — provider label is kept here
+        as a fallback for callers that want to surface it raw.
+    """
+    label: str
+    start: datetime              # tz-aware, inclusive
+    end: datetime                # tz-aware, exclusive
+    is_day: bool
+    short_forecast: str          # 2-5 words: "Mostly Sunny", "Chance Showers"
+
+
 @runtime_checkable
 class WeatherSource(Protocol):
+    """Hourly numerics + current obs + sun events. Drives the chart."""
     def fetch(self, lat: float, lon: float, hours: int) -> NormalizedForecast: ...
+
+
+@runtime_checkable
+class ForecastSource(Protocol):
+    """Optional source for human-written period prose (NWS-style
+    'shortForecast' strings). When absent, aggregate.py derives an
+    equivalent from the hourly time-series. Implementations: NWS via
+    /gridpoints/{office}/{x},{y}/forecast."""
+    def fetch_periods(self, lat: float, lon: float) -> list[ForecastPeriod]: ...
 
 
 # Helpers shared across providers.

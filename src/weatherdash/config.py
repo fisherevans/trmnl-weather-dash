@@ -38,6 +38,16 @@ class WeatherProvider(str, Enum):
     OPENWEATHERMAP = "openweathermap"
 
 
+class ForecastProvider(str, Enum):
+    """Source for the human-written TODAY/TONIGHT prose chunks.
+
+    NWS exposes a `shortForecast` string per 12-hour period. DERIVE
+    falls back to aggregate._summarize, which composes a feel-word
+    summary from hourly temp/humidity/precip/cloud."""
+    DERIVE = "derive"
+    NWS = "nws"
+
+
 class _Strict(BaseModel):
     # Reject unknown keys so typos surface as errors, not silent drops.
     model_config = ConfigDict(extra="forbid")
@@ -70,6 +80,11 @@ class WeatherConfig(_Strict):
         description="Name of the env var holding the API key, if the provider requires one",
     )
     hours: int = Field(default=24, ge=1, le=168, description="Forecast horizon in hours")
+    forecast_provider: ForecastProvider = Field(
+        default=ForecastProvider.DERIVE,
+        description=("Source for TODAY/TONIGHT prose. 'derive' composes from "
+                     "hourly numerics; 'nws' uses api.weather.gov shortForecast."),
+    )
 
 
 class SensorsConfig(_Strict):

@@ -22,7 +22,7 @@ from zoneinfo import ZoneInfo
 
 from .bg_shading import cloud_bucket, precip_bucket, row_bg_color, shaded_svg_url
 from .config import Config, SensorRef, as_sensor_list
-from .sources.base import NormalizedForecast
+from .sources.base import ForecastPeriod, NormalizedForecast
 from .sources.homeassistant import SensorReading
 
 
@@ -77,6 +77,7 @@ def build_context(
     weather: NormalizedForecast,
     ha: dict[str, SensorReading],
     _now: datetime | None = None,
+    forecast_periods: list[ForecastPeriod] | None = None,
 ) -> dict:
     if not weather.hourly:
         raise ValueError("weather.hourly is empty — provider returned no data")
@@ -222,7 +223,13 @@ def build_context(
             })
 
     # ── forecast prose chunks (TODAY/TONIGHT/TOMORROW summaries) ──────────
-    forecast_chunks = _forecast_chunks(weather.hourly, precip_type)
+    # Prefer provider-supplied period prose (NWS shortForecast) when
+    # available — it's human-written and reflects forecaster judgment.
+    # Fall back to _summarize-derived strings from hourly numerics.
+    if forecast_periods:
+        forecast_chunks = _forecast_chunks_from_periods(forecast_periods, now)
+    else:
+        forecast_chunks = _forecast_chunks(weather.hourly, precip_type)
 
     # ── density-shifted background SVGs ───────────────────────────────────
     # Cloud-row darkness scales with avg cloud %, precip-row scales with
@@ -436,6 +443,32 @@ def _region_cloud_label(points) -> str:
     """Short label centered inside a chart region on the cloud row."""
     avg = sum(p.cloud_pct for p in points) / len(points)
     return _cloud_description(int(round(avg)))
+
+
+def _forecast_chunks_from_periods(periods: list[ForecastPeriod], now: datetime) -> list[dict]:
+    """Map provider-supplied periods to the TODAY/TONIGHT/TOMORROW chunks
+    the template renders.
+
+    NWS emits periods in time order: "Today", "Tonight", "Tuesday",
+    "Tuesday Night", etc. We pick the first two whose `end` is in the
+    future, then label them per their day/night flag + ordering, so a
+    night-time invocation gets [TONIGHT, TOMORROW] rather than awkwardly
+    showing "TODAY" for a chunk that has already ended.
+
+    Strings are lowercased to match _summarize's style (the header
+    template renders the chip label uppercase + body lowercase).
+    """
+    upcoming = [p for p in periods if p.end > now]
+    if not upcoming:
+        return []
+    out = []
+    for i, p in enumerate(upcoming[:2]):
+        if i == 0:
+            label = "TODAY" if p.is_day else "TONIGHT"
+        else:
+            label = "TOMORROW" if p.is_day else "TONIGHT"
+        out.append({"label": label, "text": (p.short_forecast or "").lower()})
+    return out
 
 
 def _forecast_chunks(hourly, precip_type: str) -> list[dict]:
