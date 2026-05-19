@@ -280,7 +280,12 @@ def build_context(
     # when the container's host TZ defaults to UTC.
     return {
         "updated_at": now.strftime("%-I:%M %p"),
-        "date_line": now.strftime("%A, %B %-d, %Y").upper(),
+        # 3-letter day + month abbreviations so the date column has a
+        # predictable width regardless of season — keeps the first
+        # forecast-chunk separator aligned with the chart card's left
+        # edge instead of shifting around with month-name length
+        # (FEBRUARY vs MAY).
+        "date_line": now.strftime("%a, %b %-d, %Y").upper(),
         "time":      _round_to_minutes(now, 5).strftime("%-I:%M %p"),
         "inside": {
             "temp_f":       _round_or_placeholder(in_temp),

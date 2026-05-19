@@ -64,17 +64,23 @@
        than the adjacent caps in "FRIDAY" and "AM". The vertical padding
        gives the header more breathing room, pushing the widget block down
        so the gutters around the cards read as roughly even on all sides. */
+    /* Header gap + meta width are tuned so the first chunk separator
+       lands at x=520 — exactly the chart card's left edge. Math:
+       header content starts at x=36 (body padding, no header padding),
+       meta is exactly 460px (= left col width), gap 24 (= body grid gap),
+       so sep_left = 36 + 460 + 24 = 520. */
     .header {
       display: flex;
       align-items: center;
-      gap: 28px;
-      padding: 13px 12px;
+      gap: 24px;
+      padding: 13px 0;
       font-family: 'Playfair Display', 'Times New Roman', serif;
       font-feature-settings: "tnum" 1, "lnum" 1;
       font-variant-numeric: lining-nums tabular-nums;
     }
-    .header .meta { flex-shrink: 0; }
     .header .meta {
+      width: 460px;
+      flex-shrink: 0;
       letter-spacing: 0.005em;
       display: flex;
       flex-direction: column;
