@@ -320,12 +320,12 @@ def build_context(
     # when the container's host TZ defaults to UTC.
     return {
         "updated_at": now.strftime("%-I:%M %p"),
-        # 3-letter day + month abbreviations so the date column has a
-        # predictable width regardless of season — keeps the first
-        # forecast-chunk separator aligned with the chart card's left
-        # edge instead of shifting around with month-name length
-        # (FEBRUARY vs MAY).
-        "date_line": now.strftime("%a, %b %-d, %Y").upper(),
+        # Full day name (longest is WEDNESDAY, fits in the fixed 460px
+        # meta column) + 3-letter month abbreviation so the column
+        # width stays predictable regardless of season — FEBRUARY would
+        # otherwise blow past the column and shift the first forecast-
+        # chunk separator off its chart-card-edge alignment.
+        "date_line": now.strftime("%A, %b %-d, %Y").upper(),
         "time":      _round_to_minutes(now, 5).strftime("%-I:%M %p"),
         "inside": {
             "temp_f":       _round_or_placeholder(in_temp),
