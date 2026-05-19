@@ -78,6 +78,8 @@ def build_context(
     ha: dict[str, SensorReading],
     _now: datetime | None = None,
     forecast_periods: list[ForecastPeriod] | None = None,
+    past_precip_mm: float = 0.0,
+    past_snow_cm: float = 0.0,
 ) -> dict:
     if not weather.hourly:
         raise ValueError("weather.hourly is empty — provider returned no data")
@@ -306,7 +308,10 @@ def build_context(
     # forecasted amount across the visible window. The chart bars now
     # show probability (not amount), so this is the "how much?" answer
     # the bars no longer carry. Empty when totally dry.
-    precip_total_text = _precip_total_text(total_rain_mm, total_snow_cm, precip_type)
+    precip_total_text = _precip_total_text(
+        total_rain_mm, total_snow_cm, precip_type,
+        past_rain_mm=past_precip_mm, past_snow_cm=past_snow_cm,
+    )
     # Cloud title (right): wind outlook over the visible window.
     # "Breezy · 12-18 mph S" style. Pulls hourly wind fields; null when
     # no wind data is available (older sources without hourly wind).
@@ -471,20 +476,34 @@ def _round_to_minutes(dt: datetime, minutes: int) -> datetime:
 
 
 def _precip_total_text(total_rain_mm: float, total_snow_cm: float,
-                       precip_type: str) -> str:
+                       precip_type: str,
+                       past_rain_mm: float = 0.0,
+                       past_snow_cm: float = 0.0) -> str:
     """Right-side text on the PRECIPITATION title bar.
 
     Shows the forecasted total accumulation across the visible window.
     Units intentionally mismatch (mm for rain, inches for snow) because
     that's what reads naturally in US-context weather reporting: rain
     is small numbers in mm; snow accumulations are commonly described
-    in inches on the news. Empty when nothing is forecasted.
+    in inches on the news.
+
+    When `past_*` is provided (from a rain-gauge sensor or NWS
+    observations), the recently-accumulated total is appended in
+    parentheses: '1.4mm of rain (2.4mm already)'. Empty when nothing
+    is forecasted AND nothing has fallen.
     """
-    if precip_type == "snow" and total_snow_cm >= 0.1:
-        inches = total_snow_cm * 0.393701
-        return f"{inches:.1f} in of snow"
-    if total_rain_mm >= 0.1:
-        return f"{total_rain_mm:.1f}mm of rain"
+    if precip_type == "snow" and (total_snow_cm >= 0.1 or past_snow_cm >= 0.1):
+        inches_future = total_snow_cm * 0.393701
+        text = f"{inches_future:.1f} in of snow"
+        if past_snow_cm >= 0.1:
+            inches_past = past_snow_cm * 0.393701
+            text += f" ({inches_past:.1f} in already)"
+        return text
+    if total_rain_mm >= 0.1 or past_rain_mm >= 0.1:
+        text = f"{total_rain_mm:.1f}mm of rain"
+        if past_rain_mm >= 0.1:
+            text += f" ({past_rain_mm:.1f}mm already)"
+        return text
     return ""
 
 

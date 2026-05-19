@@ -64,6 +64,11 @@ class Scenario:
     sunrise: datetime
     sunset: datetime
     ha: dict = field(default_factory=dict)
+    # Past-window accumulation (mm/cm) — what's already fallen, sensed
+    # from a rain gauge or NWS observations. Surfaces in the
+    # PRECIPITATION title as "(2.4mm already)".
+    past_precip_mm: float = 0.0
+    past_snow_cm: float = 0.0
 
 
 # ── small helpers ────────────────────────────────────────────────────────
@@ -485,6 +490,30 @@ def scenarios() -> list[Scenario]:
         sunset=ss,
     ))
 
+    # 19. Mid-storm — already-fallen rain plus more in the forecast.
+    # Exercises the "(X mm already)" suffix on the precip-row title.
+    now = today.replace(month=10, day=14, hour=14, minute=0)
+    sr, ss = _sun(now.replace(hour=12), 7.0, 18.3)
+    h = _hourly(now, 18, sunrise=sr, sunset=ss,
+                base_temp=54, diurnal_swing=8, base_cloud=92,
+                weather_code=63, humidity=88,
+                precip_window=(0, 8), precip_intensity=1.8,
+                precip_prob_during=85,
+                code_during_precip=63)
+    out.append(Scenario(
+        slug="ongoing-rain-with-prior",
+        title="Mid-storm: prior accumulation + more coming",
+        description=("Rendered mid-afternoon after a morning of rain. The "
+                     "precip title shows forecast total plus the already-fallen "
+                     "amount in parentheses."),
+        now=now,
+        hourly=h,
+        current=_current(54, humidity=92, code=63, is_day=True),
+        sunrise=sr,
+        sunset=ss,
+        past_precip_mm=11.6,
+    ))
+
     return out
 
 
@@ -598,7 +627,11 @@ def main() -> None:
             current=s.current,
             sun=SunInfo(sunrise=s.sunrise, sunset=s.sunset),
         )
-        ctx = build_context(cfg, wx, ha=s.ha, _now=s.now)
+        ctx = build_context(
+            cfg, wx, ha=s.ha, _now=s.now,
+            past_precip_mm=s.past_precip_mm,
+            past_snow_cm=s.past_snow_cm,
+        )
         out_path = OUT / f"{i:02d}-{s.slug}.png"
         render_to_png(ctx, out_path, quantize=True)
         # Cache-buster on the image URL so phone browsers don't serve
