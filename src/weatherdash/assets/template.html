@@ -450,7 +450,11 @@
          0  2px 0 var(--panel),  0 -2px 0 var(--panel),
          2px  0  0 var(--panel), -2px  0  0 var(--panel);
     }
-    .chart-row.precip-bars .region-label { top: 10px; }
+    /* Precip-row region label sits below the sun-event markers (which
+       anchor at top:16 with a ~95px pill) so they don't collide when
+       a marker lands inside a region's x-span. Cloud row has no
+       markers; its label stays at the row bottom. */
+    .chart-row.precip-bars .region-label { top: 116px; }
     .chart-row.cloud-bars  .region-label { bottom: 10px; }
 
     /* Per-row night shade. Sits behind bars (z-index 1) but above the row's day

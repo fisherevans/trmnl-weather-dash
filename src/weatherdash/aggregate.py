@@ -563,8 +563,19 @@ def _forecast_chunks_from_periods(periods: list[ForecastPeriod], now: datetime) 
 
     Strings are lowercased to match _summarize's style (the header
     template renders the chip label uppercase + body lowercase).
+
+    Stale-tail handling: at, say, 5:48 AM the "Tonight" period from
+    NWS technically ends at 6 AM — only 12 minutes left. Labeling
+    that as TONIGHT in the header is misleading; the user is already
+    in "today" mode mentally. Skip any current chunk whose remaining
+    window is under 90 minutes so we roll to the next pair early.
     """
-    upcoming = [p for p in periods if p.end > now]
+    stale_after = timedelta(minutes=90)
+    upcoming = [p for p in periods if (p.end - now) > stale_after]
+    if not upcoming:
+        # Fall back to the strict filter so we always have something to
+        # render (rare: provider returned only near-expired periods).
+        upcoming = [p for p in periods if p.end > now]
     if not upcoming:
         return []
     out = []
