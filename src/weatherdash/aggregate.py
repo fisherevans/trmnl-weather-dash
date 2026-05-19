@@ -224,6 +224,32 @@ def build_context(
                 "time":  _format_clock(weather.sun.sunset),
             })
 
+    # ── precip-row region label layout (sun-marker avoidance) ─────────────
+    # Sun-event marker pills sit at the top of the precip row at region
+    # boundaries. Half a pill extends into each adjacent region, so the
+    # region label's horizontal slot shrinks accordingly. If the slot
+    # becomes too narrow to print anything useful, drop the label.
+    # Cloud-row labels are unaffected (no markers on that row).
+    marker_half = 0.055     # ~half a marker pill as a fraction of chart width
+    min_label_w = 0.07      # below ~90px, label wraps to gibberish — hide
+    for i, r in enumerate(regions):
+        if r["precip_label"] is None:
+            r["precip_label_left"] = r["start_at"]
+            r["precip_label_width"] = r["end_at"] - r["start_at"]
+            continue
+        label_left = r["start_at"]
+        label_width = r["end_at"] - r["start_at"]
+        # Interior boundary on the left/right = marker overlap from that side.
+        if i > 0:
+            label_left += marker_half
+            label_width -= marker_half
+        if i < len(regions) - 1:
+            label_width -= marker_half
+        if label_width < min_label_w:
+            r["precip_label"] = None
+        r["precip_label_left"] = label_left
+        r["precip_label_width"] = max(label_width, 0)
+
     # ── forecast prose chunks (TODAY/TONIGHT/TOMORROW summaries) ──────────
     # Prefer provider-supplied period prose (NWS shortForecast) when
     # available — it's human-written and reflects forecaster judgment.
