@@ -25,12 +25,16 @@ class ForecastError(Exception):
 class HourlyPoint:
     timestamp: datetime         # tz-aware, in the configured timezone
     temp_f: float
-    precip_mm: float            # rain (mm)
+    precip_mm: float            # rain (mm) — quantitative forecast amount
     cloud_pct: int              # 0..100
     weather_code: int           # WMO code
     is_day: bool
     humidity_pct: int | None = None    # not all providers expose hourly humidity
     snow_cm: float = 0.0        # snow accumulation (cm; ~10x rain mm at equal volume)
+    precip_prob_pct: int = 0    # 0..100 probability of any precip in this hour
+    wind_mph: float = 0.0       # sustained wind speed
+    wind_gust_mph: float = 0.0  # gust speed (== wind_mph when provider lacks gust series)
+    wind_dir: str = ""          # 16-pt cardinal (e.g. 'NW'), empty when unknown
 
 
 @dataclass(frozen=True)

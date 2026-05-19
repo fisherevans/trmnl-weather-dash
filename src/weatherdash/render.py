@@ -17,6 +17,7 @@ from tempfile import NamedTemporaryFile
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from PIL import Image
 
+from .aggregate import SNOW_CODES as _SNOW_CODES
 from .bg_shading import cloud_bucket, precip_bucket, row_bg_color, shaded_svg_url
 
 ASSETS = Path(__file__).parent / "assets"
@@ -24,9 +25,11 @@ WIDTH, HEIGHT = 1872, 1404
 # 4-bit grayscale: 16 levels evenly spaced 0..255.
 GRAY_LEVELS = [round(i * 255 / 15) for i in range(16)]
 
-# Intensity thresholds. Rain values are mm/hour. Cloud values are %.
-RAIN_THRESHOLDS  = [(2.5, "MODERATE"), (7.5, "HEAVY")]
-CLOUD_THRESHOLDS = [(30,  "PARTLY"),   (70,  "OVERCAST")]
+# Threshold lines on the precip + cloud charts. Precip values are
+# probability-of-precip percent (matches the bar height — see below);
+# cloud values are cloud-cover percent.
+PRECIP_THRESHOLDS = [(30, "CHANCE"), (60, "LIKELY"), (85, "DEFINITE")]
+CLOUD_THRESHOLDS  = [(30, "PARTLY"), (70, "OVERCAST")]
 
 
 def render_html(data: dict) -> str:
@@ -36,21 +39,20 @@ def render_html(data: dict) -> str:
     )
     hourly = data["hourly"]
     n_hours = len(hourly)
-    # Y-axis scale: anchor at 10 units by default; bump only if reality
-    # exceeds it. Per-hour "units" is rain_mm + snow_cm — same axis,
-    # since 1 cm snow ≈ 1 mm liquid rain in the chart's loose-pack
-    # convention. The tallest bar maxes at 90% of the bar area so the
-    # row's top edge stays clear of bars.
-    per_hour_units = lambda h: h["precip_mm"] + h.get("snow_cm", 0.0)
-    max_precip = max(10.0, *(per_hour_units(h) for h in hourly))
+    # Precip chart now plots probability-of-precip (PoP). Scale anchors at
+    # 100% so the tallest bar (a "definite" hour) fills ~90% of row height
+    # — leaves space at the top for region labels + threshold-line pills.
+    # The shift from accumulation-as-height to probability-as-height
+    # answers "will I get wet?" at a glance; mm/cm totals move to the
+    # row title strip for the "how much?" answer.
+    precip_scale_max = 100.0
     # Cloud scale: anchored at 110% so a real 100% cloud cover only fills
     # 100/110 ≈ 90.9% of the bar area, leaving a small gutter below the
     # tallest bar.
     cloud_scale_max = 110.0
-    rain_lines = [
-        {"mm": mm, "bar_pct": mm / max_precip * 90.0, "label": label}
-        for mm, label in RAIN_THRESHOLDS
-        if mm < max_precip
+    precip_lines = [
+        {"pct": pct, "bar_pct": pct / precip_scale_max * 90.0, "label": label}
+        for pct, label in PRECIP_THRESHOLDS
     ]
     cloud_lines = [
         {"pct": pct, "bar_pct": pct / cloud_scale_max * 100.0, "label": label}
@@ -58,21 +60,23 @@ def render_html(data: dict) -> str:
     ]
     enriched = []
     for h in hourly:
-        rain_mm = h["precip_mm"]
+        rain_mm = h.get("precip_mm", 0.0)
         snow_cm = h.get("snow_cm", 0.0)
-        total = rain_mm + snow_cm
-        # Outer bar height drives label position; inner segment heights are
-        # expressed as percentages of the OUTER bar so they stack correctly.
-        precip_h_pct = (total / max_precip) * 90.0
-        rain_seg_pct = (rain_mm / total * 100.0) if total > 0 else 0.0
-        snow_seg_pct = 100.0 - rain_seg_pct if total > 0 else 0.0
+        prob_pct = float(h.get("precip_prob_pct", 0))
+        # Bar height = probability * 90% (90 leaves head-room at the top).
+        precip_h_pct = (prob_pct / precip_scale_max) * 90.0
+        # Bar fill type — snow vs rain — is decided per-hour from the
+        # weather code so a mixed-precip day shows the right color per
+        # bar. SNOW_CODES is the canonical snow set used elsewhere.
+        is_snow_hour = h.get("weather_code", 0) in _SNOW_CODES
         enriched.append({
             **h,
             "precip_h_pct": precip_h_pct,
-            "rain_seg_pct": rain_seg_pct,
-            "snow_seg_pct": snow_seg_pct,
+            "precip_is_snow": is_snow_hour,
             "cloud_h_pct": float(h["cloud_pct"]) / cloud_scale_max * 100.0,
-            "precip_label": format_precip_mixed(rain_mm, snow_cm),
+            # Per-bar label is the probability percent; only labeled when
+            # >= 10 so the chart stays uncluttered on dry hours.
+            "precip_label": f"{int(round(prob_pct))}%" if prob_pct >= 10 else "",
         })
     # Honor pre-computed regions (carries the per-region labels) when the
     # aggregation layer supplied them; otherwise recompute for the offline
@@ -127,10 +131,10 @@ def render_html(data: dict) -> str:
         data = {**data, "precip_description": _precip_description(total_mm, precip_type)}
 
     ctx = {**data, "hourly": enriched,
-           "max_precip": max_precip,
+           "precip_scale_max": precip_scale_max,
            "n_hours": n_hours,
            "regions": regions,
-           "rain_lines": rain_lines,
+           "precip_lines": precip_lines,
            "cloud_lines": cloud_lines,
            "updated_at": updated_at,
            "cloud_bg_url_day": cloud_bg_url_day,

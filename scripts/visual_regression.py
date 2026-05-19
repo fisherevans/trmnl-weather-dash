@@ -30,7 +30,7 @@ scenario number.
 from __future__ import annotations
 
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -84,7 +84,12 @@ def _hourly(
     precip_window: tuple[int, int] | None = None,    # (start_hour_idx, end_hour_idx)
     precip_intensity: float = 0.0,
     precip_kind: str = "rain",       # "rain" -> precip_mm, "snow" -> snow_cm
+    precip_prob_during: int = 85,    # probability inside precip_window
+    precip_prob_dry: int = 0,        # probability outside precip_window
     code_during_precip: int | None = None,
+    wind_mph: float = 5.0,
+    wind_gust_mph: float = 8.0,
+    wind_dir: str = "S",
 ) -> list[HourlyPoint]:
     """Generate hourly forecast points with a diurnal temp curve and optional
     precipitation window. Times in `start` should be tz-aware."""
@@ -99,6 +104,7 @@ def _hourly(
         rain = base_precip
         snow = 0.0
         code = weather_code
+        prob = precip_prob_dry
         if precip_window is not None and precip_window[0] <= i < precip_window[1]:
             if precip_kind == "snow":
                 snow = precip_intensity
@@ -106,6 +112,7 @@ def _hourly(
                 rain += precip_intensity
             if code_during_precip is not None:
                 code = code_during_precip
+            prob = precip_prob_during
         out.append(HourlyPoint(
             timestamp=ts,
             temp_f=temp,
@@ -115,6 +122,10 @@ def _hourly(
             weather_code=code,
             is_day=is_day,
             humidity_pct=humidity,
+            precip_prob_pct=prob,
+            wind_mph=wind_mph,
+            wind_gust_mph=wind_gust_mph,
+            wind_dir=wind_dir,
         ))
     return out
 
@@ -346,12 +357,7 @@ def scenarios() -> list[Scenario]:
     # Bump cloud cover during the precip window
     for i in range(len(h)):
         if 4 <= i < 9:
-            h[i] = HourlyPoint(
-                timestamp=h[i].timestamp, temp_f=h[i].temp_f,
-                precip_mm=h[i].precip_mm, cloud_pct=90,
-                weather_code=h[i].weather_code, is_day=h[i].is_day,
-                humidity_pct=78,
-            )
+            h[i] = replace(h[i], cloud_pct=90, humidity_pct=78)
     out.append(Scenario(
         slug="afternoon-thunder",
         title="Afternoon thunderstorms",
@@ -406,11 +412,9 @@ def scenarios() -> list[Scenario]:
     # Heavy cloud during precip, dropping after
     for i in range(len(h)):
         if i < 5:
-            h[i] = HourlyPoint(h[i].timestamp, h[i].temp_f, h[i].precip_mm,
-                              80, h[i].weather_code, h[i].is_day, 75)
+            h[i] = replace(h[i], cloud_pct=80, humidity_pct=75)
         elif i < 8:
-            h[i] = HourlyPoint(h[i].timestamp, h[i].temp_f, h[i].precip_mm,
-                              50, h[i].weather_code, h[i].is_day, 60)
+            h[i] = replace(h[i], cloud_pct=50, humidity_pct=60)
     out.append(Scenario(
         slug="rain-then-clear",
         title="Rain ending into clear",
@@ -467,8 +471,9 @@ def scenarios() -> list[Scenario]:
                 code_during_precip=75)
     for i in range(len(h)):
         if i >= 12:
-            h[i] = HourlyPoint(h[i].timestamp, h[i].temp_f, 0.0,
-                              30, 1, h[i].is_day, 55, 0.0)
+            h[i] = replace(h[i], precip_mm=0.0, snow_cm=0.0,
+                           cloud_pct=30, weather_code=1,
+                           humidity_pct=55, precip_prob_pct=0)
     out.append(Scenario(
         slug="heavy-snow-then-sun",
         title="Heavy snow then clearing",

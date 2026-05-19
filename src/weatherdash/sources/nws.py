@@ -233,6 +233,11 @@ class NWSProvider:
                                           uom=snow_uom,   to="cm")
         # `weather` is the categorical hazard list per validTime.
         wx_codes = _expand_weather_to_hours(props.get("weather"))
+        # Probability of any precip and wind series.
+        precip_prob = _expand_to_hours(props.get("probabilityOfPrecipitation"))
+        wind_spd_kmh  = _expand_to_hours(props.get("windSpeed"))
+        wind_gust_kmh = _expand_to_hours(props.get("windGust"))
+        wind_dir_deg  = _expand_to_hours(props.get("windDirection"))
 
         if not temp_c:
             return []
@@ -257,6 +262,9 @@ class NWSProvider:
             hum   = humidity.get(t)
             code  = wx_codes.get(t, 0)
             t_local = t.astimezone(self._tz)
+            spd_kmh = wind_spd_kmh.get(t, 0.0)
+            gust_kmh = wind_gust_kmh.get(t, spd_kmh)
+            wdir_deg = wind_dir_deg.get(t)
             out.append(HourlyPoint(
                 timestamp=t_local,
                 temp_f=tf,
@@ -266,6 +274,10 @@ class NWSProvider:
                 is_day=is_day_lut(t_local),
                 humidity_pct=int(round(hum)) if hum is not None else None,
                 snow_cm=float(snow_cm.get(t, 0.0)),
+                precip_prob_pct=int(round(precip_prob.get(t, 0))),
+                wind_mph=_kmh_to_mph(spd_kmh),
+                wind_gust_mph=_kmh_to_mph(gust_kmh),
+                wind_dir=_deg_to_cardinal(wdir_deg) if wdir_deg is not None else "",
             ))
         return out
 

@@ -158,11 +158,28 @@
     }
     /* Chart card's two titles (PRECIPITATION top, CLOUD COVER bottom)
        are larger than other card titles so they read as the dominant
-       label of each chart half. */
-    .chart-card .card-title { font-size: 38px; padding: 10px 18px; }
+       label of each chart half. Title text is left-aligned with a
+       secondary text slot on the right (precip-total / wind outlook).
+       Both lines share the same baseline. */
+    .chart-card .card-title {
+      font-size: 38px;
+      padding: 8px 22px;
+      text-align: left;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 18px;
+    }
     .chart-card .card-title.bottom {
       border-bottom: none;
       border-top: 3px solid var(--ink);
+    }
+    .chart-card .card-title .secondary {
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--ink);
+      white-space: nowrap;
     }
     .card-body {
       flex: 1;
@@ -436,22 +453,18 @@
     .chart-row.cloud-bars  .bar-col { justify-content: flex-start; }
     /* Bars fill their column. column-gap on the row provides inter-bar spacing,
        so the leftmost and rightmost bars sit flush against the chart edges. */
-    /* Outer .bar carries a default solid fill (#444, level 4) which is what
-       cloud bars use — they have no inner segments. Precip bars stack two
-       segments inside: rain on top (#444), snow on bottom (#888). Snow at
-       level 8 is distinct from rain's level 4 after 4-bit quantize. The
-       segments always sum to 100% so they fully cover the outer bg. */
+    /* Bar height encodes probability of precip (precip row) or cloud
+       cover percent (cloud row). Bar color distinguishes precip type:
+       rain hours at level 4 (#444), snow hours at level 8 (#888) so
+       the two read as visually distinct on the panel without dithering. */
     .bar {
       position: relative;        /* anchor for inside labels */
       width: 100%;
       background: #444444;
       min-height: 3px;
       flex-shrink: 0;
-      display: flex;
-      flex-direction: column;
     }
-    .bar > .seg-rain { width: 100%; background: #444444; flex-shrink: 0; }
-    .bar > .seg-snow { width: 100%; background: #888888; flex-shrink: 0; }
+    .bar.is-snow { background: #888888; }
     .bar-label {
       font-size: 20px;
       font-weight: 800;
@@ -678,7 +691,12 @@
     <!-- RIGHT COLUMN: single shared chart card -->
     <div>
       <section class="card chart-card" style="height: 100%;">
-        <div class="card-title">PRECIPITATION</div>
+        <div class="card-title">
+          <span>PRECIPITATION</span>
+          {%- if precip_total_text %}
+          <span class="secondary">{{ precip_total_text }}</span>
+          {%- endif %}
+        </div>
 
         <div class="card-body" style="--cols: {{ n_hours }};">
           <!-- Sun-event markers — anchored to the day/night background
@@ -718,7 +736,7 @@
                         background-size: {{ '%.2f'|format(100.0 / ns_w) }}% auto;
                         background-position: {{ '%.2f'|format((r.start_at / (1.0 - ns_w) * 100.0) if ns_w < 1.0 else 0.0) }}% center;"></div>
             {%- endfor %}
-            {%- for line in rain_lines %}
+            {%- for line in precip_lines %}
             <div class="threshold-line"
                  style="bottom: {{ '%.2f'|format(line.bar_pct) }}%;">
               <span class="threshold-label">{{ line.label }}</span>
@@ -727,18 +745,13 @@
             {% for h in hourly %}
               <div class="bar-col {% if h.is_night %}is-night{% endif %}">
                 {%- if h.precip_h_pct > 0 %}
-                  {%- if h.precip_h_pct < 8 %}
+                  {%- if h.precip_h_pct < 8 and h.precip_label %}
                   <span class="bar-label bar-label-outside">{{ h.precip_label }}</span>
                   {%- endif %}
-                  <div class="bar" style="height: {{ h.precip_h_pct }}%;">
-                    {%- if h.precip_h_pct >= 8 %}
+                  <div class="bar {% if h.precip_is_snow %}is-snow{% endif %}"
+                       style="height: {{ h.precip_h_pct }}%;">
+                    {%- if h.precip_h_pct >= 8 and h.precip_label %}
                     <span class="bar-label bar-label-inside">{{ h.precip_label }}</span>
-                    {%- endif %}
-                    {%- if h.rain_seg_pct > 0 %}
-                    <div class="seg-rain" style="height: {{ h.rain_seg_pct }}%;"></div>
-                    {%- endif %}
-                    {%- if h.snow_seg_pct > 0 %}
-                    <div class="seg-snow" style="height: {{ h.snow_seg_pct }}%;"></div>
                     {%- endif %}
                   </div>
                 {%- endif %}
@@ -802,7 +815,12 @@
           </div>
 
         </div>
-        <div class="card-title bottom">CLOUD COVER</div>
+        <div class="card-title bottom">
+          <span>CLOUD COVER</span>
+          {%- if wind_outlook_text %}
+          <span class="secondary">{{ wind_outlook_text }}</span>
+          {%- endif %}
+        </div>
       </section>
     </div>
   </main>

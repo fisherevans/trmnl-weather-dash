@@ -125,12 +125,14 @@ def build_context(
     # Stacked bars in the template render snow under rain.
     hourly = [
         {
-            "hour":      _format_chart_hour(h.timestamp),
-            "precip_mm": round(h.precip_mm, 1),
-            "snow_cm":   round(h.snow_cm, 1),
-            "cloud_pct": h.cloud_pct,
-            "is_night":  not h.is_day,
-            "temp_f":    round(h.temp_f),
+            "hour":            _format_chart_hour(h.timestamp),
+            "precip_mm":       round(h.precip_mm, 1),
+            "snow_cm":         round(h.snow_cm, 1),
+            "precip_prob_pct": h.precip_prob_pct,
+            "cloud_pct":       h.cloud_pct,
+            "weather_code":    h.weather_code,
+            "is_night":        not h.is_day,
+            "temp_f":          round(h.temp_f),
         }
         for h in weather.hourly
     ]
@@ -258,6 +260,18 @@ def build_context(
         "NO RAIN FORECASTED" if precip_b == 0 else None
     )
 
+    # ── row-title secondary text ──────────────────────────────────────────
+    # Precip title (left): "PRECIPITATION"
+    # Precip title (right): "1.7mm of rain" / "3.4 in of snow" — sum of
+    # forecasted amount across the visible window. The chart bars now
+    # show probability (not amount), so this is the "how much?" answer
+    # the bars no longer carry. Empty when totally dry.
+    precip_total_text = _precip_total_text(total_rain_mm, total_snow_cm, precip_type)
+    # Cloud title (right): wind outlook over the visible window.
+    # "Breezy · 12-18 mph S" style. Pulls hourly wind fields; null when
+    # no wind data is available (older sources without hourly wind).
+    wind_outlook_text = _wind_outlook_text(weather.hourly)
+
     # Header time is rounded to the nearest 5 minutes — the device's
     # Image Display poll floor on TRMNL+, so a precise minute can be up
     # to ~5 min stale before the next poll. The "Updated" stamp in the
@@ -316,6 +330,8 @@ def build_context(
         "cloud_empty_text":      cloud_empty_text,
         "precip_empty_text":     precip_empty_text,
         "forecast_chunks":       forecast_chunks,
+        "precip_total_text":     precip_total_text,
+        "wind_outlook_text":     wind_outlook_text,
         "sun_markers":           sun_markers,
         "regions":               regions,
         "night_regions":         [r for r in regions if r["is_night"]],
@@ -407,6 +423,69 @@ def _round_to_minutes(dt: datetime, minutes: int) -> datetime:
     return dt
 
 
+def _precip_total_text(total_rain_mm: float, total_snow_cm: float,
+                       precip_type: str) -> str:
+    """Right-side text on the PRECIPITATION title bar.
+
+    Shows the forecasted total accumulation across the visible window.
+    Units intentionally mismatch (mm for rain, inches for snow) because
+    that's what reads naturally in US-context weather reporting: rain
+    is small numbers in mm; snow accumulations are commonly described
+    in inches on the news. Empty when nothing is forecasted.
+    """
+    if precip_type == "snow" and total_snow_cm >= 0.1:
+        inches = total_snow_cm * 0.393701
+        return f"{inches:.1f} in of snow"
+    if total_rain_mm >= 0.1:
+        return f"{total_rain_mm:.1f}mm of rain"
+    return ""
+
+
+def _wind_outlook_text(hourly: list) -> str:
+    """Right-side text on the CLOUD COVER title bar.
+
+    Format: '<word> · <low>-<high> mph <dir>', e.g. 'Breezy · 8-18 mph S'.
+    Speed band is sustained-wind range across the window; direction is
+    the median wind direction. Empty when no wind data is available.
+    """
+    speeds = [h.wind_mph for h in hourly if h.wind_mph is not None]
+    gusts  = [h.wind_gust_mph for h in hourly if h.wind_gust_mph]
+    dirs   = [h.wind_dir for h in hourly if h.wind_dir]
+    if not speeds or all(s == 0 for s in speeds):
+        return "Calm"
+    lo = round(min(speeds))
+    hi = round(max(speeds + gusts))
+    # Word is keyed to the typical sustained speed (use the median rather
+    # than max so a single gust spike doesn't bump the descriptor up a tier).
+    typical = sorted(speeds)[len(speeds) // 2]
+    word = _wind_descriptor(typical)
+    direction = _dominant_direction(dirs)
+    band = f"{lo}-{hi} mph" if hi > lo else f"{hi} mph"
+    if direction:
+        return f"{word} · {band} {direction}"
+    return f"{word} · {band}"
+
+
+def _wind_descriptor(mph: float) -> str:
+    """Sustained-speed -> casual word. Beaufort-loose, US English."""
+    if mph < 4:    return "Calm"
+    if mph < 8:    return "Light"
+    if mph < 13:   return "Breezy"
+    if mph < 19:   return "Windy"
+    if mph < 32:   return "Strong"
+    return "Gale"
+
+
+def _dominant_direction(dirs: list[str]) -> str:
+    """Most-frequent 16-pt cardinal across the window. Empty if dirs is empty."""
+    if not dirs:
+        return ""
+    counts: dict[str, int] = {}
+    for d in dirs:
+        counts[d] = counts.get(d, 0) + 1
+    return max(counts, key=lambda k: counts[k])
+
+
 def _cloud_description(pct: int) -> str:
     if pct < 13:
         return "Clear"
@@ -434,9 +513,24 @@ def _precip_description(total_mm: float, precip_type: str) -> str:
 
 def _region_precip_label(points, precip_type: str) -> str:
     """Short label centered inside a chart region on the precip row.
-    Magnitude combines rain (mm) and snow (cm) on the same axis."""
-    total = sum(p.precip_mm for p in points) + sum(p.snow_cm for p in points)
-    return _precip_description(total, precip_type)
+
+    Average probability across the region. Avg (not max) reads the
+    region as a whole — a brief 85% spike followed by dry hours
+    averages to ~25%, which is a more honest 'chance' summary than
+    calling the whole region 'Snow' off the spike alone. The bars
+    themselves still show the per-hour peaks, so detail isn't lost.
+    """
+    if not points:
+        return ""
+    avg_prob = sum(p.precip_prob_pct for p in points) / len(points)
+    label = "Snow" if precip_type == "snow" else "Rain"
+    if avg_prob < 25:
+        return f"No {label}"
+    if avg_prob < 50:
+        return f"Chance of {label}"
+    if avg_prob < 80:
+        return f"{label} Likely"
+    return label
 
 
 def _region_cloud_label(points) -> str:

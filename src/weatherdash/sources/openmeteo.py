@@ -46,7 +46,8 @@ class OpenMeteoProvider:
             "wind_speed_unit": "mph",
             "precipitation_unit": "mm",
             "hourly": ("temperature_2m,relative_humidity_2m,rain,snowfall,"
-                       "cloud_cover,weather_code,is_day"),
+                       "precipitation_probability,cloud_cover,weather_code,is_day,"
+                       "wind_speed_10m,wind_gusts_10m,wind_direction_10m"),
             "current": ("temperature_2m,relative_humidity_2m,wind_speed_10m,"
                         "wind_gusts_10m,wind_direction_10m,weather_code,is_day"),
             "daily": "sunrise,sunset",
@@ -91,6 +92,12 @@ class OpenMeteoProvider:
         # ── hourly ────────────────────────────────────────────────────────
         h = raw["hourly"]
         times = [self._parse_local(t) for t in h["time"]]
+        # precipitation_probability is sometimes None when the model
+        # didn't emit one for that hour — default to 0 so the bar is
+        # blank rather than misleading.
+        def _pp(i: int) -> int:
+            v = h.get("precipitation_probability", [None] * len(times))[i]
+            return int(v) if v is not None else 0
         hourly = [
             HourlyPoint(
                 timestamp=times[i],
@@ -101,6 +108,10 @@ class OpenMeteoProvider:
                 weather_code=int(h["weather_code"][i]),
                 is_day=bool(h["is_day"][i]),
                 humidity_pct=int(h["relative_humidity_2m"][i]),
+                precip_prob_pct=_pp(i),
+                wind_mph=float(h["wind_speed_10m"][i]),
+                wind_gust_mph=float(h["wind_gusts_10m"][i]),
+                wind_dir=deg_to_cardinal(float(h["wind_direction_10m"][i])),
             )
             for i in range(len(times))
         ]
