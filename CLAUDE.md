@@ -142,20 +142,45 @@ data*.json               # dev fixtures (replaced by live data sources later)
 pyproject.toml           # hatchling-built package; `weatherdash` console script
 ```
 
-## Live data integration (in progress per issues #2-#7)
+## Live data integration
 
-Tracked end-to-end via GitHub issues. The shape:
-1. `weatherdash.config` loads a YAML config (provider, location, HA sensors).
-2. `weatherdash.sources.openmeteo` (and friends) fetch the forecast.
+End-to-end shape:
+1. `weatherdash.config` loads a YAML config (location, weather provider,
+   forecast provider, HA sensors).
+2. `weatherdash.sources.factory` builds the configured `WeatherSource`
+   and (optionally) `ForecastSource`. Sources sit behind protocols
+   defined in `sources/base.py`; see "Source plugin shape" below.
 3. `weatherdash.sources.homeassistant` fetches HA sensor states.
 4. `weatherdash.aggregate.build_context` merges them into the dict
    `render_to_png(data, ...)` already expects (same shape as `data.json`).
 5. `weatherdash.serve` runs a scheduler + HTTP server in one process.
 
-Condition-code mapping (#5): maps API codes + `is_day` to `makin-grey/`
-filenames. All 58 stems documented in `README.md`. Sunset/sunrise
-`hour_index` is computed relative to the chart's start hour; negative
-or `>= n_hours` hides the marker.
+Condition-code mapping: every provider normalizes to WMO codes (Open-
+Meteo's native space). `aggregate.WMO_ICON_MAP` maps WMO + is_day to
+`makin-grey/` filenames. All 58 stems documented in `README.md`.
+Sunset/sunrise `hour_index` is computed relative to the chart's start
+hour; negative or `>= n_hours` hides the marker.
+
+### Source plugin shape
+
+Two independent roles, two protocols in `sources/base.py`:
+
+- `WeatherSource.fetch(lat, lon, hours) -> NormalizedForecast` — hourly
+  numerics + current obs + sun events. Drives the chart. Implementations:
+  `OpenMeteoProvider`, `NWSProvider`.
+- `ForecastSource.fetch_periods(lat, lon) -> list[ForecastPeriod]` —
+  human-written prose for 12-hour day/night blocks. Optional; when
+  absent, `aggregate._summarize` derives equivalent strings from hourly
+  numerics. Implementations: `NWSProvider` (via `/gridpoints/.../forecast`).
+
+`NWSProvider` implements both. `factory.make_forecast_source` reuses
+the same instance when both roles are NWS so the `/points` lookup is
+shared rather than re-fetched.
+
+`weather.provider` (yaml) picks the hourly source; `weather.forecast_provider`
+picks the prose source (`derive` = use `_summarize`, `nws` = use NWS
+shortForecast strings). The two are orthogonal — Open-Meteo hourly +
+NWS prose is a valid combo, for example.
 
 ## Commands
 
