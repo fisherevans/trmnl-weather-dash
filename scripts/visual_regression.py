@@ -537,7 +537,7 @@ def scenarios() -> list[Scenario]:
         sunrise=sr,
         sunset=ss,
         uv_index_max=9,
-        aqi=128,
+        aqi=215,
         pollen_index=10,
     ))
 

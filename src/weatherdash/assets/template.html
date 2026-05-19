@@ -122,8 +122,15 @@
       font-weight: 600;
       letter-spacing: 0.14em;
       text-transform: uppercase;
-      opacity: 0.55;
+      color: rgba(0, 0, 0, 0.55);
       line-height: 1;
+    }
+    /* The 'kind' span wraps the TODAY/TONIGHT word so it can be
+       bolder + slightly darker than any health-metric chips alongside
+       it. Visual hierarchy: kind > chips. */
+    .header .chunk-label .kind {
+      font-weight: 800;
+      color: rgba(0, 0, 0, 0.85);
     }
     .header .chunk-text {
       font-family: 'Playfair Display', 'Times New Roman', serif;
@@ -678,7 +685,7 @@
     {%- for c in forecast_chunks %}
     <div class="sep"></div>
     <div class="chunk" style="flex: {{ c.flex_style }};">
-      <div class="chunk-label">{{ c.label }}</div>
+      <div class="chunk-label"><span class="kind">{{ c.label }}</span>{{ c.chips }}</div>
       <div class="chunk-text">{{ c.text }}</div>
     </div>
     {%- endfor %}

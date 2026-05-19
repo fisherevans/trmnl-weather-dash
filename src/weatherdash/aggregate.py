@@ -268,15 +268,16 @@ def build_context(
         day_uv = [h.uv_index for h in weather.hourly
                   if h.is_day and h.uv_index is not None]
         uv_index_max = max(day_uv) if day_uv else None
-    # Optional health-metric chips appended to the FIRST chunk's small
-    # label line (e.g. "TODAY · HIGH UV · BAD AIR · HIGH POLLEN"). Each
-    # chip uses a stepped descriptor word — number-free so the reader
-    # doesn't have to know what "AQI 128" means at a glance. Chips are
-    # only emitted when the underlying metric is above a noteworthy
-    # tier; quiet days stay as just "TODAY".
+    # Optional health-metric chips beside the FIRST chunk's small label
+    # (e.g. "TODAY · HIGH UV · BAD AIR · HEAVY POLLEN"). Each chip uses
+    # a stepped descriptor word — no raw numbers — so meaning is
+    # self-evident without knowing what 'AQI 128' means. The chips
+    # render in the same line as the label but with lighter weight, so
+    # 'TODAY' stays visually dominant.
+    for c in forecast_chunks:
+        c.setdefault("chips", "")
     if forecast_chunks:
-        forecast_chunks[0]["label"] = _append_chunk_chips(
-            forecast_chunks[0]["label"],
+        forecast_chunks[0]["chips"] = _build_chunk_chips(
             uv=uv_index_max, aqi=aqi, pollen=pollen_index,
         )
     # Header flex hints. Default: both chunks share width proportionally.
@@ -495,15 +496,13 @@ def _round_to_minutes(dt: datetime, minutes: int) -> datetime:
 
 
 def _uv_chip(uv: int | None) -> str | None:
-    """UV scale (WHO/EPA): 0-2 low, 3-5 moderate, 6-7 high, 8-10 very
-    high, 11+ extreme. Surface from 'high' upward — that's when
-    sunscreen is actually advised."""
+    """UV scale (WHO/EPA): 0-2 low, 3-5 moderate, 6-10 high, 11+
+    extreme. Two-tier chip — anything sunscreen-advisable is just
+    'HIGH UV' until it crosses into the official 'extreme' band."""
     if uv is None or uv < 6:
         return None
-    if uv < 8:
-        return "HIGH UV"
     if uv < 11:
-        return "V.HIGH UV"
+        return "HIGH UV"
     return "EXTREME UV"
 
 
@@ -518,8 +517,8 @@ def _aqi_chip(aqi: int | None) -> str | None:
     if aqi < 200:
         return "BAD AIR"
     if aqi < 300:
-        return "V.BAD AIR"
-    return "HAZARDOUS"
+        return "TERRIBLE AIR"
+    return "HAZARDOUS AIR"
 
 
 def _pollen_chip(p: int | None) -> str | None:
@@ -535,17 +534,17 @@ def _pollen_chip(p: int | None) -> str | None:
     return "HEAVY POLLEN"
 
 
-def _append_chunk_chips(label: str, *, uv: int | None = None,
-                        aqi: int | None = None,
-                        pollen: int | None = None) -> str:
-    """Append ' · HIGH UV · BAD AIR · HEAVY POLLEN' style descriptors
-    to a chunk label. Each chip is a stepped word — no raw numbers —
-    so the reader doesn't have to remember scales (e.g. is AQI 128
-    bad?). Chips render in the small uppercase chunk-label line."""
+def _build_chunk_chips(*, uv: int | None = None,
+                       aqi: int | None = None,
+                       pollen: int | None = None) -> str:
+    """Return ' · HIGH UV · BAD AIR · HEAVY POLLEN' (leading dot
+    separator), or '' when nothing is above threshold. Template
+    appends this directly after the label span so the chunk renders
+    as a single line: <b>TODAY</b> · CHIPS · CHIPS."""
     chips = [c for c in (_uv_chip(uv), _aqi_chip(aqi), _pollen_chip(pollen)) if c]
     if not chips:
-        return label
-    return label + " · " + " · ".join(chips)
+        return ""
+    return " · " + " · ".join(chips)
 
 
 def _precip_total_text(total_rain_mm: float, total_snow_cm: float,
