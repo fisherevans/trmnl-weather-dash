@@ -375,6 +375,16 @@
       justify-content: center;
       gap: 10px;
     }
+    /* Humidity line under HIGH/LOW @ time — secondary context. Smaller
+       than .when and dimmed so it sits visually below the time line
+       without competing with the big temperature. */
+    .tempforecast .rh {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      opacity: 0.6;
+      margin-top: -2px;
+    }
     /* Small inverted pill, e.g. "TMRW", flagging that the high/low fell on
        a different calendar day than "now". Only rendered when needed. */
     .tempforecast .when .tag {
@@ -711,6 +721,9 @@
               <span>HIGH @ {{ forecast.high.time }}</span>
               {%- if forecast.high.tomorrow %}<span class="tag">TMRW</span>{%- endif %}
             </div>
+            {%- if forecast.high.humidity_pct is not none %}
+            <div class="rh">{{ forecast.high.humidity_pct }}% HUMIDITY</div>
+            {%- endif %}
           </div>
           <div class="row low">
             <div class="big"><span class="arrow">↓</span><span>{{ forecast.low.temp_f }}°F</span></div>
@@ -718,6 +731,9 @@
               <span>LOW @ {{ forecast.low.time }}</span>
               {%- if forecast.low.tomorrow %}<span class="tag">TMRW</span>{%- endif %}
             </div>
+            {%- if forecast.low.humidity_pct is not none %}
+            <div class="rh">{{ forecast.low.humidity_pct }}% HUMIDITY</div>
+            {%- endif %}
           </div>
         </div>
       </section>

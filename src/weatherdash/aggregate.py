@@ -345,14 +345,16 @@ def build_context(
         },
         "forecast": {
             "high": {
-                "temp_f":   round(high_h.temp_f),
-                "time":     _format_clock(high_h.timestamp),
-                "tomorrow": high_h.timestamp.date() != today,
+                "temp_f":       round(high_h.temp_f),
+                "time":         _format_clock(high_h.timestamp),
+                "tomorrow":     high_h.timestamp.date() != today,
+                "humidity_pct": high_h.humidity_pct,
             },
             "low": {
-                "temp_f":   round(low_h.temp_f),
-                "time":     _format_clock(low_h.timestamp),
-                "tomorrow": low_h.timestamp >= noon_tomorrow,
+                "temp_f":       round(low_h.temp_f),
+                "time":         _format_clock(low_h.timestamp),
+                "tomorrow":     low_h.timestamp >= noon_tomorrow,
+                "humidity_pct": low_h.humidity_pct,
             },
         },
         "sun": {
