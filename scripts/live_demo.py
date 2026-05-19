@@ -270,6 +270,9 @@ def main() -> None:
         print(f"     fetched+rendered in {elapsed:.1f}s · "
               f"local {meta['local_time']} · {meta['temp_f']}°F · "
               f"\"{meta['first_chunk']}\"")
+        # Cache-buster on the image URL so phone browsers don't serve a
+        # stale PNG from a previous rerun.
+        cb = int(png.stat().st_mtime)
         cards.append(CARD_HTML.format(
             slug=slug,
             name=loc.name,
@@ -278,7 +281,7 @@ def main() -> None:
             local_time=meta["local_time"],
             temp=meta["temp_f"],
             prose=_format_prose(meta),
-            png=png.name,
+            png=f"{png.name}?v={cb}",
         ))
         toc_items.append(f'<a href="#loc-{slug}">{loc.name}</a>')
         # Small gap between NWS fetches — politeness, not a hard limit.

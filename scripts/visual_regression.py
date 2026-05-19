@@ -601,11 +601,14 @@ def main() -> None:
         ctx = build_context(cfg, wx, ha=s.ha, _now=s.now)
         out_path = OUT / f"{i:02d}-{s.slug}.png"
         render_to_png(ctx, out_path, quantize=True)
+        # Cache-buster on the image URL so phone browsers don't serve
+        # a stale PNG from a previous rerun.
+        cb = int(out_path.stat().st_mtime)
         cards.append(CARD_HTML.format(
             n=i,
             title=s.title.replace("<", "&lt;"),
             desc=s.description.replace("<", "&lt;"),
-            png=out_path.name,
+            png=f"{out_path.name}?v={cb}",
         ))
         print(f"  #{i:02d} {s.slug}: {ctx.get('forecast_chunks')[:80] if False else ''}")
 
