@@ -437,13 +437,14 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      text-align: center;            /* keep each wrapped line centered */
       font-size: 32px;
       font-weight: 800;
       letter-spacing: 0.02em;
       color: var(--ink);
       z-index: 5;
       pointer-events: none;
-      line-height: 1;
+      line-height: 1.1;              /* small breathing room between wrapped lines */
       text-shadow:
          1px  1px 0 var(--panel), -1px  1px 0 var(--panel),
          1px -1px 0 var(--panel), -1px -1px 0 var(--panel),

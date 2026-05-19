@@ -555,12 +555,11 @@ def _region_precip_label(points, precip_type: str) -> str:
         return ""
     avg_prob = sum(p.precip_prob_pct for p in points) / len(points)
     label = "Snow" if precip_type == "snow" else "Rain"
-    # 5-tier ladder driven by region avg PoP. "Slight Chance" kicks in at
-    # 5% so even NWS's baseline-uncertain forecasts (often 5-12% on
-    # clear days) surface a soft signal — the dashboard always tells
-    # you whether there's *any* chance worth knowing about. Only
-    # genuinely-clear forecasts (<5%) read as "No Rain".
-    if avg_prob < 5:
+    # 5-tier ladder driven by region avg PoP. Floor is intentionally very
+    # low: above 1% avg we already say "Slight Chance" so any
+    # NWS-flagged chance of precip surfaces on the chart. Only a flat
+    # near-zero forecast reads as "No Rain".
+    if avg_prob < 1:
         return f"No {label}"
     if avg_prob < 20:
         return f"Slight Chance of {label}"
