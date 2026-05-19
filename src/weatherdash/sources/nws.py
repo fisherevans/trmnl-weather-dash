@@ -238,6 +238,7 @@ class NWSProvider:
         wind_spd_kmh  = _expand_to_hours(props.get("windSpeed"))
         wind_gust_kmh = _expand_to_hours(props.get("windGust"))
         wind_dir_deg  = _expand_to_hours(props.get("windDirection"))
+        uv_idx        = _expand_to_hours(props.get("uvIndex"))
 
         if not temp_c:
             return []
@@ -265,6 +266,7 @@ class NWSProvider:
             spd_kmh = wind_spd_kmh.get(t, 0.0)
             gust_kmh = wind_gust_kmh.get(t, spd_kmh)
             wdir_deg = wind_dir_deg.get(t)
+            uv_val = uv_idx.get(t)
             out.append(HourlyPoint(
                 timestamp=t_local,
                 temp_f=tf,
@@ -278,6 +280,7 @@ class NWSProvider:
                 wind_mph=_kmh_to_mph(spd_kmh),
                 wind_gust_mph=_kmh_to_mph(gust_kmh),
                 wind_dir=_deg_to_cardinal(wdir_deg) if wdir_deg is not None else "",
+                uv_index=int(round(uv_val)) if uv_val is not None else None,
             ))
         return out
 

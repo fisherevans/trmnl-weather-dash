@@ -80,6 +80,9 @@ def build_context(
     forecast_periods: list[ForecastPeriod] | None = None,
     past_precip_mm: float = 0.0,
     past_snow_cm: float = 0.0,
+    uv_index_max: int | None = None,
+    aqi: int | None = None,
+    pollen_index: int | None = None,
 ) -> dict:
     if not weather.hourly:
         raise ValueError("weather.hourly is empty — provider returned no data")
@@ -260,6 +263,19 @@ def build_context(
         forecast_chunks = _forecast_chunks_from_periods(forecast_periods, now)
     else:
         forecast_chunks = _forecast_chunks(weather.hourly, precip_type)
+    # Auto-derive UV max from hourly daytime data if no override given.
+    if uv_index_max is None:
+        day_uv = [h.uv_index for h in weather.hourly
+                  if h.is_day and h.uv_index is not None]
+        uv_index_max = max(day_uv) if day_uv else None
+    # Append optional metadata (peak UV, AQI, pollen) to the first chunk
+    # when above the noteworthy threshold. The chip-style "· UV 9" reads
+    # as supplementary at-a-glance context without crowding the prose.
+    if forecast_chunks:
+        forecast_chunks[0]["text"] = _append_chunk_metadata(
+            forecast_chunks[0]["text"],
+            uv=uv_index_max, aqi=aqi, pollen=pollen_index,
+        )
     # Header flex hints. Default: both chunks share width proportionally.
     # When one chunk is short and the other is markedly longer, pin the
     # short one to its natural content size so it doesn't wrap on a
@@ -473,6 +489,34 @@ def _round_to_minutes(dt: datetime, minutes: int) -> datetime:
     if discard >= timedelta(minutes=minutes / 2):
         dt += timedelta(minutes=minutes)
     return dt
+
+
+# Header-chunk metadata thresholds — surface a value only when it's
+# noteworthy enough to act on. Tuned to standard agency scales:
+#   UV >= 6 = high (sunscreen advised)
+#   AQI >= 100 = unhealthy-for-sensitive
+#   Pollen >= 7 = high on the 0-12 allergy index
+UV_CHIP_THRESHOLD = 6
+AQI_CHIP_THRESHOLD = 100
+POLLEN_CHIP_THRESHOLD = 7
+
+
+def _append_chunk_metadata(text: str, *, uv: int | None = None,
+                           aqi: int | None = None,
+                           pollen: int | None = None) -> str:
+    """Append ' · UV 9 · AQI 128' style chips when the corresponding
+    metric is above threshold. Each chip is short and the dot separator
+    matches the bullet rhythm used elsewhere in the header."""
+    extras: list[str] = []
+    if uv is not None and uv >= UV_CHIP_THRESHOLD:
+        extras.append(f"UV {uv}")
+    if aqi is not None and aqi >= AQI_CHIP_THRESHOLD:
+        extras.append(f"AQI {aqi}")
+    if pollen is not None and pollen >= POLLEN_CHIP_THRESHOLD:
+        extras.append(f"Pollen {pollen}")
+    if not extras:
+        return text
+    return text + " · " + " · ".join(extras)
 
 
 def _precip_total_text(total_rain_mm: float, total_snow_cm: float,

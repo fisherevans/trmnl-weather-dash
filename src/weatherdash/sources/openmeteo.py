@@ -47,7 +47,7 @@ class OpenMeteoProvider:
             "precipitation_unit": "mm",
             "hourly": ("temperature_2m,relative_humidity_2m,rain,snowfall,"
                        "precipitation_probability,cloud_cover,weather_code,is_day,"
-                       "wind_speed_10m,wind_gusts_10m,wind_direction_10m"),
+                       "wind_speed_10m,wind_gusts_10m,wind_direction_10m,uv_index"),
             "current": ("temperature_2m,relative_humidity_2m,wind_speed_10m,"
                         "wind_gusts_10m,wind_direction_10m,weather_code,is_day"),
             "daily": "sunrise,sunset",
@@ -112,6 +112,9 @@ class OpenMeteoProvider:
                 wind_mph=float(h["wind_speed_10m"][i]),
                 wind_gust_mph=float(h["wind_gusts_10m"][i]),
                 wind_dir=deg_to_cardinal(float(h["wind_direction_10m"][i])),
+                uv_index=(int(round(h["uv_index"][i]))
+                          if h.get("uv_index") and h["uv_index"][i] is not None
+                          else None),
             )
             for i in range(len(times))
         ]

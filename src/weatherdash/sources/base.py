@@ -35,6 +35,7 @@ class HourlyPoint:
     wind_mph: float = 0.0       # sustained wind speed
     wind_gust_mph: float = 0.0  # gust speed (== wind_mph when provider lacks gust series)
     wind_dir: str = ""          # 16-pt cardinal (e.g. 'NW'), empty when unknown
+    uv_index: int | None = None # 0..11+ UV index; None when provider doesn't expose it
 
 
 @dataclass(frozen=True)

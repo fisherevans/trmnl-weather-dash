@@ -69,6 +69,11 @@ class Scenario:
     # PRECIPITATION title as "(2.4mm already)".
     past_precip_mm: float = 0.0
     past_snow_cm: float = 0.0
+    # Health-relevant chips that append to the first header chunk when
+    # above threshold (UV>=6, AQI>=100, Pollen>=7).
+    uv_index_max: int | None = None
+    aqi: int | None = None
+    pollen_index: int | None = None
 
 
 # ── small helpers ────────────────────────────────────────────────────────
@@ -514,6 +519,28 @@ def scenarios() -> list[Scenario]:
         past_precip_mm=11.6,
     ))
 
+    # 20. Health-metric chips — high UV + AQI + pollen all triggering.
+    # Exercises the optional metadata chips that append to TODAY's prose
+    # when each metric is above its noteworthy threshold.
+    now = today.replace(month=7, day=18, hour=10, minute=0)
+    sr, ss = _sun(now.replace(hour=12), 5.4, 20.6)
+    out.append(Scenario(
+        slug="health-chips",
+        title="High UV, AQI, and pollen",
+        description=("Summer day with all three health chips appended to the "
+                     "TODAY prose: UV peaks at 9, AQI at 128, pollen at 10."),
+        now=now,
+        hourly=_hourly(now, 18, sunrise=sr, sunset=ss,
+                       base_temp=88, diurnal_swing=14, base_cloud=15,
+                       weather_code=0, humidity=55),
+        current=_current(86, humidity=52, code=0, is_day=True),
+        sunrise=sr,
+        sunset=ss,
+        uv_index_max=9,
+        aqi=128,
+        pollen_index=10,
+    ))
+
     return out
 
 
@@ -631,6 +658,9 @@ def main() -> None:
             cfg, wx, ha=s.ha, _now=s.now,
             past_precip_mm=s.past_precip_mm,
             past_snow_cm=s.past_snow_cm,
+            uv_index_max=s.uv_index_max,
+            aqi=s.aqi,
+            pollen_index=s.pollen_index,
         )
         out_path = OUT / f"{i:02d}-{s.slug}.png"
         render_to_png(ctx, out_path, quantize=True)
