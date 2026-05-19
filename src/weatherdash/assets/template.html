@@ -172,12 +172,22 @@
     }
     /* Chart card's two titles (PRECIPITATION top, CLOUD COVER bottom)
        inherit the 56px height but use bigger primary text + a secondary
-       text slot on the right (precip-total / wind outlook). */
+       text slot on the right (precip-total / wind outlook). 3-column
+       grid keeps the primary title visually centered while the secondary
+       (when present) pins to the right edge — symmetric to the empty
+       left 1fr column. */
     .chart-card .card-title {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
       font-size: 32px;
       padding: 0 22px;
-      justify-content: space-between;
       gap: 18px;
+    }
+    .chart-card .card-title > span:not(.secondary) { grid-column: 2; }
+    .chart-card .card-title .secondary {
+      grid-column: 3;
+      justify-self: end;
     }
     .chart-card .card-title.bottom {
       border-bottom: none;
