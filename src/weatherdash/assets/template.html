@@ -108,8 +108,13 @@
       flex-direction: column;
       justify-content: center;
       gap: 8px;
-      flex: 1;
-      min-width: 0;     /* allow text to truncate rather than overflow */
+      /* flex-basis: auto so each chunk starts at its natural prose
+         width. Sum-overflowing the row triggers proportional shrink
+         (a chunk with 5x more text shrinks 5x more), so longer prose
+         keeps a proportional width advantage. min-width: 0 lets the
+         shrink happen at all (flex items default to min-content). */
+      flex: 1 1 auto;
+      min-width: 0;
     }
     .header .chunk-label {
       font-family: 'Inter', sans-serif;
@@ -657,7 +662,7 @@
     </div>
     {%- for c in forecast_chunks %}
     <div class="sep"></div>
-    <div class="chunk">
+    <div class="chunk" style="flex: {{ c.flex_style }};">
       <div class="chunk-label">{{ c.label }}</div>
       <div class="chunk-text">{{ c.text }}</div>
     </div>

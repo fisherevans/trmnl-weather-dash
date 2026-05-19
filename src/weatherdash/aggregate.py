@@ -258,6 +258,20 @@ def build_context(
         forecast_chunks = _forecast_chunks_from_periods(forecast_periods, now)
     else:
         forecast_chunks = _forecast_chunks(weather.hourly, precip_type)
+    # Header flex hints. Default: both chunks share width proportionally.
+    # When one chunk is short and the other is markedly longer, pin the
+    # short one to its natural content size so it doesn't wrap on a
+    # single word (e.g. "mostly cloudy" alongside "partly sunny then
+    # slight chance showers and thunderstorms"). The long one absorbs
+    # the remaining width — it may still wrap, but with more room.
+    for c in forecast_chunks:
+        c["flex_style"] = "1 1 auto"
+    if len(forecast_chunks) == 2:
+        lens = [len(c["text"]) for c in forecast_chunks]
+        short_i = 0 if lens[0] < lens[1] else 1
+        long_i = 1 - short_i
+        if lens[short_i] <= 18 and lens[long_i] >= lens[short_i] * 2.5:
+            forecast_chunks[short_i]["flex_style"] = "0 0 auto"
 
     # ── density-shifted background SVGs ───────────────────────────────────
     # Cloud-row darkness scales with avg cloud %, precip-row scales with
