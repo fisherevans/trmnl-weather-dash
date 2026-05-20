@@ -58,8 +58,13 @@ def render_html(data: dict) -> str:
         {"pct": pct, "bar_pct": pct / cloud_scale_max * 100.0, "label": label}
         for pct, label in CLOUD_THRESHOLDS
     ]
+    # Build the temp line first so each enriched bar can check whether
+    # its inside label would collide with the line — if so, the template
+    # nudges the label lower in the bar so the dark dot / curve doesn't
+    # cover it.
+    temp_line = compute_temp_line(hourly)
     enriched = []
-    for h in hourly:
+    for i, h in enumerate(hourly):
         rain_mm = h.get("precip_mm", 0.0)
         snow_cm = h.get("snow_cm", 0.0)
         prob_pct = float(h.get("precip_prob_pct", 0))
@@ -69,6 +74,30 @@ def render_html(data: dict) -> str:
         # weather code so a mixed-precip day shows the right color per
         # bar. SNOW_CODES is the canonical snow set used elsewhere.
         is_snow_hour = h.get("weather_code", 0) in _SNOW_CODES
+        # Bar top y in row-percent (bars grow up from the bottom). If the
+        # temp line passes within ~5% of row height of the bar's top edge
+        # — i.e. through the inside-label band — flag the bar so the
+        # template pushes that label down into the bar's body. 5% picks
+        # up the visible band of the line + its halo + the label's own
+        # height without false-positives on bars where the line passes
+        # well above or below the label.
+        bar_x_pct = (i + 0.5) / n_hours * 100.0
+        bar_top_y_pct = 100.0 - precip_h_pct
+        line_y = _temp_line_y_at(temp_line, bar_x_pct)
+        # Trigger nudge only when the line actually crosses the inside
+        # label's vertical band. The label sits at top:6px (~1% of row)
+        # below the bar top and is ~20px (~4% of row) tall, so the band
+        # occupies roughly (bar_top, bar_top+5%). Add halo + high/low
+        # dot extents on either side to get a (bar_top - 0.5, bar_top
+        # + 6.5) trigger window. Previously this used a symmetric
+        # abs(...) < 5 check which fired even when the line was well
+        # ABOVE the bar top (i.e. above the entire bar) — that produced
+        # false-positive nudges on bars where the line passes overhead.
+        nudge = (
+            line_y is not None
+            and precip_h_pct >= 8.0  # outside-label bars don't have an inside label
+            and bar_top_y_pct - 0.5 < line_y < bar_top_y_pct + 6.5
+        )
         enriched.append({
             **h,
             "precip_h_pct": precip_h_pct,
@@ -77,6 +106,7 @@ def render_html(data: dict) -> str:
             # Per-bar label is the probability percent; only labeled when
             # >= 10 so the chart stays uncluttered on dry hours.
             "precip_label": f"{int(round(prob_pct))}%" if prob_pct >= 10 else "",
+            "precip_label_nudge": nudge,
         })
     # Honor pre-computed regions (carries the per-region labels) when the
     # aggregation layer supplied them; otherwise recompute for the offline
@@ -136,6 +166,7 @@ def render_html(data: dict) -> str:
            "regions": regions,
            "precip_lines": precip_lines,
            "cloud_lines": cloud_lines,
+           "temp_line": temp_line,
            "updated_at": updated_at,
            "cloud_bg_url_day": cloud_bg_url_day,
            "cloud_bg_url_night": cloud_bg_url_night,
@@ -154,6 +185,188 @@ def render_html(data: dict) -> str:
 # compute_regions moved to aggregate.py — re-exported here for any
 # external caller that still imports from this module.
 from .aggregate import compute_regions  # noqa: E402,F401
+
+
+# Vertical band the temperature line occupies inside the precip-bars row,
+# in percent from the row's top. The band sits clear of the sun-marker
+# pills (which span roughly 5..19% of the row) at the top, and clear of
+# the time-axis at the bottom. The Y_TOP value also reserves room for
+# the HIGH pill that floats above the line's peak: pill + 10px margin +
+# half-dot offset ≈ 9% of row height, so Y_TOP needs to sit roughly
+# that far below the marker pill's bottom to guarantee no overlap
+# regardless of where the high lands horizontally.
+TEMP_LINE_Y_TOP = 32.0
+TEMP_LINE_Y_BOT = 88.0
+# Minimum y-axis span in °F. On low-variance days (e.g. 87/83 = 4°F
+# swing) the line gets centered within this band instead of stretched
+# to the row edges, so the chart reads as "stable today" rather than
+# "dramatic swing today." Days with actual range >= this value use
+# the actual range and fill the full band.
+TEMP_LINE_MIN_RANGE_F = 20.0
+
+
+def _smooth_path(coords):
+    """SVG cubic-bezier `d` string through `coords` via uniform
+    Catmull-Rom-to-Bezier conversion. The curve passes through every
+    input point (so dots placed on data points land exactly on the
+    line), with endpoints padded by duplicating the first/last point —
+    that flattens the spline's tangent at the edges instead of letting
+    it overshoot into the row's top buffer or below the time axis.
+    """
+    n = len(coords)
+    if n == 0:
+        return ""
+    if n == 1:
+        x, y = coords[0]
+        return f"M {x:.3f},{y:.3f}"
+    padded = [coords[0], *coords, coords[-1]]
+    parts = [f"M {coords[0][0]:.3f},{coords[0][1]:.3f}"]
+    for i in range(n - 1):
+        p0 = padded[i]
+        p1 = padded[i + 1]
+        p2 = padded[i + 2]
+        p3 = padded[i + 3]
+        c1x = p1[0] + (p2[0] - p0[0]) / 6
+        c1y = p1[1] + (p2[1] - p0[1]) / 6
+        c2x = p2[0] - (p3[0] - p1[0]) / 6
+        c2y = p2[1] - (p3[1] - p1[1]) / 6
+        parts.append(
+            f"C {c1x:.3f},{c1y:.3f} {c2x:.3f},{c2y:.3f} "
+            f"{p2[0]:.3f},{p2[1]:.3f}"
+        )
+    return " ".join(parts)
+
+
+def _smooth_series(values, weights=(1, 2, 3, 2, 1)):
+    """Weighted moving-average smoothing across a 5-point window. The
+    Catmull-Rom spline alone passes through every raw data point, which
+    hitches at every 1-degree hourly wobble — pre-smoothing the temp
+    series with this kernel lets the curve ease across past + future
+    neighbors instead of chasing each spike. Endpoints clip the window
+    to in-range neighbors so the edges don't get pulled toward zero.
+    Weights are a mild triangular kernel (center=3, falloff to 1);
+    bump them up for heavier smoothing or shrink the window for less.
+    """
+    n = len(values)
+    if n == 0:
+        return []
+    radius = len(weights) // 2
+    out = []
+    for i in range(n):
+        num = 0.0
+        den = 0.0
+        for k, w in enumerate(weights):
+            j = i + k - radius
+            if 0 <= j < n:
+                num += w * values[j]
+                den += w
+        out.append(num / den)
+    return out
+
+
+def compute_temp_line(hourly):
+    """Map hourly temps to (x%, y%) coordinates in the precip-bars row.
+
+    Two series are in play. Raw temps drive the high/low call-outs:
+    the dot pills show the actual hottest/coldest forecast values, and
+    the high/low indices are the raw extremes. A smoothed series drives
+    the curve's y positions and the y-axis scale — so the line eases
+    across short-range wobbles instead of zig-zagging through every
+    1-degree blip. Dot y values come from the smoothed curve too, so
+    the dots land exactly on the line.
+    """
+    n = len(hourly)
+    if n == 0:
+        return None
+    temps = [h["temp_f"] for h in hourly]
+    t_min, t_max = min(temps), max(temps)
+    if t_min == t_max:
+        # Flat-temp day — center the line so it reads as horizontal.
+        mid = (TEMP_LINE_Y_TOP + TEMP_LINE_Y_BOT) / 2
+        points = [
+            {"x": (i + 0.5) / n * 100.0, "y": mid,
+             "temp_f": t, "is_high": False, "is_low": False}
+            for i, t in enumerate(temps)
+        ]
+        return {"points": points, "t_min": t_min, "t_max": t_max,
+                "path": _smooth_path([(p["x"], p["y"]) for p in points])}
+
+    # High/low indices come from the RAW temps so the call-outs mark
+    # the actual data extremes — not smoothing-shifted ghosts.
+    hi = temps.index(t_max)
+    lo = temps.index(t_min)
+
+    smoothed = _smooth_series(temps)
+    # Re-anchor the extremes back to raw so the curve actually touches
+    # the day's high/low at those indices. Without this, a sharp 90°F
+    # peak between 85° neighbors gets averaged down to ~88°F by the
+    # 5-point kernel, so the line's apex wouldn't match the "90°" dot.
+    # Surrounding points stay smoothed; Catmull-Rom's tangent at the
+    # anchored point is computed from those (symmetric) neighbors, so
+    # the curve approaches the peak with a near-horizontal slope
+    # rather than spiking into it — no overshoot above the band.
+    smoothed[hi] = t_max
+    smoothed[lo] = t_min
+    # Display range is clamped to TEMP_LINE_MIN_RANGE_F so a flat day
+    # (e.g. 87/83 = 4°F swing) reads as subtle. We center the data
+    # within the clamped range so the line sits in the middle of the
+    # band; the high/low dots end up symmetrically offset from center.
+    actual_range = t_max - t_min
+    display_range = max(actual_range, TEMP_LINE_MIN_RANGE_F)
+    mid = (t_min + t_max) / 2.0
+    display_min = mid - display_range / 2.0
+    span = TEMP_LINE_Y_BOT - TEMP_LINE_Y_TOP
+    def to_y(t):
+        return TEMP_LINE_Y_BOT - (t - display_min) / display_range * span
+
+    # If the high/low dot sits within ~one column of the row edge, snap
+    # the pill label to the dot's side instead of centering on it — keeps
+    # the pill from clipping against the chart card border.
+    edge = 100.0 / n
+    def align(x):
+        if x < edge: return "left"
+        if x > 100 - edge: return "right"
+        return "center"
+
+    points = []
+    for i, t in enumerate(temps):
+        x = (i + 0.5) / n * 100.0
+        is_hi = i == hi
+        is_lo = i == lo
+        p = {"x": x, "y": to_y(smoothed[i]), "temp_f": t,
+             "is_high": is_hi, "is_low": is_lo}
+        if is_hi or is_lo:
+            p["align"] = align(x)
+            # `hour` is the hour string (e.g. "3p"). The pill renders
+            # it as a smaller italic "@3p" tail so the call-out carries
+            # *when* as well as *what*.
+            p["hour"] = hourly[i].get("hour", "")
+        points.append(p)
+    return {"points": points, "t_min": t_min, "t_max": t_max,
+            "path": _smooth_path([(p["x"], p["y"]) for p in points])}
+
+
+def _temp_line_y_at(temp_line, x_pct):
+    """Linear-interpolate the temp line's y at a given x. Used for
+    collision detection between the line and bar labels — the smoothed
+    bezier deviates from the linear chord by at most a few percent of
+    row height, well under the collision threshold, so this is precise
+    enough without re-evaluating the curve."""
+    if not temp_line:
+        return None
+    pts = temp_line["points"]
+    if not pts:
+        return None
+    if x_pct <= pts[0]["x"]:
+        return pts[0]["y"]
+    if x_pct >= pts[-1]["x"]:
+        return pts[-1]["y"]
+    for i in range(len(pts) - 1):
+        a, b = pts[i], pts[i + 1]
+        if a["x"] <= x_pct <= b["x"]:
+            f = (x_pct - a["x"]) / (b["x"] - a["x"])
+            return a["y"] + f * (b["y"] - a["y"])
+    return None
 
 
 def format_precip(mm: float) -> str:

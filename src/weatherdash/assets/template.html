@@ -550,6 +550,12 @@
       color: var(--panel);
     }
     .chart-row.precip-bars .bar-label-inside { top: 6px; }
+    /* Push the inside label down into the bar's body when the temp
+       line would cross through it at top:6px. 36px clears the line +
+       its halo + a small breathing margin; the label is still well
+       inside the bar (only applied when bar height >= 8% of row, so
+       the bar has plenty of room to absorb the offset). */
+    .chart-row.precip-bars .bar-label-inside.is-nudged { top: 36px; }
     /* Cloud labels need a little extra distance off the bar bottom — when a
        40% bar's label sits between the PARTLY line and the bar bottom,
        bottom:6 lands it noticeably closer to the bottom than the line. */
@@ -677,6 +683,104 @@
     .marker .name { font-size: 20px; font-weight: 900; letter-spacing: 0.08em; line-height: 1; }
     .marker .when { font-size: 18px; font-weight: 700; line-height: 1; }
     .marker svg   { width: 36px; height: 36px; display: block; }
+
+    /* Temperature line overlay on the precip-bars row. Two stacked paths:
+       a wide white halo + a narrow black ink line on top, so the line
+       stays readable across precip patterns, threshold stripes, bar
+       fills, and the night-shade. vector-effect=non-scaling-stroke keeps
+       stroke width uniform despite the non-square viewBox stretch. Sits
+       at z 5 (same band as region labels); DOM order puts it BEFORE the
+       region labels so region-label halos still paint cleanly on top. */
+    .chart-row.precip-bars > svg.temp-line {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 5;
+      pointer-events: none;
+      overflow: visible;
+    }
+    .temp-line-halo {
+      fill: none;
+      stroke: #ffffff;
+      stroke-width: 10px;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+    }
+    .temp-line-ink {
+      fill: none;
+      stroke: #000000;
+      stroke-width: 3.5px;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+    }
+
+    /* High/low call-outs on the line. The .temp-peak div IS the dot;
+       the pill label is a child positioned above (high) or below (low).
+       Horizontal pill alignment defaults to centered on the dot, but
+       snaps to the dot's left or right side when the dot is in the
+       first or last column slot — otherwise the pill clips against the
+       chart card's border. */
+    .temp-peak {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--ink);
+      border: 3px solid #ffffff;
+      box-sizing: border-box;
+      transform: translate(-50%, -50%);
+      z-index: 5;
+      pointer-events: none;
+    }
+    .temp-peak-label {
+      position: absolute;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      background: var(--panel);
+      color: var(--ink);
+      border: 2px solid var(--ink);
+      border-radius: 4px;
+      padding: 3px 10px;
+      line-height: 1;
+      /* inline-flex so the temp value + the hour subspan center
+         against each other vertically (the hour is rendered slightly
+         smaller; without this the baselines would mis-align). */
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .temp-peak.temp-peak-hi .temp-peak-label { bottom: calc(100% + 10px); }
+    .temp-peak.temp-peak-lo .temp-peak-label { top:    calc(100% + 10px); }
+    .temp-peak.align-center .temp-peak-label {
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    /* -7px tucks the pill's edge slightly past the dot's center so the
+       pill's outer border lands near the chart edge instead of inboard
+       of it. The dot still reads at the data point. */
+    .temp-peak.align-left  .temp-peak-label { left: -7px; }
+    .temp-peak.align-right .temp-peak-label { right: -7px; }
+    /* Hour tail — slightly smaller than the temp value, non-bold and
+       dimmed so it reads as metadata. Uppercased ("3P" not "3p") to
+       match the time-axis style elsewhere on the chart. Middle-dot
+       separator wrapped in its own span so it can render larger than
+       the surrounding text without affecting spacing. */
+    .temp-peak-when {
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0;
+      opacity: 0.55;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .temp-peak-dot {
+      font-size: 32px;
+      line-height: 0;       /* don't grow the line box past the text */
+    }
   </style>
 </head>
 <body>
@@ -795,7 +899,7 @@
     <div class="col-chart">
       <section class="card chart-card" style="height: 100%;">
         <div class="card-title">
-          <span>PRECIPITATION</span>
+          <span>PRECIPITATION &amp; TEMPERATURE</span>
           {%- if precip_total_text %}
           <span class="secondary">{{ precip_total_text }}</span>
           {%- endif %}
@@ -823,12 +927,32 @@
               <div class="when">{{ m.time }}</div>
             </div>
             {%- endfor %}
+            {%- if temp_line %}
+            {#- Temperature line. Drawn BEFORE region-labels so the region
+                halo paints on top; the peak dots/pills come AFTER region
+                labels so they stay visible at intersections. Path is a
+                Catmull-Rom spline precomputed in render.py — it passes
+                through every data point so the high/low dots stay on
+                the curve. #}
+            <svg class="temp-line" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <path d="{{ temp_line.path }}" class="temp-line-halo" vector-effect="non-scaling-stroke"/>
+              <path d="{{ temp_line.path }}" class="temp-line-ink"  vector-effect="non-scaling-stroke"/>
+            </svg>
+            {%- endif %}
             {%- for r in regions if r.precip_label %}
             <div class="region-label" style="left: calc(100% * {{ '%.4f'|format(r.precip_label_left) }});
                                               width: calc(100% * {{ '%.4f'|format(r.precip_label_width) }});">
               {{ r.precip_label }}
             </div>
             {%- endfor %}
+            {%- if temp_line %}
+            {%- for p in temp_line.points if p.is_high or p.is_low %}
+            <div class="temp-peak temp-peak-{{ 'hi' if p.is_high else 'lo' }} align-{{ p.align }}"
+                 style="left: {{ '%.3f'|format(p.x) }}%; top: {{ '%.3f'|format(p.y) }}%;">
+              <div class="temp-peak-label">{{ p.temp_f }}°<span class="temp-peak-when"><span class="temp-peak-dot">·</span>{{ p.hour | upper }}</span></div>
+            </div>
+            {%- endfor %}
+            {%- endif %}
             {%- for r in night_regions %}
             {%- set ns_w = r.end_at - r.start_at %}
             <div class="night-shade"
@@ -852,7 +976,7 @@
                   <div class="bar {% if h.precip_is_snow %}is-snow{% endif %}"
                        style="height: {{ h.precip_h_pct }}%;">
                     {%- if h.precip_h_pct >= 8 and h.precip_label %}
-                    <span class="bar-label bar-label-inside">{{ h.precip_label }}</span>
+                    <span class="bar-label bar-label-inside{% if h.precip_label_nudge %} is-nudged{% endif %}">{{ h.precip_label }}</span>
                     {%- endif %}
                   </div>
                 {%- endif %}
