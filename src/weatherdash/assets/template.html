@@ -146,10 +146,16 @@
     /* Body fills the page grid's 1fr row, so the cards extend to exactly the
        bottom padding line and the gutter on all four sides reads as equal. */
     .body {
-      display: grid;
-      grid-template-columns: 460px 1fr;
+      display: flex;
       gap: 24px;
     }
+    .body > .col-left  { flex: 0 0 460px; }
+    .body > .col-chart { flex: 1; min-width: 0; }
+    /* summary_side='right' — flip the visual order without touching
+       the DOM. The chunk-separator on the right of the header lines up
+       with the chart card's right edge (1872 - 36 - 460 - 24 = 1352),
+       mirroring how the default first separator aligns at x=520. */
+    .body.body--mirror { flex-direction: row-reverse; }
     /* Left column heights are tuned so OUTSIDE_bottom + gap ≈ hour-bar
        top in the chart card, putting TEMP FORECAST's title visually
        aligned with the time-axis. OUTSIDE gets a slight edge over
@@ -676,6 +682,24 @@
 <body>
   <header class="header">
     {%- set _date_parts = date_line.split(', ', 1) %}
+    {#- Mirrored layout (summary_side='right') puts the chunks first
+        so the last chunk separator visually aligns with the chart
+        card's right edge instead of its left. #}
+    {%- if summary_side == 'right' %}
+    {%- for c in forecast_chunks %}
+    <div class="chunk" style="flex: {{ c.flex_style }};">
+      <div class="chunk-label"><span class="kind">{{ c.label }}</span>{{ c.chips }}</div>
+      <div class="chunk-text">{{ c.text }}</div>
+    </div>
+    <div class="sep"></div>
+    {%- endfor %}
+    <div class="meta">
+      <span class="dow">{{ _date_parts[0] }}</span>
+      {%- if _date_parts|length > 1 %}
+      <span class="date">{{ _date_parts[1] }}</span>
+      {%- endif %}
+    </div>
+    {%- else %}
     <div class="meta">
       <span class="dow">{{ _date_parts[0] }}</span>
       {%- if _date_parts|length > 1 %}
@@ -689,9 +713,10 @@
       <div class="chunk-text">{{ c.text }}</div>
     </div>
     {%- endfor %}
+    {%- endif %}
   </header>
 
-  <main class="body">
+  <main class="body{% if summary_side == 'right' %} body--mirror{% endif %}">
     <!-- LEFT COLUMN: OUTSIDE prominent, TEMPERATURE FORECAST below, INSIDE compact at bottom -->
     <div class="col-left">
       <section class="card">
@@ -764,7 +789,7 @@
     </div>
 
     <!-- RIGHT COLUMN: single shared chart card -->
-    <div>
+    <div class="col-chart">
       <section class="card chart-card" style="height: 100%;">
         <div class="card-title">
           <span>PRECIPITATION</span>

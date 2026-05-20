@@ -74,6 +74,9 @@ class Scenario:
     uv_index_max: int | None = None
     aqi: int | None = None
     pollen_index: int | None = None
+    # Override the render-config summary_side for this scenario only.
+    # 'right' mirrors the layout horizontally.
+    summary_side: str = "left"
 
 
 # ── small helpers ────────────────────────────────────────────────────────
@@ -541,6 +544,27 @@ def scenarios() -> list[Scenario]:
         pollen_index=10,
     ))
 
+    # 21. Mirrored layout — summary stack on the right, chart on the left.
+    # Exercises the render.summary_side='right' toggle.
+    now = today.replace(hour=10, minute=0)
+    sr, ss = _sun(today, 5.5, 20.1)
+    out.append(Scenario(
+        slug="mirrored-layout",
+        title="Mirrored layout (summary on right)",
+        description=("Same dashboard, summary stack flipped to the right "
+                     "side. The chart card now occupies the left two thirds; "
+                     "the last header chunk separator aligns with the chart "
+                     "card's right edge."),
+        now=now,
+        hourly=_hourly(now, 18, sunrise=sr, sunset=ss,
+                       base_temp=68, diurnal_swing=12, base_cloud=40,
+                       weather_code=2, humidity=55),
+        current=_current(70, humidity=58, code=2, is_day=True),
+        sunrise=sr,
+        sunset=ss,
+        summary_side="right",
+    ))
+
     return out
 
 
@@ -646,7 +670,7 @@ CARD_HTML = """\
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    cfg = make_config()
+    base_cfg = make_config()
     cards = []
     for i, s in enumerate(scenarios(), start=1):
         wx = NormalizedForecast(
@@ -654,6 +678,10 @@ def main() -> None:
             current=s.current,
             sun=SunInfo(sunrise=s.sunrise, sunset=s.sunset),
         )
+        # Per-scenario override of render.summary_side so the index page
+        # can preview both layouts.
+        cfg = base_cfg.model_copy(deep=True)
+        cfg.render.summary_side = s.summary_side
         ctx = build_context(
             cfg, wx, ha=s.ha, _now=s.now,
             past_precip_mm=s.past_precip_mm,

@@ -16,7 +16,7 @@ from __future__ import annotations
 import os
 from enum import Enum
 from pathlib import Path
-from typing import Union
+from typing import Literal, Union
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
@@ -110,6 +110,13 @@ class HomeAssistantConfig(_Strict):
 class RenderConfig(_Strict):
     output_path: Path = Path("/data/dashboard.png")
     refresh_minutes: int = Field(default=1, ge=1, le=180)
+    summary_side: Literal["left", "right"] = Field(
+        default="left",
+        description=("Which side of the panel holds the date + OUTSIDE + "
+                     "TEMP FORECAST + INSIDE stack. 'right' mirrors the "
+                     "layout horizontally, putting the chart card on the "
+                     "left. The chunk-separator alignment swaps to match."),
+    )
 
 
 class ServeConfig(_Strict):
