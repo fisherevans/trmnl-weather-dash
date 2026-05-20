@@ -686,12 +686,15 @@
         so the last chunk separator visually aligns with the chart
         card's right edge instead of its left. #}
     {%- if summary_side == 'right' %}
+    {#- Same sep-before-chunk rhythm as the default layout. No sep
+        between the last chunk and the meta column — the meta's
+        weight + the row gap already separate it visually. #}
     {%- for c in forecast_chunks %}
+    <div class="sep"></div>
     <div class="chunk" style="flex: {{ c.flex_style }};">
       <div class="chunk-label"><span class="kind">{{ c.label }}</span>{{ c.chips }}</div>
       <div class="chunk-text">{{ c.text }}</div>
     </div>
-    <div class="sep"></div>
     {%- endfor %}
     <div class="meta">
       <span class="dow">{{ _date_parts[0] }}</span>
