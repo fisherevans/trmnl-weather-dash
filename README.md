@@ -75,6 +75,21 @@ keep real values in `.env`.
 uv run weatherdash validate --config config.yaml
 ```
 
+A few knobs worth calling out:
+
+- `weather.provider` — `open-meteo` (default, no key) or `nws` (US only, no
+  key, richer prose via `shortForecast`).
+- `weather.forecast_provider` — `derive` (default, composes TODAY/TONIGHT
+  prose from hourly numerics) or `nws` (uses NWS's `shortForecast` strings
+  directly). The two are orthogonal — `open-meteo` hourly + `nws` prose is a
+  valid combo.
+- `render.summary_side` — `left` (default) or `right`. Mirrors the layout
+  horizontally: chart card on the left, date + OUTSIDE + TEMP FORECAST +
+  INSIDE stack on the right.
+- `render.refresh_minutes` — `1` is the most aggressive cadence the host
+  CPU can comfortably hold; bump up to 30/60 if you don't need sub-hour
+  freshness.
+
 ## Weather providers
 
 | Provider | Key required | Coverage | Status |

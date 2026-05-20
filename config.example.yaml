@@ -59,6 +59,10 @@ home_assistant:
 render:
   output_path: /data/dashboard.png
   refresh_minutes: 1          # 1-180
+  # 'left' (default) puts the date stack + OUTSIDE + TEMP FORECAST + INSIDE
+  # column on the left and the chart card on the right. 'right' mirrors
+  # the layout horizontally.
+  summary_side: left          # left | right
 
 # ──────────────────────────────────────────────────────────────────────────
 # HTTP server. TRMNL's Image Display plugin polls a public URL on its own
