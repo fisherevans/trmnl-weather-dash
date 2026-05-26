@@ -36,8 +36,13 @@ ENV PATH="/app/.venv/bin:${PATH}" \
 
 # Install Chromium + its system deps. --with-deps invokes apt-get under
 # the hood; the playwright CLI knows the exact package list.
+# tini is the PID-1 init that reaps zombie chrome helpers. Chromium
+# double-forks its zygote/sandbox/GPU helpers; when those orphan to PID 1
+# under a Python entrypoint, Python doesn't wait() on them, and a
+# long-running scheduler accumulates zombies until the process can't
+# allocate threads. tini reaps them regardless of how the image is run.
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates && \
+    apt-get install -y --no-install-recommends ca-certificates tini && \
     playwright install --with-deps chromium && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /root/.cache/pip /root/.cache/uv
@@ -59,4 +64,5 @@ VOLUME ["/data"]
 USER app
 EXPOSE 8080
 
+ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["weatherdash", "serve"]

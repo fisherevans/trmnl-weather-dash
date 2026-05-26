@@ -8,6 +8,12 @@ services:
     container_name: weatherdash
     restart: unless-stopped
 
+    # Run a PID-1 init so chromium's orphaned helper processes get reaped.
+    # The published image bundles tini for the same reason; this is belt-
+    # and-suspenders and makes the requirement visible to anyone copying
+    # this file.
+    init: true
+
     # Secrets: HA_TOKEN (required), WEATHER_API_KEY (only for providers
     # that need one). The container reads them as env vars; the names
     # they're looked up under come from config.yaml's *_env fields.
