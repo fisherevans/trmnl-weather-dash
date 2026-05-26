@@ -2,8 +2,8 @@
 
 The renderer reads template + asset files from a sibling `assets/` directory
 that ships with the package. Callers supply a data dict matching the shape
-in `data.json` plus optional `updated_at` (defaults to now, formatted as
-"H:MM AM/PM").
+in `data.json` plus optional `updated_date` / `updated_time` (default to
+now, formatted as "Mon D, YYYY" and "H:MM AM/PM").
 """
 from __future__ import annotations
 
@@ -112,10 +112,13 @@ def render_html(data: dict) -> str:
     # aggregation layer supplied them; otherwise recompute for the offline
     # `weatherdash render --data data.json` path.
     regions = data.get("regions") or compute_regions(hourly, n_hours)
-    # `updated_at` is the render-time stamp (not part of the data file) so a
-    # stale image is visually obvious on the panel. %-I drops the leading
-    # zero on the hour to match the header's "10:03 AM" style.
-    updated_at = data.get("updated_at") or datetime.now().strftime("%-I:%M %p")
+    # Render-time stamp (not part of the data file) so a stale image is
+    # visually obvious on the panel. %-I drops the leading zero on the hour
+    # to match the header's "10:03 AM" style. Date carries the year so a
+    # year-stale image is unambiguous.
+    now = datetime.now()
+    updated_date = data.get("updated_date") or now.strftime("%b %-d, %Y")
+    updated_time = data.get("updated_time") or now.strftime("%-I:%M %p")
 
     # Pre-computed bg URLs from the aggregation layer take priority. For
     # static `data*.json` renders (which skip the aggregation layer), we
@@ -167,7 +170,8 @@ def render_html(data: dict) -> str:
            "precip_lines": precip_lines,
            "cloud_lines": cloud_lines,
            "temp_line": temp_line,
-           "updated_at": updated_at,
+           "updated_date": updated_date,
+           "updated_time": updated_time,
            "cloud_bg_url_day": cloud_bg_url_day,
            "cloud_bg_url_night": cloud_bg_url_night,
            "precip_bg_url_day": precip_bg_url_day,

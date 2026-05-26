@@ -349,7 +349,8 @@ def build_context(
     # when the container's host TZ defaults to UTC.
     return {
         "summary_side": config.render.summary_side,
-        "updated_at": now.strftime("%-I:%M %p"),
+        "updated_date": now.strftime("%b %-d, %Y"),
+        "updated_time": now.strftime("%-I:%M %p"),
         # Full day name (longest is WEDNESDAY, fits in the fixed 460px
         # meta column) + 3-letter month abbreviation so the column
         # width stays predictable regardless of season — FEBRUARY would
