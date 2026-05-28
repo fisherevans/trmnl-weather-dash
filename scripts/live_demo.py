@@ -40,10 +40,12 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from trmnldash.config import (Config, ForecastProvider,             # noqa: E402
-                                HomeAssistantConfig, LocationConfig,
-                                WeatherConfig, WeatherProvider)
 from trmnldash.panels.weather_landscape import build_context, render_to_png  # noqa: E402
+from trmnldash.panels.weather_landscape.config import (LocationConfig,  # noqa: E402
+                                                       WeatherLandscapeConfig)
+from trmnldash.sources.config import (ForecastProvider,               # noqa: E402
+                                      HomeAssistantConfig, WeatherConfig,
+                                      WeatherProvider)
 from trmnldash.sources.base import ForecastError                    # noqa: E402
 from trmnldash.sources.factory import (make_forecast_source,        # noqa: E402
                                          make_weather_source)
@@ -86,8 +88,8 @@ LOCATIONS: list[Location] = [
 ]
 
 
-def make_config(loc: Location) -> Config:
-    return Config(
+def make_config(loc: Location) -> WeatherLandscapeConfig:
+    return WeatherLandscapeConfig(
         location=LocationConfig(lat=loc.lat, lon=loc.lon, timezone=loc.timezone),
         weather=WeatherConfig(
             provider=WeatherProvider.NWS,

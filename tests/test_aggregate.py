@@ -12,8 +12,10 @@ import pytest
 
 from trmnldash.panels.weather_landscape.aggregate import (DEFAULT_ICON, WMO_ICON_MAP, build_context,
                                    wmo_to_icon)
-from trmnldash.config import (Config, HomeAssistantConfig, LocationConfig,
-                                SensorsConfig, WeatherConfig)
+from trmnldash.panels.weather_landscape.config import (LocationConfig,
+                                                       WeatherLandscapeConfig)
+from trmnldash.sources.config import (HomeAssistantConfig, SensorsConfig,
+                                      WeatherConfig)
 from trmnldash.sources.base import (CurrentObservation, HourlyPoint,
                                       NormalizedForecast, SunInfo)
 from trmnldash.sources.homeassistant import SensorReading
@@ -85,8 +87,8 @@ def _reading(entity_id: str, state: float, unit: str = "°F") -> SensorReading:
     )
 
 
-def _config(sensors: SensorsConfig | None = None) -> Config:
-    return Config(
+def _config(sensors: SensorsConfig | None = None) -> WeatherLandscapeConfig:
+    return WeatherLandscapeConfig(
         location=LocationConfig(lat=43.21, lon=-71.54, timezone="America/New_York"),
         weather=WeatherConfig(hours=18),
         home_assistant=HomeAssistantConfig(

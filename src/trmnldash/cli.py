@@ -38,12 +38,26 @@ def cmd_validate(args: argparse.Namespace) -> int:
         print(str(e), file=sys.stderr)
         return 1
     # Show a one-line OK summary; full dump is too noisy for a routine check.
+    device = cfg.dashboard.device
+    panel_names = _layout_panel_names(cfg.dashboard.layout)
     print(
-        f"config OK: provider={cfg.weather.provider.value} "
-        f"location=({cfg.location.lat},{cfg.location.lon}) tz={cfg.location.timezone} "
+        f"config OK: device={device.width}x{device.height} "
+        f"palette={device.palette} rotate={device.rotate} "
+        f"panels=[{', '.join(panel_names)}] "
         f"refresh={cfg.render.refresh_minutes}m port={cfg.serve.port}"
     )
     return 0
+
+
+def _layout_panel_names(node) -> list[str]:
+    from .engine.layout import HStack, PanelSlot, VStack
+    if isinstance(node, PanelSlot):
+        return [node.panel]
+    body = node.vstack if isinstance(node, VStack) else node.hstack
+    names: list[str] = []
+    for child in body.children:
+        names.extend(_layout_panel_names(child))
+    return names
 
 
 def cmd_serve(args: argparse.Namespace) -> int:
@@ -85,20 +99,10 @@ def cmd_render_live(args: argparse.Namespace) -> int:
 
 def _print_summary(cfg, stats) -> None:
     print(f"wrote {stats.output_path}")
-    print(f"  weather ({cfg.weather.provider.value}): {stats.weather_ms:.0f}ms")
-    if stats.ha_sensors_requested == 0:
-        print("  ha: not configured")
-    elif stats.ha_failed:
-        print(f"  ha: FAILED, fell back to weather API ({stats.ha_ms:.0f}ms)")
-    else:
-        missing = stats.ha_sensors_requested - stats.ha_sensors_got
-        miss_tag = "" if missing == 0 else f" [{missing} missing]"
-        print(
-            f"  ha: {stats.ha_sensors_got}/{stats.ha_sensors_requested} sensors "
-            f"({stats.ha_ms:.0f}ms){miss_tag}"
-        )
-    print(f"  aggregate: {stats.aggregate_ms:.0f}ms")
-    print(f"  render: {stats.render_ms:.0f}ms")
+    for p in stats.panels:
+        print(f"  {p.name}: fetch={p.fetch_ms:.0f}ms render={p.render_ms:.0f}ms")
+    print(f"  compose+rotate: {stats.compose_ms:.0f}ms")
+    print(f"  quantize: {stats.quantize_ms:.0f}ms")
     print(f"  total: {stats.total_ms:.0f}ms")
 
 

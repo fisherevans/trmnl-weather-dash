@@ -75,7 +75,14 @@ keep real values in `.env`.
 uv run trmnldash validate --config config.yaml
 ```
 
-A few knobs worth calling out:
+Config structure: the top-level `dashboard:` block describes the target
+device + a layout tree composing one or more panels. The weather
+landscape panel's settings (location, weather provider, HA sensors) live
+inside the panel's `config:` block. The `render:` and `serve:` blocks
+configure the scheduler and HTTP server.
+
+A few knobs worth calling out (under `dashboard.layout.config:` for the
+weather panel):
 
 - `weather.provider` — `open-meteo` (default, no key) or `nws` (US only, no
   key, richer prose via `shortForecast`).
@@ -83,12 +90,13 @@ A few knobs worth calling out:
   prose from hourly numerics) or `nws` (uses NWS's `shortForecast` strings
   directly). The two are orthogonal — `open-meteo` hourly + `nws` prose is a
   valid combo.
-- `render.summary_side` — `left` (default) or `right`. Mirrors the layout
+- `summary_side` — `left` (default) or `right`. Mirrors the layout
   horizontally: chart card on the left, date + OUTSIDE + TEMP FORECAST +
   INSIDE stack on the right.
-- `render.refresh_minutes` — `1` is the most aggressive cadence the host
-  CPU can comfortably hold; bump up to 30/60 if you don't need sub-hour
-  freshness.
+
+Top-level `render.refresh_minutes` — `1` is the most aggressive cadence
+the host CPU can comfortably hold; bump up to 30/60 if you don't need
+sub-hour freshness.
 
 ## Weather providers
 
@@ -164,15 +172,21 @@ with all CSS inline. No build step, no bundler. Edits go directly there.
 ```
 src/trmnldash/
 ├── cli.py                   trmnldash {render,render-live,serve,setup,validate}
-├── config.py                Pydantic schema + YAML loader
-├── engine/
+├── config.py                top-level YAML schema (dashboard / render / serve)
+├── engine/                  panel-agnostic rendering plumbing
 │   ├── render.py            html -> chromium -> PIL.Image
 │   ├── quantize.py          palette-driven snap to device greys
-│   ├── pipeline.py          fetch -> aggregate -> render -> save
-│   └── server.py            scheduler loop + aiohttp HTTP server
+│   ├── layout.py            DeviceProfile + PanelSlot/VStack/HStack types
+│   ├── panel.py             Panel manifest + name-based lookup
+│   ├── compose.py           walk layout, paste panels, draw separators
+│   ├── pipeline.py          dashboard orchestrator (fetch -> compose -> save)
+│   └── server.py            scheduler + aiohttp HTTP server
 ├── panels/
 │   └── weather_landscape/   the 1872x1404 full-screen weather panel
-│       ├── render.py        Jinja context build + chart math + render entry
+│       ├── __init__.py      exports `PANEL` (the manifest)
+│       ├── config.py        panel's pydantic schema
+│       ├── render.py        Jinja context + chart math + render_to_image
+│       ├── live.py          fetch weather + HA, hand off to aggregate
 │       ├── aggregate.py     merge weather + HA into render context
 │       ├── bg_shading.py    density-shifted chart bg SVG fills
 │       ├── template.html    single Jinja2 template, inline CSS
@@ -180,6 +194,7 @@ src/trmnldash/
 │           ├── bg-{cloud,rain,snow}.svg
 │           └── makin-grey/  58 condition icons
 └── sources/
+    ├── config.py            WeatherConfig, HomeAssistantConfig, etc.
     ├── base.py              WeatherSource Protocol + NormalizedForecast
     ├── openmeteo.py
     ├── nws.py

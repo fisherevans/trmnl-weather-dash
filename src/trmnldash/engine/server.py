@@ -99,10 +99,14 @@ class WeatherServer:
         self.total_renders += 1
         # Invalidate etag cache so the next request recomputes it.
         self._etag = None
+        panel_summary = " ".join(
+            f"{p.name}(fetch={p.fetch_ms:.0f}ms,render={p.render_ms:.0f}ms)"
+            for p in stats.panels
+        ) or "(no-panels)"
         logger.info(
-            "rendered %s in %dms (weather=%dms ha=%dms render=%dms)",
-            self.output_path, stats.total_ms, stats.weather_ms,
-            stats.ha_ms, stats.render_ms,
+            "rendered %s in %dms - %s compose=%dms quantize=%dms",
+            self.output_path, stats.total_ms, panel_summary,
+            stats.compose_ms, stats.quantize_ms,
         )
 
     def _do_render_sync(self) -> RenderStats:

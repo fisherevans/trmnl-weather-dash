@@ -40,9 +40,10 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from trmnldash.config import (Config, HomeAssistantConfig,           # noqa: E402
-                                LocationConfig, WeatherConfig)
 from trmnldash.panels.weather_landscape import build_context, render_to_png  # noqa: E402
+from trmnldash.panels.weather_landscape.config import (LocationConfig,  # noqa: E402
+                                                       WeatherLandscapeConfig)
+from trmnldash.sources.config import HomeAssistantConfig, WeatherConfig  # noqa: E402
 from trmnldash.sources.base import (CurrentObservation, HourlyPoint, # noqa: E402
                                       NormalizedForecast, SunInfo,
                                       deg_to_cardinal)
@@ -570,8 +571,8 @@ def scenarios() -> list[Scenario]:
 # ── render + page generation ─────────────────────────────────────────────
 
 
-def make_config() -> Config:
-    return Config(
+def make_config() -> WeatherLandscapeConfig:
+    return WeatherLandscapeConfig(
         location=LocationConfig(lat=43.21, lon=-71.54, timezone="America/New_York"),
         weather=WeatherConfig(hours=18),
         home_assistant=HomeAssistantConfig(base_url="http://unused"),

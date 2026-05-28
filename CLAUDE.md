@@ -127,55 +127,93 @@ Icon pipeline (one-time per pack):
 
 ## Repo layout
 
-The package splits into a panel-agnostic engine and one-or-more panels
-that each own their template + assets + context-building. The weather
-landscape panel is the first; new panels (calendar, OG combined) live
-beside it under `panels/`.
+The package splits into a panel-agnostic engine + one-or-more panels.
+Each panel owns its template, assets, config schema, data fetching, and
+context-building. A `Dashboard` (declared in YAML) composes one or more
+panels onto a device profile (size + palette + rotation).
 
 ```
 src/trmnldash/
 ├── cli.py                              # entrypoint (render/render-live/serve/setup/validate)
-├── config.py                           # YAML loader
+├── config.py                           # top-level YAML: dashboard + render + serve
 ├── engine/                             # panel-agnostic plumbing
 │   ├── render.py                       # html -> chromium -> PIL.Image
-│   ├── quantize.py                     # palette-driven snap to device greys
-│   ├── pipeline.py                     # fetch -> aggregate -> render -> save (weather-coupled today)
+│   ├── quantize.py                     # palette-driven snap (PALETTES registry)
+│   ├── layout.py                       # DeviceProfile, PanelSlot, VStack, HStack, Size, Separator
+│   ├── panel.py                        # Panel dataclass + name-based lookup
+│   ├── compose.py                      # walk Layout, render each slot, paste, draw separators
+│   ├── pipeline.py                     # dashboard orchestrator (panel-agnostic)
 │   └── server.py                       # scheduler + aiohttp HTTP server
 ├── panels/
 │   └── weather_landscape/              # the 1872x1404 16-grey weather panel
-│       ├── __init__.py                 # RENDER_SPEC + public render entry points
+│       ├── __init__.py                 # exports `PANEL` (the manifest)
+│       ├── config.py                   # WeatherLandscapeConfig (panel schema)
 │       ├── render.py                   # Jinja context + chart math
+│       ├── live.py                     # fetch weather + HA, hand off to aggregate
 │       ├── aggregate.py                # weather + HA -> render context
 │       ├── bg_shading.py               # density-shifted chart bg fills
 │       ├── template.html
 │       └── assets/                     # bg-*.svg, makin-grey/
-└── sources/                            # data providers shared across panels
+└── sources/
+    ├── config.py                       # WeatherConfig, HomeAssistantConfig, etc.
+    ├── base.py                         # WeatherSource Protocol + NormalizedForecast
+    ├── openmeteo.py / nws.py
+    ├── homeassistant.py
+    └── factory.py
 
 scripts/                                # one-off generators (PEP 723 uv scripts)
-data*.json                              # dev fixtures (replaced by live sources)
+data*.json                              # dev fixtures for offline panel renders
 pyproject.toml                          # hatchling; `trmnldash` console script
 ```
 
-Panel module convention (will be made formal in the dashboard-model
-refactor): each panel exposes `RENDER_SPEC` (width/height/palette) and a
-`render_to_image(data) -> PIL.Image` entry point. The engine knows
-nothing weather-specific; pipeline.py is the one weather-coupled file
-in `engine/` today (it imports from `panels.weather_landscape`) and will
-become panel-generic in phase 3.
+### Adding a new panel
+
+1. Create `src/trmnldash/panels/<name>/` with `template.html`, `assets/`,
+   a `config.py` defining the panel's pydantic schema, a `render.py`
+   with `render_to_image(data, *, width, height) -> PIL.Image`, and a
+   `live.py` with `build_live_context(config) -> dict`.
+2. Define `PANEL = Panel(name=..., render_spec=..., config_schema=...,
+   build_live_context=..., render_to_image=...)` in `__init__.py`.
+3. Reference the panel by name in a dashboard YAML's `layout.panel:`
+   (or as a child inside `vstack:` / `hstack:`). The engine's lazy
+   panel lookup imports the module and pulls `PANEL` - no registration
+   ceremony needed.
+
+### Layout primitives
+
+`engine/layout.py` defines:
+- `DeviceProfile(width, height, palette, rotate)` - target panel
+- `PanelSlot(panel, size, config)` - a leaf, references a panel by name
+- `VStack(vstack=StackBody(children, padding, gap, separator))` - column
+- `HStack(hstack=StackBody(...))` - row
+- `Separator(thickness, color)` - line drawn between siblings
+- `Size` - parses "1fr" / "240" / "50%"
+
+The discriminator is the top-level key (`panel:` / `vstack:` / `hstack:`),
+chosen for terser YAML; pydantic's `extra="forbid"` makes the
+discrimination automatic. Single-panel dashboards put a bare PanelSlot
+at the root and ignore its `size:` (it fills the canvas).
 
 ## Live data integration
 
 End-to-end shape:
-1. `trmnldash.config` loads a YAML config (location, weather provider,
-   forecast provider, HA sensors).
-2. `trmnldash.sources.factory` builds the configured `WeatherSource`
-   and (optionally) `ForecastSource`. Sources sit behind protocols
-   defined in `sources/base.py`; see "Source plugin shape" below.
-3. `trmnldash.sources.homeassistant` fetches HA sensor states.
-4. `trmnldash.panels.weather_landscape.build_context` merges them into
-   the dict the panel's `render_to_png(data, ...)` expects (same shape
-   as `data.json`).
-5. `trmnldash.engine.server` runs a scheduler + HTTP server in one process.
+1. `trmnldash.config.load_config` parses the YAML, validates the
+   top-level `dashboard / render / serve` schema, walks the layout tree,
+   looks up each panel by name, and validates the per-panel `config:`
+   block against the panel's `config_schema`.
+2. `trmnldash.engine.pipeline.run_once` walks the layout, calls each
+   panel's `build_live_context(panel_config)` to fetch + aggregate, then
+   its `render_to_image(ctx, width, height)` for the screenshot.
+3. The composed canvas is rotated per `device.rotate`, quantized via
+   the device's palette, and saved.
+4. `trmnldash.engine.server` runs a scheduler + HTTP server in one
+   process, calling `run_once` on the configured interval.
+
+The weather panel's own pipeline (`panels/weather_landscape/live.py`)
+is what used to be `engine/pipeline.py`: it builds the configured
+`WeatherSource` / `ForecastSource` via `sources/factory.py`, fetches HA
+sensor states via `sources/homeassistant.py`, and hands the merged data
+to `aggregate.build_context`.
 
 Condition-code mapping: every provider normalizes to WMO codes (Open-
 Meteo's native space). `aggregate.WMO_ICON_MAP` maps WMO + is_day to

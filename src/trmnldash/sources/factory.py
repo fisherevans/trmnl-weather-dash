@@ -7,8 +7,8 @@ instance can fill both roles and share its /points cache between them.
 """
 from __future__ import annotations
 
-from ..config import (ForecastProvider, WeatherConfig, WeatherProvider,
-                      require_env)
+from .config import (ForecastProvider, WeatherConfig, WeatherProvider,
+                     require_env)
 from .base import ForecastSource, WeatherSource
 from .nws import NWSProvider
 from .openmeteo import OpenMeteoProvider

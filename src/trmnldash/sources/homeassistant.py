@@ -20,7 +20,7 @@ from typing import Any
 
 import httpx
 
-from ..config import HomeAssistantConfig, require_env
+from .config import HomeAssistantConfig, require_env
 
 logger = logging.getLogger(__name__)
 

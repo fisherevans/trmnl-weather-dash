@@ -1,0 +1,113 @@
+"""Source-shaped config blocks + small utilities shared across sources.
+
+These are the pydantic models that describe HOW to call a data source -
+provider name, API key env var, HA base URL + sensor mapping, etc. They
+live with the sources so a panel's config can compose them without the
+panel having to know which providers exist.
+
+The companion `LocationConfig` lives in the weather panel since
+"where the dashboard is" is a panel-level concept, not a source-level
+one - a provider takes lat/lon as fetch arguments, not configuration.
+"""
+from __future__ import annotations
+
+import os
+from enum import Enum
+from typing import Union
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class ConfigError(Exception):
+    """Raised for any user-fixable config problem (missing env var, etc.).
+    The same exception type lives in trmnldash.config and is re-exported
+    here for sources that need to raise without depending on the top level.
+    """
+
+
+class _Strict(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+# Either a single entity_id, or a list of them. A single value is used
+# as-is; a list is averaged at aggregation time.
+SensorRef = Union[str, list[str], None]
+
+
+class WeatherProvider(str, Enum):
+    OPEN_METEO = "open-meteo"
+    NWS = "nws"
+    PIRATE = "pirate"
+    OPENWEATHERMAP = "openweathermap"
+
+
+class ForecastProvider(str, Enum):
+    """Source for the human-written TODAY/TONIGHT prose chunks.
+
+    NWS exposes a `shortForecast` string per 12-hour period. DERIVE falls
+    back to aggregate._summarize, which composes a feel-word summary
+    from hourly temp/humidity/precip/cloud."""
+    DERIVE = "derive"
+    NWS = "nws"
+
+
+class WeatherConfig(_Strict):
+    provider: WeatherProvider = WeatherProvider.OPEN_METEO
+    api_key_env: str | None = Field(
+        default=None,
+        description="Env var holding the API key, if the provider needs one",
+    )
+    hours: int = Field(default=24, ge=1, le=168, description="Forecast horizon in hours")
+    forecast_provider: ForecastProvider = Field(
+        default=ForecastProvider.DERIVE,
+        description=("Source for TODAY/TONIGHT prose. 'derive' composes from "
+                     "hourly numerics; 'nws' uses api.weather.gov shortForecast."),
+    )
+
+
+class SensorsConfig(_Strict):
+    """Maps weather-panel fields to HA entity IDs.
+
+    Each field is either a string (single sensor, used as-is) or a list
+    of strings (averaged at aggregation time). Any field can be omitted.
+    """
+    outdoor_temp_f: SensorRef = None
+    outdoor_humidity: SensorRef = None
+    indoor_temp_f: SensorRef = None
+    indoor_humidity: SensorRef = None
+
+
+class HomeAssistantConfig(_Strict):
+    base_url: str = Field(..., description="e.g. http://homeassistant.local:8123")
+    token_env: str = Field("HA_TOKEN", description="Env var name for the long-lived token")
+    sensors: SensorsConfig = SensorsConfig()
+
+
+def require_env(name: str) -> str:
+    """Resolve an env-var reference from config. Fails loudly if unset."""
+    val = os.environ.get(name)
+    if val is None or val == "":
+        raise ConfigError(f"Environment variable {name!r} is referenced in config but not set")
+    return val
+
+
+def as_sensor_list(ref: SensorRef) -> list[str]:
+    """Normalize a SensorRef to a (possibly empty) list of entity IDs."""
+    if ref is None:
+        return []
+    if isinstance(ref, str):
+        return [ref]
+    return list(ref)
+
+
+__all__ = [
+    "ConfigError",
+    "ForecastProvider",
+    "HomeAssistantConfig",
+    "SensorRef",
+    "SensorsConfig",
+    "WeatherConfig",
+    "WeatherProvider",
+    "as_sensor_list",
+    "require_env",
+]

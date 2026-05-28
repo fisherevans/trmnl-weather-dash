@@ -3,52 +3,78 @@
 # Pass at runtime via --config or the TRMNLDASH_CONFIG env var.
 
 # ──────────────────────────────────────────────────────────────────────────
-# Where the dashboard is for. Hourly forecast + sunset/sunrise + tz-aware
-# hour labels all depend on these.
-# ──────────────────────────────────────────────────────────────────────────
-location:
-  lat: 43.21                  # decimal degrees, [-90, 90]
-  lon: -71.54                 # decimal degrees, [-180, 180]
-  timezone: America/New_York  # IANA timezone, used for chart hour labels
-
-# ──────────────────────────────────────────────────────────────────────────
-# Forecast source. open-meteo is the default because it requires no key.
-# Other providers land in later issues; flipping `provider` is all it takes.
-# ──────────────────────────────────────────────────────────────────────────
-weather:
-  provider: open-meteo        # open-meteo | nws | pirate | openweathermap
-  # api_key_env: WEATHER_API_KEY   # name of env var holding the key, if needed
-  hours: 24                   # forecast horizon (1-168)
-
-# ──────────────────────────────────────────────────────────────────────────
-# Home Assistant: source for any sensor-backed reading on the dashboard.
-# Any sensor field can be omitted — aggregation falls back to the weather
-# API where applicable, or hides the relevant card.
+# Dashboard: what to render. The device profile describes the target
+# panel's pixel dimensions, palette, and any rotation needed to land on
+# the panel's native orientation. The layout tree composes one-or-more
+# panels onto that canvas.
 #
-# Each sensor field is either:
-#   - a single entity_id (string): used as-is
-#   - a list of entity_ids: averaged at aggregation time
+# Layout nodes:
+#   - panel: <name>      a leaf - renders the named panel (its module is
+#                         trmnldash.panels.<name>). `config:` is the
+#                         per-panel config block, validated against
+#                         that panel's own schema.
+#   - vstack / hstack    a container with `children:`, optional padding,
+#                         gap, and a separator drawn between siblings.
+#
+# Sizing inside a stack:
+#   - "1fr" (default)    equal share of remaining space
+#   - "240" or 240       fixed pixels
+#   - "50%"              percentage of the stack's main axis
 # ──────────────────────────────────────────────────────────────────────────
-home_assistant:
-  base_url: http://homeassistant.local:8123
-  token_env: HA_TOKEN         # env var holding the long-lived access token
+dashboard:
+  device:
+    width: 1872              # panel width in pixels
+    height: 1404             # panel height in pixels
+    palette: 4bit-grey       # 4bit-grey (16 levels) is the TRMNL X 10.3"
+    rotate: 0                # 0 | 90 | 180 | 270 (clockwise, applied after compose)
 
-  sensors:
-    outdoor_temp_f: sensor.outdoor_temperature
-    outdoor_humidity: sensor.outdoor_humidity
+  layout:
+    panel: weather_landscape
+    # `size:` is ignored at the root - a bare panel fills the canvas.
+    # `config:` is the panel's own schema; see below.
+    config:
+      # Where the dashboard is for. Hourly forecast + sunset/sunrise +
+      # tz-aware hour labels all depend on these.
+      location:
+        lat: 43.21                    # decimal degrees, [-90, 90]
+        lon: -71.54                   # decimal degrees, [-180, 180]
+        timezone: America/New_York    # IANA timezone
 
-    indoor_temp_f:
-      - sensor.living_room_temperature
-      - sensor.bedroom_temperature
-      - sensor.office_temperature
+      # Forecast source. open-meteo is the default because it requires
+      # no key. Flipping `provider` is all it takes to switch.
+      weather:
+        provider: open-meteo          # open-meteo | nws | pirate | openweathermap
+        # api_key_env: WEATHER_API_KEY  # env var holding the key, if needed
+        hours: 24                     # forecast horizon (1-168)
+        # forecast_provider: derive   # derive (default) | nws
 
-    indoor_humidity:
-      - sensor.living_room_humidity
-      - sensor.bedroom_humidity
+      # Home Assistant: source for any sensor-backed reading. Any sensor
+      # field can be omitted - aggregation falls back to the weather API
+      # where applicable, or hides the relevant card.
+      # Each field is either a single entity_id (used as-is) or a list
+      # (averaged at aggregation time).
+      home_assistant:
+        base_url: http://homeassistant.local:8123
+        token_env: HA_TOKEN           # env var holding the long-lived token
+        sensors:
+          outdoor_temp_f: sensor.outdoor_temperature
+          outdoor_humidity: sensor.outdoor_humidity
+          indoor_temp_f:
+            - sensor.living_room_temperature
+            - sensor.bedroom_temperature
+            - sensor.office_temperature
+          indoor_humidity:
+            - sensor.living_room_humidity
+            - sensor.bedroom_humidity
+
+      # 'left' (default) puts the date stack + OUTSIDE + TEMP FORECAST +
+      # INSIDE column on the left and the chart card on the right.
+      # 'right' mirrors the layout horizontally.
+      summary_side: left              # left | right
 
 # ──────────────────────────────────────────────────────────────────────────
-# Render cadence. The scheduler re-renders on this interval; the HTTP
-# server (below) always serves whatever the most recent render produced.
+# Render cadence + where the PNG lands on disk. The HTTP server (below)
+# always serves whatever the most recent render produced.
 #
 # 1-minute default: TRMNL devices set their own poll cadence we don't
 # control. If we render every N min, worst case is a poll lands right
@@ -58,11 +84,7 @@ home_assistant:
 # ──────────────────────────────────────────────────────────────────────────
 render:
   output_path: /data/dashboard.png
-  refresh_minutes: 1          # 1-180
-  # 'left' (default) puts the date stack + OUTSIDE + TEMP FORECAST + INSIDE
-  # column on the left and the chart card on the right. 'right' mirrors
-  # the layout horizontally.
-  summary_side: left          # left | right
+  refresh_minutes: 1                  # 1-180
 
 # ──────────────────────────────────────────────────────────────────────────
 # HTTP server. TRMNL's Image Display plugin polls a public URL on its own
@@ -71,7 +93,7 @@ render:
 #
 # `secret_path`, if set, gates the dashboard URL: PNG is served at
 #   /<secret_path>/dashboard.png
-# Treat the secret like a password — anyone with the URL can read the
+# Treat the secret like a password - anyone with the URL can read the
 # image. Leave unset only on trusted local networks.
 # ──────────────────────────────────────────────────────────────────────────
 serve:

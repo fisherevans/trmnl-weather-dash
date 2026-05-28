@@ -392,19 +392,21 @@ def format_precip_mixed(rain_mm: float, snow_cm: float) -> str:
     return format_precip(rain_mm)
 
 
-def render_to_image(data: dict) -> Image.Image:
+def render_to_image(data: dict, *, width: int | None = None, height: int | None = None) -> Image.Image:
     """Render the panel's data dict to a PIL.Image (no quantize, no save).
 
-    This is the panel's main entry point. The dashboard layer feeds the
-    result through `engine.quantize` and composes it onto the device's
-    final canvas.
+    Width/height default to the panel's RENDER_SPEC. The template was
+    authored at 1872x1404; rendering at other sizes will visibly
+    misfit since the CSS uses absolute pixel measurements throughout.
+    The dashboard layer feeds the result through `engine.quantize` and
+    composes it onto the device's final canvas.
     """
     html = render_html(data)
     return html_to_image(
         html,
         base_uri=ASSETS.as_uri() + "/",
-        width=RENDER_SPEC.width,
-        height=RENDER_SPEC.height,
+        width=width or RENDER_SPEC.width,
+        height=height or RENDER_SPEC.height,
     )
 
 

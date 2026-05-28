@@ -21,7 +21,8 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from .bg_shading import cloud_bucket, precip_bucket, row_bg_color, shaded_svg_url
-from ...config import Config, SensorRef, as_sensor_list
+from .config import WeatherLandscapeConfig
+from ...sources.config import SensorRef, as_sensor_list
 from ...sources.base import ForecastPeriod, NormalizedForecast
 from ...sources.homeassistant import SensorReading
 
@@ -73,7 +74,7 @@ TREND_HUMIDITY_THRESHOLD_PCT = 8
 
 
 def build_context(
-    config: Config,
+    config: WeatherLandscapeConfig,
     weather: NormalizedForecast,
     ha: dict[str, SensorReading],
     _now: datetime | None = None,
@@ -348,7 +349,7 @@ def build_context(
     # Both come from the same tz-aware `now` so they're consistent even
     # when the container's host TZ defaults to UTC.
     return {
-        "summary_side": config.render.summary_side,
+        "summary_side": config.summary_side,
         "updated_date": now.strftime("%b %-d, %Y"),
         "updated_time": now.strftime("%-I:%M %p"),
         # Full day name (longest is WEDNESDAY, fits in the fixed 460px

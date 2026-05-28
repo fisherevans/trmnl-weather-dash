@@ -1,122 +1,55 @@
-"""Config schema + YAML loader.
+"""Top-level YAML config: dashboard + render + serve.
 
-A deployable instance is fully configured by one `config.yaml`. The schema
-covers the location, weather provider choice, Home Assistant connection
-+ sensor mapping, render cadence, and HTTP serve settings.
+A deploy is fully described by one `config.yaml`. The shape:
 
-Secrets live in env vars referenced by name (e.g. `token_env: HA_TOKEN`),
-not inline strings, so a config file is safe to commit to a public repo.
+    dashboard:
+      device: {width, height, palette, rotate}
+      layout: <PanelSlot | VStack | HStack>     # see engine/layout.py
 
-Usage:
-    cfg = load_config(Path("config.yaml"))     # or env var TRMNLDASH_CONFIG
-    token = require_env(cfg.home_assistant.token_env)
+    render:
+      output_path: /data/dashboard.png
+      refresh_minutes: 5
+
+    serve:
+      host: 0.0.0.0
+      port: 8080
+      secret_path: ...
+
+Per-panel config blocks live inside the layout tree (PanelSlot.config)
+and are validated against the panel's own schema after the layout is
+parsed - that's done in `load_config`, since pydantic doesn't know
+which schema applies until the panel name is resolved.
+
+Secrets stay in env vars referenced by name (e.g. `token_env: HA_TOKEN`)
+so a config file is safe to commit alongside the dashboard.
 """
 from __future__ import annotations
 
 import os
-from enum import Enum
 from pathlib import Path
-from typing import Literal, Union
+from typing import Any
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-
-class ConfigError(Exception):
-    """Raised for any user-fixable config problem (missing file, bad schema, missing env var)."""
-
-
-# Either a single entity_id, or a list of them. A single value is used as-is;
-# a list is averaged at aggregation time.
-SensorRef = Union[str, list[str], None]
-
-
-class WeatherProvider(str, Enum):
-    OPEN_METEO = "open-meteo"
-    NWS = "nws"
-    PIRATE = "pirate"
-    OPENWEATHERMAP = "openweathermap"
-
-
-class ForecastProvider(str, Enum):
-    """Source for the human-written TODAY/TONIGHT prose chunks.
-
-    NWS exposes a `shortForecast` string per 12-hour period. DERIVE
-    falls back to aggregate._summarize, which composes a feel-word
-    summary from hourly temp/humidity/precip/cloud."""
-    DERIVE = "derive"
-    NWS = "nws"
+from .engine.layout import DeviceProfile, HStack, Layout, PanelSlot, VStack
+from .engine.panel import PanelLookupError, lookup
+from .sources.config import (ConfigError, SensorRef, as_sensor_list,
+                             require_env)
 
 
 class _Strict(BaseModel):
-    # Reject unknown keys so typos surface as errors, not silent drops.
     model_config = ConfigDict(extra="forbid")
 
 
-class LocationConfig(_Strict):
-    lat: float = Field(..., description="Decimal degrees, [-90, 90]")
-    lon: float = Field(..., description="Decimal degrees, [-180, 180]")
-    timezone: str = Field("UTC", description="IANA timezone (e.g. 'America/New_York')")
-
-    @field_validator("lat")
-    @classmethod
-    def _lat_in_range(cls, v: float) -> float:
-        if not -90 <= v <= 90:
-            raise ValueError(f"must be in [-90, 90], got {v}")
-        return v
-
-    @field_validator("lon")
-    @classmethod
-    def _lon_in_range(cls, v: float) -> float:
-        if not -180 <= v <= 180:
-            raise ValueError(f"must be in [-180, 180], got {v}")
-        return v
-
-
-class WeatherConfig(_Strict):
-    provider: WeatherProvider = WeatherProvider.OPEN_METEO
-    api_key_env: str | None = Field(
-        default=None,
-        description="Name of the env var holding the API key, if the provider requires one",
-    )
-    hours: int = Field(default=24, ge=1, le=168, description="Forecast horizon in hours")
-    forecast_provider: ForecastProvider = Field(
-        default=ForecastProvider.DERIVE,
-        description=("Source for TODAY/TONIGHT prose. 'derive' composes from "
-                     "hourly numerics; 'nws' uses api.weather.gov shortForecast."),
-    )
-
-
-class SensorsConfig(_Strict):
-    """Maps dashboard fields to HA entity IDs.
-
-    Each field is either a string (single sensor, used as-is) or a list of
-    strings (averaged at aggregation time). Any field can be omitted; the
-    aggregation layer falls back to the weather API where applicable, or
-    hides the related card.
-    """
-    outdoor_temp_f: SensorRef = None
-    outdoor_humidity: SensorRef = None
-    indoor_temp_f: SensorRef = None
-    indoor_humidity: SensorRef = None
-
-
-class HomeAssistantConfig(_Strict):
-    base_url: str = Field(..., description="e.g. http://homeassistant.local:8123")
-    token_env: str = Field("HA_TOKEN", description="Env var name for the long-lived token")
-    sensors: SensorsConfig = SensorsConfig()
+class DashboardConfig(_Strict):
+    device: DeviceProfile
+    layout: Layout
 
 
 class RenderConfig(_Strict):
     output_path: Path = Path("/data/dashboard.png")
     refresh_minutes: int = Field(default=1, ge=1, le=180)
-    summary_side: Literal["left", "right"] = Field(
-        default="left",
-        description=("Which side of the panel holds the date + OUTSIDE + "
-                     "TEMP FORECAST + INSIDE stack. 'right' mirrors the "
-                     "layout horizontally, putting the chart card on the "
-                     "left. The chunk-separator alignment swaps to match."),
-    )
 
 
 class ServeConfig(_Strict):
@@ -130,16 +63,15 @@ class ServeConfig(_Strict):
 
 
 class Config(_Strict):
-    location: LocationConfig
-    weather: WeatherConfig = WeatherConfig()
-    home_assistant: HomeAssistantConfig
+    dashboard: DashboardConfig
     render: RenderConfig = RenderConfig()
     serve: ServeConfig = ServeConfig()
 
 
 def load_config(path: Path | None = None) -> Config:
-    """Load + validate a config file. Raises `ConfigError` with a human-readable
-    message on any failure (missing file, bad YAML, schema violations)."""
+    """Load + validate a config file. Raises `ConfigError` with a human-
+    readable message on any failure (missing file, bad YAML, schema
+    violations, unknown panel, invalid per-panel config)."""
     if path is None:
         env_path = os.environ.get("TRMNLDASH_CONFIG")
         if not env_path:
@@ -156,32 +88,58 @@ def load_config(path: Path | None = None) -> Config:
     if not isinstance(raw, dict):
         raise ConfigError(f"Config root must be a mapping, got {type(raw).__name__}")
     try:
-        return Config.model_validate(raw)
+        cfg = Config.model_validate(raw)
     except ValidationError as e:
         raise ConfigError(_format_validation_errors(e, path)) from e
 
+    # Walk the layout tree, look up each panel, and validate its config
+    # block against the panel's pydantic schema. Mutates the PanelSlot's
+    # `config` field from dict to the validated model instance so the
+    # pipeline can pass it straight to the panel.
+    _validate_panel_configs(cfg.dashboard.layout, path)
+    return cfg
 
-def _format_validation_errors(exc: ValidationError, path: Path) -> str:
+
+def _validate_panel_configs(node: Layout, path: Path) -> None:
+    if isinstance(node, PanelSlot):
+        try:
+            panel = lookup(node.panel)
+        except PanelLookupError as e:
+            raise ConfigError(f"{path}: dashboard.layout.{node.panel}: {e}") from e
+        try:
+            validated = panel.config_schema.model_validate(node.config)
+        except ValidationError as e:
+            raise ConfigError(
+                _format_validation_errors(e, path, prefix=f"dashboard.layout[{node.panel}].config")
+            ) from e
+        # Stash the validated config back on the slot; the pipeline reads
+        # this attribute rather than parsing again.
+        object.__setattr__(node, "config", validated)
+        return
+    body = node.vstack if isinstance(node, VStack) else node.hstack
+    for child in body.children:
+        _validate_panel_configs(child, path)
+
+
+def _format_validation_errors(exc: ValidationError, path: Path, *, prefix: str = "") -> str:
     lines = [f"Config errors in {path}:"]
     for err in exc.errors():
         loc = ".".join(str(x) for x in err["loc"]) or "<root>"
-        # Pydantic's "msg" is human-readable on its own; skip the type tag.
+        if prefix:
+            loc = f"{prefix}.{loc}"
         lines.append(f"  {loc}: {err['msg']}")
     return "\n".join(lines)
 
 
-def require_env(name: str) -> str:
-    """Resolve an env-var reference from config. Fails loudly if unset."""
-    val = os.environ.get(name)
-    if val is None or val == "":
-        raise ConfigError(f"Environment variable {name!r} is referenced in config but not set")
-    return val
-
-
-def as_sensor_list(ref: SensorRef) -> list[str]:
-    """Normalize a SensorRef to a (possibly empty) list of entity IDs."""
-    if ref is None:
-        return []
-    if isinstance(ref, str):
-        return [ref]
-    return list(ref)
+__all__ = [
+    "Config",
+    "ConfigError",
+    "DashboardConfig",
+    "DeviceProfile",
+    "RenderConfig",
+    "SensorRef",
+    "ServeConfig",
+    "as_sensor_list",
+    "load_config",
+    "require_env",
+]
