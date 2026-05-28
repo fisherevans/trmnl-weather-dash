@@ -31,7 +31,7 @@ COPY --from=builder /app /app
 
 ENV PATH="/app/.venv/bin:${PATH}" \
     PYTHONUNBUFFERED=1 \
-    WEATHERDASH_CONFIG=/etc/weatherdash/config.yaml \
+    TRMNLDASH_CONFIG=/etc/trmnldash/config.yaml \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 # Install Chromium + its system deps. --with-deps invokes apt-get under
@@ -65,4 +65,4 @@ USER app
 EXPOSE 8080
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["weatherdash", "serve"]
+CMD ["trmnldash", "serve"]

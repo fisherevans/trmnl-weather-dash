@@ -1,6 +1,6 @@
 """Console entrypoint. Subcommands: render (offline json), render-live
 (fetch + aggregate + render), setup (chromium install), validate (config
-check). Scheduler + HTTP server arrive in #7 (`weatherdash serve`)."""
+check), serve (long-running scheduler + HTTP server)."""
 from __future__ import annotations
 
 import argparse
@@ -106,7 +106,7 @@ def main(argv: list[str] | None = None) -> int:
     # default — per-sensor skips and retry chatter are useful signals.
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
 
-    ap = argparse.ArgumentParser(prog="weatherdash")
+    ap = argparse.ArgumentParser(prog="trmnldash")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p_render = sub.add_parser("render", help="render a data.json file to a PNG (offline)")
@@ -120,7 +120,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p_live = sub.add_parser("render-live", help="fetch live data + render once")
     p_live.add_argument("--config", default=None,
-                        help="path to config.yaml (or set WEATHERDASH_CONFIG)")
+                        help="path to config.yaml (or set TRMNLDASH_CONFIG)")
     p_live.add_argument("--out", default=None,
                         help="output PNG path (default: config's render.output_path)")
     p_live.add_argument("--no-quantize", action="store_true",
@@ -129,7 +129,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p_serve = sub.add_parser("serve", help="long-running scheduler + HTTP server")
     p_serve.add_argument("--config", default=None,
-                         help="path to config.yaml (or set WEATHERDASH_CONFIG)")
+                         help="path to config.yaml (or set TRMNLDASH_CONFIG)")
     p_serve.set_defaults(func=cmd_serve)
 
     p_setup = sub.add_parser("setup", help="install bundled chromium then exit")
@@ -137,7 +137,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p_validate = sub.add_parser("validate", help="load and validate a config.yaml")
     p_validate.add_argument("--config", default=None,
-                            help="path to config.yaml (or set WEATHERDASH_CONFIG)")
+                            help="path to config.yaml (or set TRMNLDASH_CONFIG)")
     p_validate.set_defaults(func=cmd_validate)
 
     args = ap.parse_args(argv)

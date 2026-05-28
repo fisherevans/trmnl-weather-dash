@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from weatherdash.sources.nws import (_convert_amount, _expand_amount_to_hours,
+from trmnldash.sources.nws import (_convert_amount, _expand_amount_to_hours,
                                      _expand_to_hours, _expand_weather_to_hours,
                                      _parse_iso_duration, _parse_valid_time,
                                      _pick_weather_code)

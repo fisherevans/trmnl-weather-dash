@@ -10,13 +10,13 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from weatherdash.aggregate import (DEFAULT_ICON, WMO_ICON_MAP, build_context,
+from trmnldash.aggregate import (DEFAULT_ICON, WMO_ICON_MAP, build_context,
                                    wmo_to_icon)
-from weatherdash.config import (Config, HomeAssistantConfig, LocationConfig,
+from trmnldash.config import (Config, HomeAssistantConfig, LocationConfig,
                                 SensorsConfig, WeatherConfig)
-from weatherdash.sources.base import (CurrentObservation, HourlyPoint,
+from trmnldash.sources.base import (CurrentObservation, HourlyPoint,
                                       NormalizedForecast, SunInfo)
-from weatherdash.sources.homeassistant import SensorReading
+from trmnldash.sources.homeassistant import SensorReading
 
 
 TZ = ZoneInfo("America/New_York")

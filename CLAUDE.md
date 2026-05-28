@@ -13,9 +13,9 @@ TRMNL X 10.3" e-ink panel (4-bit mode). Pipeline: JSON data → Jinja2 template
 The four `data*.json` files are hand-crafted scenarios covering different
 times of day so the layout can be stress-tested. Live data sources are
 being wired in via issues #2-#7; the integration point is
-`weatherdash.aggregate.build_context` (produces a dict matching the
+`trmnldash.aggregate.build_context` (produces a dict matching the
 existing `data.json` shape) and the condition-string mapping in
-`weatherdash.aggregate` (#5).
+`trmnldash.aggregate` (#5).
 
 ## Architecture
 
@@ -50,8 +50,8 @@ Icon pipeline (one-time per pack):
 
 ## Key design decisions
 
-- **uv-only Python.** The renderer is a small package (`src/weatherdash/`)
-  with deps declared in `pyproject.toml`. `uv run weatherdash render` builds
+- **uv-only Python.** The renderer is a small package (`src/trmnldash/`)
+  with deps declared in `pyproject.toml`. `uv run trmnldash render` builds
   + installs into an ephemeral env transparently. The one-off generators in
   `scripts/` are still single-file PEP 723 uv scripts. No global venv, no
   `requirements.txt`, no pip in CI.
@@ -128,7 +128,7 @@ Icon pipeline (one-time per pack):
 ## Repo layout
 
 ```
-src/weatherdash/         # the installable package
+src/trmnldash/         # the installable package
 ├── cli.py               # entrypoint (subcommands: render, setup, ...)
 ├── render.py            # template -> Chromium -> 4-bit PNG pipeline
 └── assets/              # template.html, bg-*.svg, makin-grey/ (ship with package)
@@ -139,21 +139,21 @@ scripts/                 # one-off generators (PEP 723 single-file uv scripts)
 ├── tighten_viewbox.py
 └── convert_bg.py
 data*.json               # dev fixtures (replaced by live data sources later)
-pyproject.toml           # hatchling-built package; `weatherdash` console script
+pyproject.toml           # hatchling-built package; `trmnldash` console script
 ```
 
 ## Live data integration
 
 End-to-end shape:
-1. `weatherdash.config` loads a YAML config (location, weather provider,
+1. `trmnldash.config` loads a YAML config (location, weather provider,
    forecast provider, HA sensors).
-2. `weatherdash.sources.factory` builds the configured `WeatherSource`
+2. `trmnldash.sources.factory` builds the configured `WeatherSource`
    and (optionally) `ForecastSource`. Sources sit behind protocols
    defined in `sources/base.py`; see "Source plugin shape" below.
-3. `weatherdash.sources.homeassistant` fetches HA sensor states.
-4. `weatherdash.aggregate.build_context` merges them into the dict
+3. `trmnldash.sources.homeassistant` fetches HA sensor states.
+4. `trmnldash.aggregate.build_context` merges them into the dict
    `render_to_png(data, ...)` already expects (same shape as `data.json`).
-5. `weatherdash.serve` runs a scheduler + HTTP server in one process.
+5. `trmnldash.serve` runs a scheduler + HTTP server in one process.
 
 Condition-code mapping: every provider normalizes to WMO codes (Open-
 Meteo's native space). `aggregate.WMO_ICON_MAP` maps WMO + is_day to
@@ -186,10 +186,10 @@ NWS prose is a valid combo, for example.
 
 ```bash
 # Render the dashboard from a data.json fixture
-uv run weatherdash render                                 # data.json → output.png
-uv run weatherdash render --data data-morning.json --out morning.png
-uv run weatherdash render --no-quantize                   # skip the 4-bit snap
-uv run weatherdash setup                                  # one-time: install chromium
+uv run trmnldash render                                 # data.json → output.png
+uv run trmnldash render --data data-morning.json --out morning.png
+uv run trmnldash render --no-quantize                   # skip the 4-bit snap
+uv run trmnldash setup                                  # one-time: install chromium
 
 # One-off generators (still single-file uv scripts in scripts/)
 uv run scripts/gen_patterns.py
@@ -201,7 +201,7 @@ uv run scripts/tighten_viewbox.py <dir>
 
 # Stress-test layout across times of day
 for f in data data-morning data-evening data-latenight; do
-  uv run weatherdash render --data $f.json --out out-$f.png --no-quantize
+  uv run trmnldash render --data $f.json --out out-$f.png --no-quantize
 done
 ```
 

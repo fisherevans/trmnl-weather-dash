@@ -16,7 +16,7 @@ preview updates live (the fill swap is purely client-side, no roundtrip).
 
 When you're happy with a palette, hit "Export" — the page emits a
 Python dict snippet you can paste into INTENSITY_BUCKETS in
-src/weatherdash/bg_shading.py.
+src/trmnldash/bg_shading.py.
 """
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ from pathlib import Path
 from flask import Flask, Response, send_from_directory
 
 ROOT = Path(__file__).resolve().parents[1]
-ASSETS = ROOT / "src" / "weatherdash" / "assets"
+ASSETS = ROOT / "src" / "trmnldash" / "assets"
 SCRIPTS = ROOT / "scripts"
 
 app = Flask(__name__)

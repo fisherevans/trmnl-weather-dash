@@ -8,7 +8,7 @@ Secrets live in env vars referenced by name (e.g. `token_env: HA_TOKEN`),
 not inline strings, so a config file is safe to commit to a public repo.
 
 Usage:
-    cfg = load_config(Path("config.yaml"))     # or env var WEATHERDASH_CONFIG
+    cfg = load_config(Path("config.yaml"))     # or env var TRMNLDASH_CONFIG
     token = require_env(cfg.home_assistant.token_env)
 """
 from __future__ import annotations
@@ -141,10 +141,10 @@ def load_config(path: Path | None = None) -> Config:
     """Load + validate a config file. Raises `ConfigError` with a human-readable
     message on any failure (missing file, bad YAML, schema violations)."""
     if path is None:
-        env_path = os.environ.get("WEATHERDASH_CONFIG")
+        env_path = os.environ.get("TRMNLDASH_CONFIG")
         if not env_path:
             raise ConfigError(
-                "No config path provided. Pass --config <path> or set WEATHERDASH_CONFIG."
+                "No config path provided. Pass --config <path> or set TRMNLDASH_CONFIG."
             )
         path = Path(env_path)
     if not path.exists():

@@ -40,13 +40,13 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from weatherdash.aggregate import build_context                       # noqa: E402
-from weatherdash.config import (Config, ForecastProvider,             # noqa: E402
+from trmnldash.aggregate import build_context                       # noqa: E402
+from trmnldash.config import (Config, ForecastProvider,             # noqa: E402
                                 HomeAssistantConfig, LocationConfig,
                                 WeatherConfig, WeatherProvider)
-from weatherdash.render import render_to_png                          # noqa: E402
-from weatherdash.sources.base import ForecastError                    # noqa: E402
-from weatherdash.sources.factory import (make_forecast_source,        # noqa: E402
+from trmnldash.render import render_to_png                          # noqa: E402
+from trmnldash.sources.base import ForecastError                    # noqa: E402
+from trmnldash.sources.factory import (make_forecast_source,        # noqa: E402
                                          make_weather_source)
 
 
@@ -142,7 +142,7 @@ INDEX_HTML = """\
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>weatherdash · live demo</title>
+<title>trmnldash · live demo</title>
 <style>
   :root {{
     --bg:   #f7f7f5;
@@ -212,7 +212,7 @@ INDEX_HTML = """\
 </style>
 </head>
 <body>
-  <h1>weatherdash · live demo</h1>
+  <h1>trmnldash · live demo</h1>
   <div class="lede">
     Real NWS data, rendered at each location's actual local time.
     Generated {generated_at}. {count} locations spanning US time zones

@@ -35,16 +35,16 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-# Make the weatherdash package importable when running this script directly.
+# Make the trmnldash package importable when running this script directly.
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from weatherdash.aggregate import build_context                       # noqa: E402
-from weatherdash.config import (Config, HomeAssistantConfig,           # noqa: E402
+from trmnldash.aggregate import build_context                       # noqa: E402
+from trmnldash.config import (Config, HomeAssistantConfig,           # noqa: E402
                                 LocationConfig, WeatherConfig)
-from weatherdash.render import render_to_png                           # noqa: E402
-from weatherdash.sources.base import (CurrentObservation, HourlyPoint, # noqa: E402
+from trmnldash.render import render_to_png                           # noqa: E402
+from trmnldash.sources.base import (CurrentObservation, HourlyPoint, # noqa: E402
                                       NormalizedForecast, SunInfo,
                                       deg_to_cardinal)
 
@@ -584,7 +584,7 @@ INDEX_HTML = """\
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>weatherdash · visual regression</title>
+<title>trmnldash · visual regression</title>
 <style>
   :root {{
     --ink: #111;
@@ -648,7 +648,7 @@ INDEX_HTML = """\
 </style>
 </head>
 <body>
-  <h1>weatherdash · visual regression</h1>
+  <h1>trmnldash · visual regression</h1>
   <div class="lede">{count} scenarios. Regenerate with <code>uv run scripts/visual_regression.py</code>.</div>
   {cards}
 </body>

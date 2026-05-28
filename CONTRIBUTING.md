@@ -7,8 +7,8 @@ Issues and PRs welcome.
 ```bash
 git clone https://github.com/fisherevans/trmnl-weather-dash
 cd trmnl-weather-dash
-uv run weatherdash setup        # one-time: install chromium for playwright
-uv run weatherdash render       # smoke test: data.json -> output.png
+uv run trmnldash setup        # one-time: install chromium for playwright
+uv run trmnldash render       # smoke test: data.json -> output.png
 ```
 
 `uv run` builds and installs the package into an ephemeral env on first
@@ -17,13 +17,13 @@ invocation. No global `pip install` needed.
 ## Iterating on the UI
 
 The dashboard is a single Jinja2 template with all CSS inline at
-[`src/weatherdash/assets/template.html`](src/weatherdash/assets/template.html).
+[`src/trmnldash/assets/template.html`](src/trmnldash/assets/template.html).
 There's no build step. Four data fixtures cover the typical times of day —
 render all of them while iterating to catch layout regressions:
 
 ```bash
 for f in data data-morning data-evening data-latenight; do
-  uv run weatherdash render --data $f.json --out out-$f.png --no-quantize
+  uv run trmnldash render --data $f.json --out out-$f.png --no-quantize
 done
 ```
 
@@ -35,9 +35,9 @@ look fine pre-snap and terrible after.
 ## Adding a weather provider
 
 Implement the `WeatherSource` protocol from
-[`src/weatherdash/sources/base.py`](src/weatherdash/sources/base.py) and
+[`src/trmnldash/sources/base.py`](src/trmnldash/sources/base.py) and
 wire it into
-[`src/weatherdash/sources/factory.py`](src/weatherdash/sources/factory.py).
+[`src/trmnldash/sources/factory.py`](src/trmnldash/sources/factory.py).
 Issues [#11](https://github.com/fisherevans/trmnl-weather-dash/issues/11) and
 [#12](https://github.com/fisherevans/trmnl-weather-dash/issues/12) have full
 specs for NWS and Pirate Weather.
@@ -59,9 +59,9 @@ To add a new condition:
 ```bash
 # 1. Drop the source SVG into scripts/makin-raw/
 # 2. Run the conversion pipeline
-uv run scripts/convert_icons.py scripts/makin-raw src/weatherdash/assets/makin-grey
-uv run scripts/tighten_viewbox.py src/weatherdash/assets/makin-grey
-# 3. Update WMO_ICON_MAP in src/weatherdash/aggregate.py if needed
+uv run scripts/convert_icons.py scripts/makin-raw src/trmnldash/assets/makin-grey
+uv run scripts/tighten_viewbox.py src/trmnldash/assets/makin-grey
+# 3. Update WMO_ICON_MAP in src/trmnldash/aggregate.py if needed
 ```
 
 ## Commit hygiene

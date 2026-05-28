@@ -3,9 +3,9 @@
 # file — see .env.example. Do not commit your real .env.
 
 services:
-  weatherdash:
+  trmnldash:
     image: ghcr.io/fisherevans/trmnl-weather-dash:latest
-    container_name: weatherdash
+    container_name: trmnldash
     restart: unless-stopped
 
     # Run a PID-1 init so chromium's orphaned helper processes get reaped.
@@ -20,11 +20,11 @@ services:
     env_file: .env
 
     # Config lives outside the image so a redeploy just restarts the
-    # container — no rebuild. The WEATHERDASH_CONFIG env var points at
+    # container — no rebuild. The TRMNLDASH_CONFIG env var points at
     # the mount path.
     volumes:
-      - ./config.yaml:/etc/weatherdash/config.yaml:ro
-      - weatherdash-data:/data
+      - ./config.yaml:/etc/trmnldash/config.yaml:ro
+      - trmnldash-data:/data
 
     # Container always listens on 8080. Map to whatever host port your
     # Cloudflare tunnel / reverse proxy expects.
@@ -45,4 +45,4 @@ volumes:
   # Named volume so the rendered PNG survives container restarts. Not
   # strictly required (the scheduler regenerates within refresh_minutes
   # of startup) but lets HTTP clients get an immediate hit.
-  weatherdash-data:
+  trmnldash-data:

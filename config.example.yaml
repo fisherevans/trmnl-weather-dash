@@ -1,6 +1,6 @@
-# weatherdash config — a fully-configured deploy fits in this one file.
-# Validate with: uv run weatherdash validate --config <this-path>
-# Pass at runtime via --config or the WEATHERDASH_CONFIG env var.
+# trmnldash config — a fully-configured deploy fits in this one file.
+# Validate with: uv run trmnldash validate --config <this-path>
+# Pass at runtime via --config or the TRMNLDASH_CONFIG env var.
 
 # ──────────────────────────────────────────────────────────────────────────
 # Where the dashboard is for. Hourly forecast + sunset/sunrise + tz-aware

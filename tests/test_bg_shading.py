@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from weatherdash.bg_shading import (BUCKET_PALETTES, INTENSITY_BUCKETS,
+from trmnldash.bg_shading import (BUCKET_PALETTES, INTENSITY_BUCKETS,
                                     cloud_bucket, precip_bucket, row_bg_color,
                                     shaded_svg_url)
 

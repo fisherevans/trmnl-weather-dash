@@ -72,7 +72,7 @@ keep real values in `.env`.
 
 ```bash
 # Sanity-check a config before deploying
-uv run weatherdash validate --config config.yaml
+uv run trmnldash validate --config config.yaml
 ```
 
 A few knobs worth calling out:
@@ -140,30 +140,30 @@ put it in `.env` as `HA_TOKEN=...` (or whatever name you put in `token_env`).
 
 ```bash
 # Setup (one time) — installs chromium for playwright
-uv run weatherdash setup
+uv run trmnldash setup
 
 # Render a static fixture (no API, no HA — useful for UI iteration)
-uv run weatherdash render --data data-morning.json --out morning.png
+uv run trmnldash render --data data-morning.json --out morning.png
 
 # Render once with live data
-uv run weatherdash render-live --config config.yaml
+uv run trmnldash render-live --config config.yaml
 
 # Run the full service locally (scheduler + HTTP server)
-uv run weatherdash serve --config config.yaml
+uv run trmnldash serve --config config.yaml
 ```
 
 `uv run` builds + installs into an ephemeral env on first invocation —
 no `pip install` step needed.
 
 The dashboard is one Jinja2 template
-([`src/weatherdash/assets/template.html`](src/weatherdash/assets/template.html))
+([`src/trmnldash/assets/template.html`](src/trmnldash/assets/template.html))
 with all CSS inline. No build step, no bundler. Edits go directly there.
 
 ## Repo layout
 
 ```
-src/weatherdash/
-├── cli.py                   weatherdash {render,render-live,serve,setup,validate}
+src/trmnldash/
+├── cli.py                   trmnldash {render,render-live,serve,setup,validate}
 ├── render.py                html -> chromium -> 4-bit PNG
 ├── server.py                scheduler loop + aiohttp HTTP server
 ├── config.py                Pydantic schema + YAML loader
@@ -193,5 +193,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Issues and PRs welcome.
 ## Licenses
 
 - Code: [MIT](LICENSE).
-- Weather icons under `src/weatherdash/assets/makin-grey/`: MIT,
+- Weather icons under `src/trmnldash/assets/makin-grey/`: MIT,
   [Makin-Things/weather-icons](https://github.com/Makin-Things/weather-icons).

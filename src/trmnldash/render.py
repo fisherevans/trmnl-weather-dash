@@ -110,7 +110,7 @@ def render_html(data: dict) -> str:
         })
     # Honor pre-computed regions (carries the per-region labels) when the
     # aggregation layer supplied them; otherwise recompute for the offline
-    # `weatherdash render --data data.json` path.
+    # `trmnldash render --data data.json` path.
     regions = data.get("regions") or compute_regions(hourly, n_hours)
     # Render-time stamp (not part of the data file) so a stale image is
     # visually obvious on the panel. %-I drops the leading zero on the hour
