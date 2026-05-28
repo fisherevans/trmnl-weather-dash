@@ -13,9 +13,9 @@ TRMNL X 10.3" e-ink panel (4-bit mode). Pipeline: JSON data → Jinja2 template
 The four `data*.json` files are hand-crafted scenarios covering different
 times of day so the layout can be stress-tested. Live data sources are
 being wired in via issues #2-#7; the integration point is
-`trmnldash.aggregate.build_context` (produces a dict matching the
-existing `data.json` shape) and the condition-string mapping in
-`trmnldash.aggregate` (#5).
+`trmnldash.panels.weather_landscape.build_context` (produces a dict
+matching the existing `data.json` shape) and the condition-string
+mapping in the same module (#5).
 
 ## Architecture
 
@@ -127,20 +127,41 @@ Icon pipeline (one-time per pack):
 
 ## Repo layout
 
+The package splits into a panel-agnostic engine and one-or-more panels
+that each own their template + assets + context-building. The weather
+landscape panel is the first; new panels (calendar, OG combined) live
+beside it under `panels/`.
+
 ```
-src/trmnldash/         # the installable package
-├── cli.py               # entrypoint (subcommands: render, setup, ...)
-├── render.py            # template -> Chromium -> 4-bit PNG pipeline
-└── assets/              # template.html, bg-*.svg, makin-grey/ (ship with package)
-scripts/                 # one-off generators (PEP 723 single-file uv scripts)
-├── gen_patterns.py
-├── pattern_studio.py
-├── convert_icons.py
-├── tighten_viewbox.py
-└── convert_bg.py
-data*.json               # dev fixtures (replaced by live data sources later)
-pyproject.toml           # hatchling-built package; `trmnldash` console script
+src/trmnldash/
+├── cli.py                              # entrypoint (render/render-live/serve/setup/validate)
+├── config.py                           # YAML loader
+├── engine/                             # panel-agnostic plumbing
+│   ├── render.py                       # html -> chromium -> PIL.Image
+│   ├── quantize.py                     # palette-driven snap to device greys
+│   ├── pipeline.py                     # fetch -> aggregate -> render -> save (weather-coupled today)
+│   └── server.py                       # scheduler + aiohttp HTTP server
+├── panels/
+│   └── weather_landscape/              # the 1872x1404 16-grey weather panel
+│       ├── __init__.py                 # RENDER_SPEC + public render entry points
+│       ├── render.py                   # Jinja context + chart math
+│       ├── aggregate.py                # weather + HA -> render context
+│       ├── bg_shading.py               # density-shifted chart bg fills
+│       ├── template.html
+│       └── assets/                     # bg-*.svg, makin-grey/
+└── sources/                            # data providers shared across panels
+
+scripts/                                # one-off generators (PEP 723 uv scripts)
+data*.json                              # dev fixtures (replaced by live sources)
+pyproject.toml                          # hatchling; `trmnldash` console script
 ```
+
+Panel module convention (will be made formal in the dashboard-model
+refactor): each panel exposes `RENDER_SPEC` (width/height/palette) and a
+`render_to_image(data) -> PIL.Image` entry point. The engine knows
+nothing weather-specific; pipeline.py is the one weather-coupled file
+in `engine/` today (it imports from `panels.weather_landscape`) and will
+become panel-generic in phase 3.
 
 ## Live data integration
 
@@ -151,9 +172,10 @@ End-to-end shape:
    and (optionally) `ForecastSource`. Sources sit behind protocols
    defined in `sources/base.py`; see "Source plugin shape" below.
 3. `trmnldash.sources.homeassistant` fetches HA sensor states.
-4. `trmnldash.aggregate.build_context` merges them into the dict
-   `render_to_png(data, ...)` already expects (same shape as `data.json`).
-5. `trmnldash.serve` runs a scheduler + HTTP server in one process.
+4. `trmnldash.panels.weather_landscape.build_context` merges them into
+   the dict the panel's `render_to_png(data, ...)` expects (same shape
+   as `data.json`).
+5. `trmnldash.engine.server` runs a scheduler + HTTP server in one process.
 
 Condition-code mapping: every provider normalizes to WMO codes (Open-
 Meteo's native space). `aggregate.WMO_ICON_MAP` maps WMO + is_day to

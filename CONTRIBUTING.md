@@ -17,7 +17,7 @@ invocation. No global `pip install` needed.
 ## Iterating on the UI
 
 The dashboard is a single Jinja2 template with all CSS inline at
-[`src/trmnldash/assets/template.html`](src/trmnldash/assets/template.html).
+[`src/trmnldash/panels/weather_landscape/template.html`](src/trmnldash/panels/weather_landscape/template.html).
 There's no build step. Four data fixtures cover the typical times of day —
 render all of them while iterating to catch layout regressions:
 
@@ -59,9 +59,9 @@ To add a new condition:
 ```bash
 # 1. Drop the source SVG into scripts/makin-raw/
 # 2. Run the conversion pipeline
-uv run scripts/convert_icons.py scripts/makin-raw src/trmnldash/assets/makin-grey
-uv run scripts/tighten_viewbox.py src/trmnldash/assets/makin-grey
-# 3. Update WMO_ICON_MAP in src/trmnldash/aggregate.py if needed
+uv run scripts/convert_icons.py scripts/makin-raw src/trmnldash/panels/weather_landscape/assets/makin-grey
+uv run scripts/tighten_viewbox.py src/trmnldash/panels/weather_landscape/assets/makin-grey
+# 3. Update WMO_ICON_MAP in src/trmnldash/panels/weather_landscape/aggregate.py if needed
 ```
 
 ## Commit hygiene

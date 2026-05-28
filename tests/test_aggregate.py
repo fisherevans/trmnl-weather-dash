@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from trmnldash.aggregate import (DEFAULT_ICON, WMO_ICON_MAP, build_context,
+from trmnldash.panels.weather_landscape.aggregate import (DEFAULT_ICON, WMO_ICON_MAP, build_context,
                                    wmo_to_icon)
 from trmnldash.config import (Config, HomeAssistantConfig, LocationConfig,
                                 SensorsConfig, WeatherConfig)

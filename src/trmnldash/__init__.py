@@ -1,11 +1,14 @@
 """TRMNL dashboard suite.
 
-A small toolkit for rendering TRMNL e-ink dashboards. First dashboard is a
-1872x1404 16-grey weather panel for the TRMNL X 10.3" device. Pipeline:
-data dict -> Jinja2 template -> headless Chromium screenshot -> Pillow
-palette quantization.
+A toolkit for rendering TRMNL e-ink dashboards. The engine is panel-agnostic:
+a panel supplies a template + assets + context-building logic; the engine
+turns it into a screenshot and palette-quantizes it for the target device.
 
-Top-level surface:
-  trmnldash.render.render_to_png(data, out_path, quantize=True, keep_html=False)
-  trmnldash.cli.main()  # console entrypoint
+Layout:
+  trmnldash.engine               panel-agnostic render + quantize + serve
+  trmnldash.panels.<name>        one self-contained panel per device target
+  trmnldash.sources              data providers (weather, HA, ...) shared
+                                 across panels
+  trmnldash.config               YAML config schema + loader
+  trmnldash.cli                  console entrypoint
 """

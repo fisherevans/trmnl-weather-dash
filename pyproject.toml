@@ -41,4 +41,5 @@ addopts = "-ra"
 packages = ["src/trmnldash"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"src/trmnldash/assets" = "trmnldash/assets"
+"src/trmnldash/panels/weather_landscape/template.html" = "trmnldash/panels/weather_landscape/template.html"
+"src/trmnldash/panels/weather_landscape/assets" = "trmnldash/panels/weather_landscape/assets"

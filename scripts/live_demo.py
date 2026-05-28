@@ -40,11 +40,10 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from trmnldash.aggregate import build_context                       # noqa: E402
 from trmnldash.config import (Config, ForecastProvider,             # noqa: E402
                                 HomeAssistantConfig, LocationConfig,
                                 WeatherConfig, WeatherProvider)
-from trmnldash.render import render_to_png                          # noqa: E402
+from trmnldash.panels.weather_landscape import build_context, render_to_png  # noqa: E402
 from trmnldash.sources.base import ForecastError                    # noqa: E402
 from trmnldash.sources.factory import (make_forecast_source,        # noqa: E402
                                          make_weather_source)

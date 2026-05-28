@@ -11,12 +11,11 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from .aggregate import build_context
-from .config import Config, ConfigError, as_sensor_list
-from .render import render_to_png
-from .sources.base import ForecastError
-from .sources.factory import make_forecast_source, make_weather_source
-from .sources.homeassistant import HomeAssistantError, make_ha_client
+from ..config import Config, ConfigError, as_sensor_list
+from ..panels.weather_landscape import build_context, render_to_png
+from ..sources.base import ForecastError
+from ..sources.factory import make_forecast_source, make_weather_source
+from ..sources.homeassistant import HomeAssistantError, make_ha_client
 
 logger = logging.getLogger(__name__)
 

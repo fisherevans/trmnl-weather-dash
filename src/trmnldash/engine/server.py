@@ -25,7 +25,7 @@ from pathlib import Path
 
 from aiohttp import web
 
-from .config import Config
+from ..config import Config
 from .pipeline import RenderStats, run_once
 
 logger = logging.getLogger(__name__)

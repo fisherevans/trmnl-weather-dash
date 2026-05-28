@@ -8,14 +8,15 @@ import logging
 import sys
 from pathlib import Path
 
-from . import render as render_mod
 from .config import ConfigError, load_config
-from .pipeline import run_once
+from .engine.pipeline import run_once
+from .engine.render import setup_browser
+from .panels.weather_landscape import render_from_json
 from .sources.base import ForecastError
 
 
 def cmd_render(args: argparse.Namespace) -> int:
-    render_mod.render_from_json(
+    render_from_json(
         Path(args.data),
         Path(args.out),
         quantize=not args.no_quantize,
@@ -26,7 +27,7 @@ def cmd_render(args: argparse.Namespace) -> int:
 
 
 def cmd_setup(_args: argparse.Namespace) -> int:
-    return render_mod.setup_browser()
+    return setup_browser()
 
 
 def cmd_validate(args: argparse.Namespace) -> int:
@@ -55,7 +56,7 @@ def cmd_serve(args: argparse.Namespace) -> int:
     # Long-running service — bump default log level to INFO so the per-render
     # timing lines from server.py are visible without --verbose.
     logging.getLogger().setLevel(logging.INFO)
-    from .server import run_server
+    from .engine.server import run_server
     run_server(cfg)
     return 0
 

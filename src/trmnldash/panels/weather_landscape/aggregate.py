@@ -21,9 +21,9 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from .bg_shading import cloud_bucket, precip_bucket, row_bg_color, shaded_svg_url
-from .config import Config, SensorRef, as_sensor_list
-from .sources.base import ForecastPeriod, NormalizedForecast
-from .sources.homeassistant import SensorReading
+from ...config import Config, SensorRef, as_sensor_list
+from ...sources.base import ForecastPeriod, NormalizedForecast
+from ...sources.homeassistant import SensorReading
 
 
 # Open-Meteo's WMO weather codes -> (day stem, night stem) from makin-grey/.

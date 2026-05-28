@@ -156,7 +156,7 @@ uv run trmnldash serve --config config.yaml
 no `pip install` step needed.
 
 The dashboard is one Jinja2 template
-([`src/trmnldash/assets/template.html`](src/trmnldash/assets/template.html))
+([`src/trmnldash/panels/weather_landscape/template.html`](src/trmnldash/panels/weather_landscape/template.html))
 with all CSS inline. No build step, no bundler. Edits go directly there.
 
 ## Repo layout
@@ -164,20 +164,27 @@ with all CSS inline. No build step, no bundler. Edits go directly there.
 ```
 src/trmnldash/
 ├── cli.py                   trmnldash {render,render-live,serve,setup,validate}
-├── render.py                html -> chromium -> 4-bit PNG
-├── server.py                scheduler loop + aiohttp HTTP server
 ├── config.py                Pydantic schema + YAML loader
-├── aggregate.py             merge weather + HA into render context
-├── pipeline.py              shared fetch -> aggregate -> render flow
-├── sources/
-│   ├── base.py              WeatherSource Protocol + NormalizedForecast
-│   ├── openmeteo.py
-│   ├── homeassistant.py
-│   └── factory.py
-└── assets/
-    ├── template.html        single Jinja2 template, inline CSS
-    ├── bg-{cloud,rain,snow}{,-night}.svg
-    └── makin-grey/<58 condition icons>.svg
+├── engine/
+│   ├── render.py            html -> chromium -> PIL.Image
+│   ├── quantize.py          palette-driven snap to device greys
+│   ├── pipeline.py          fetch -> aggregate -> render -> save
+│   └── server.py            scheduler loop + aiohttp HTTP server
+├── panels/
+│   └── weather_landscape/   the 1872x1404 full-screen weather panel
+│       ├── render.py        Jinja context build + chart math + render entry
+│       ├── aggregate.py     merge weather + HA into render context
+│       ├── bg_shading.py    density-shifted chart bg SVG fills
+│       ├── template.html    single Jinja2 template, inline CSS
+│       └── assets/
+│           ├── bg-{cloud,rain,snow}.svg
+│           └── makin-grey/  58 condition icons
+└── sources/
+    ├── base.py              WeatherSource Protocol + NormalizedForecast
+    ├── openmeteo.py
+    ├── nws.py
+    ├── homeassistant.py
+    └── factory.py
 
 scripts/                     one-off generators (PEP 723 single-file uv scripts)
 data*.json                   dev fixtures for offline rendering
@@ -193,5 +200,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Issues and PRs welcome.
 ## Licenses
 
 - Code: [MIT](LICENSE).
-- Weather icons under `src/trmnldash/assets/makin-grey/`: MIT,
+- Weather icons under `src/trmnldash/panels/weather_landscape/assets/makin-grey/`: MIT,
   [Makin-Things/weather-icons](https://github.com/Makin-Things/weather-icons).

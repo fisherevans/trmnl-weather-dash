@@ -1,32 +1,36 @@
-"""Render pipeline: data dict -> template -> Chromium screenshot -> 4-bit PNG.
+"""Weather-landscape panel renderer.
 
-The renderer reads template + asset files from a sibling `assets/` directory
-that ships with the package. Callers supply a data dict matching the shape
-in `data.json` plus optional `updated_date` / `updated_time` (default to
-now, formatted as "Mon D, YYYY" and "H:MM AM/PM").
+Builds the weather panel's Jinja context (chart math, region splits,
+density-shifted bg URLs) and hands the HTML to the engine for screenshot.
+
+The panel ships its own template + assets in this directory; the asset
+dir is exposed to chromium as the page's <base href> so relative URLs
+like `makin-grey/cloudy.svg` and `bg-rain.svg` resolve regardless of
+where the temp HTML lives.
 """
 from __future__ import annotations
 
 import json
-import subprocess
-import sys
 from datetime import datetime
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from PIL import Image
 
+from ...engine import RenderSpec
+from ...engine.quantize import quantize as _quantize
+from ...engine.render import html_to_image
 from .aggregate import SNOW_CODES as _SNOW_CODES
+from .aggregate import compute_regions
 from .bg_shading import cloud_bucket, precip_bucket, row_bg_color, shaded_svg_url
 
-ASSETS = Path(__file__).parent / "assets"
-WIDTH, HEIGHT = 1872, 1404
-# 4-bit grayscale: 16 levels evenly spaced 0..255.
-GRAY_LEVELS = [round(i * 255 / 15) for i in range(16)]
+TEMPLATE_DIR = Path(__file__).parent
+ASSETS = TEMPLATE_DIR / "assets"
+
+RENDER_SPEC = RenderSpec(width=1872, height=1404, palette="4bit-grey")
 
 # Threshold lines on the precip + cloud charts. Precip values are
-# probability-of-precip percent (matches the bar height — see below);
+# probability-of-precip percent (matches the bar height - see below);
 # cloud values are cloud-cover percent.
 PRECIP_THRESHOLDS = [(30, "CHANCE"), (60, "LIKELY"), (85, "DEFINITE")]
 CLOUD_THRESHOLDS  = [(30, "PARTLY"), (70, "OVERCAST")]
@@ -34,14 +38,14 @@ CLOUD_THRESHOLDS  = [(30, "PARTLY"), (70, "OVERCAST")]
 
 def render_html(data: dict) -> str:
     env = Environment(
-        loader=FileSystemLoader(ASSETS),
+        loader=FileSystemLoader(TEMPLATE_DIR),
         autoescape=select_autoescape(["html"]),
     )
     hourly = data["hourly"]
     n_hours = len(hourly)
     # Precip chart now plots probability-of-precip (PoP). Scale anchors at
     # 100% so the tallest bar (a "definite" hour) fills ~90% of row height
-    # — leaves space at the top for region labels + threshold-line pills.
+    # - leaves space at the top for region labels + threshold-line pills.
     # The shift from accumulation-as-height to probability-as-height
     # answers "will I get wet?" at a glance; mm/cm totals move to the
     # row title strip for the "how much?" answer.
@@ -59,7 +63,7 @@ def render_html(data: dict) -> str:
         for pct, label in CLOUD_THRESHOLDS
     ]
     # Build the temp line first so each enriched bar can check whether
-    # its inside label would collide with the line — if so, the template
+    # its inside label would collide with the line - if so, the template
     # nudges the label lower in the bar so the dark dot / curve doesn't
     # cover it.
     temp_line = compute_temp_line(hourly)
@@ -70,13 +74,13 @@ def render_html(data: dict) -> str:
         prob_pct = float(h.get("precip_prob_pct", 0))
         # Bar height = probability * 90% (90 leaves head-room at the top).
         precip_h_pct = (prob_pct / precip_scale_max) * 90.0
-        # Bar fill type — snow vs rain — is decided per-hour from the
+        # Bar fill type - snow vs rain - is decided per-hour from the
         # weather code so a mixed-precip day shows the right color per
         # bar. SNOW_CODES is the canonical snow set used elsewhere.
         is_snow_hour = h.get("weather_code", 0) in _SNOW_CODES
         # Bar top y in row-percent (bars grow up from the bottom). If the
         # temp line passes within ~5% of row height of the bar's top edge
-        # — i.e. through the inside-label band — flag the bar so the
+        # - i.e. through the inside-label band - flag the bar so the
         # template pushes that label down into the bar's body. 5% picks
         # up the visible band of the line + its halo + the label's own
         # height without false-positives on bars where the line passes
@@ -91,7 +95,7 @@ def render_html(data: dict) -> str:
         # dot extents on either side to get a (bar_top - 0.5, bar_top
         # + 6.5) trigger window. Previously this used a symmetric
         # abs(...) < 5 check which fired even when the line was well
-        # ABOVE the bar top (i.e. above the entire bar) — that produced
+        # ABOVE the bar top (i.e. above the entire bar) - that produced
         # false-positive nudges on bars where the line passes overhead.
         nudge = (
             line_y is not None
@@ -186,11 +190,6 @@ def render_html(data: dict) -> str:
     return env.get_template("template.html").render(**ctx)
 
 
-# compute_regions moved to aggregate.py — re-exported here for any
-# external caller that still imports from this module.
-from .aggregate import compute_regions  # noqa: E402,F401
-
-
 # Vertical band the temperature line occupies inside the precip-bars row,
 # in percent from the row's top. The band sits clear of the sun-marker
 # pills (which span roughly 5..19% of the row) at the top, and clear of
@@ -213,7 +212,7 @@ def _smooth_path(coords):
     """SVG cubic-bezier `d` string through `coords` via uniform
     Catmull-Rom-to-Bezier conversion. The curve passes through every
     input point (so dots placed on data points land exactly on the
-    line), with endpoints padded by duplicating the first/last point —
+    line), with endpoints padded by duplicating the first/last point -
     that flattens the spline's tangent at the edges instead of letting
     it overshoot into the row's top buffer or below the time axis.
     """
@@ -244,7 +243,7 @@ def _smooth_path(coords):
 def _smooth_series(values, weights=(1, 2, 3, 2, 1)):
     """Weighted moving-average smoothing across a 5-point window. The
     Catmull-Rom spline alone passes through every raw data point, which
-    hitches at every 1-degree hourly wobble — pre-smoothing the temp
+    hitches at every 1-degree hourly wobble - pre-smoothing the temp
     series with this kernel lets the curve ease across past + future
     neighbors instead of chasing each spike. Endpoints clip the window
     to in-range neighbors so the edges don't get pulled toward zero.
@@ -274,7 +273,7 @@ def compute_temp_line(hourly):
     Two series are in play. Raw temps drive the high/low call-outs:
     the dot pills show the actual hottest/coldest forecast values, and
     the high/low indices are the raw extremes. A smoothed series drives
-    the curve's y positions and the y-axis scale — so the line eases
+    the curve's y positions and the y-axis scale - so the line eases
     across short-range wobbles instead of zig-zagging through every
     1-degree blip. Dot y values come from the smoothed curve too, so
     the dots land exactly on the line.
@@ -285,7 +284,7 @@ def compute_temp_line(hourly):
     temps = [h["temp_f"] for h in hourly]
     t_min, t_max = min(temps), max(temps)
     if t_min == t_max:
-        # Flat-temp day — center the line so it reads as horizontal.
+        # Flat-temp day - center the line so it reads as horizontal.
         mid = (TEMP_LINE_Y_TOP + TEMP_LINE_Y_BOT) / 2
         points = [
             {"x": (i + 0.5) / n * 100.0, "y": mid,
@@ -296,7 +295,7 @@ def compute_temp_line(hourly):
                 "path": _smooth_path([(p["x"], p["y"]) for p in points])}
 
     # High/low indices come from the RAW temps so the call-outs mark
-    # the actual data extremes — not smoothing-shifted ghosts.
+    # the actual data extremes - not smoothing-shifted ghosts.
     hi = temps.index(t_max)
     lo = temps.index(t_min)
 
@@ -308,7 +307,7 @@ def compute_temp_line(hourly):
     # Surrounding points stay smoothed; Catmull-Rom's tangent at the
     # anchored point is computed from those (symmetric) neighbors, so
     # the curve approaches the peak with a near-horizontal slope
-    # rather than spiking into it — no overshoot above the band.
+    # rather than spiking into it - no overshoot above the band.
     smoothed[hi] = t_max
     smoothed[lo] = t_min
     # Display range is clamped to TEMP_LINE_MIN_RANGE_F so a flat day
@@ -324,7 +323,7 @@ def compute_temp_line(hourly):
         return TEMP_LINE_Y_BOT - (t - display_min) / display_range * span
 
     # If the high/low dot sits within ~one column of the row edge, snap
-    # the pill label to the dot's side instead of centering on it — keeps
+    # the pill label to the dot's side instead of centering on it - keeps
     # the pill from clipping against the chart card border.
     edge = 100.0 / n
     def align(x):
@@ -352,7 +351,7 @@ def compute_temp_line(hourly):
 
 def _temp_line_y_at(temp_line, x_pct):
     """Linear-interpolate the temp line's y at a given x. Used for
-    collision detection between the line and bar labels — the smoothed
+    collision detection between the line and bar labels - the smoothed
     bezier deviates from the linear chord by at most a few percent of
     row height, well under the collision threshold, so this is precise
     enough without re-evaluating the curve."""
@@ -393,57 +392,35 @@ def format_precip_mixed(rain_mm: float, snow_cm: float) -> str:
     return format_precip(rain_mm)
 
 
-def screenshot(html: str, out: Path) -> None:
-    from playwright.sync_api import sync_playwright
+def render_to_image(data: dict) -> Image.Image:
+    """Render the panel's data dict to a PIL.Image (no quantize, no save).
 
-    # Inject `<base href>` pointing at the assets dir so relative URLs in the
-    # template (bg-*.svg, makin-grey/<stem>.svg) resolve regardless of where
-    # the tmp HTML lives. Previously the tmp file sat inside the assets dir
-    # for that purpose, but in a Docker container the assets dir is owned by
-    # root + read-only for the unprivileged runtime user.
-    base_tag = f'<base href="{ASSETS.as_uri()}/">'
-    html = html.replace("<head>", f"<head>\n  {base_tag}", 1)
-
-    with NamedTemporaryFile(suffix=".html", delete=False, mode="w", encoding="utf-8") as f:
-        f.write(html)
-        tmp = Path(f.name)
-    try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch()
-            ctx = browser.new_context(
-                viewport={"width": WIDTH, "height": HEIGHT},
-                device_scale_factor=1,
-            )
-            page = ctx.new_page()
-            page.goto(tmp.as_uri())
-            # Wait for webfonts to settle so screenshot isn't a flash-of-fallback-font.
-            page.wait_for_load_state("networkidle")
-            page.evaluate("document.fonts && document.fonts.ready")
-            page.screenshot(path=str(out), full_page=False, omit_background=False)
-            browser.close()
-    finally:
-        tmp.unlink(missing_ok=True)
-
-
-def quantize_to_4bit_gray(path: Path) -> None:
-    img = Image.open(path).convert("L")
-    # Snap each 0..255 value to the nearest of the 16 device levels.
-    lut = [GRAY_LEVELS[min(15, round(v / 17))] for v in range(256)]
-    img.point(lut).save(path)
-
-
-def setup_browser() -> int:
-    return subprocess.call([sys.executable, "-m", "playwright", "install", "chromium"])
+    This is the panel's main entry point. The dashboard layer feeds the
+    result through `engine.quantize` and composes it onto the device's
+    final canvas.
+    """
+    html = render_html(data)
+    return html_to_image(
+        html,
+        base_uri=ASSETS.as_uri() + "/",
+        width=RENDER_SPEC.width,
+        height=RENDER_SPEC.height,
+    )
 
 
 def render_to_png(data: dict, out: Path, *, quantize: bool = True, keep_html: bool = False) -> None:
-    """Render `data` to `out`. If `keep_html`, also write the intermediate HTML beside `out`."""
-    html = render_html(data)
+    """Convenience wrapper for the offline / single-panel render path.
+
+    Maintains the original render-to-disk signature so the CLI's `render`
+    subcommand and the pipeline's `render-live` flow can call straight in
+    without dealing with PIL.Image directly.
+    """
     if keep_html:
-        out.with_suffix(".html").write_text(html)
-    screenshot(html, out)
+        out.with_suffix(".html").write_text(render_html(data))
+    img = render_to_image(data)
     if quantize:
-        quantize_to_4bit_gray(out)
+        img = _quantize(img, RENDER_SPEC.palette)
+    img.save(out)
 
 
 def render_from_json(data_path: Path, out: Path, *, quantize: bool = True, keep_html: bool = False) -> None:
