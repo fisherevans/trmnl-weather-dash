@@ -707,6 +707,7 @@ def main() -> None:
     index.write_text(INDEX_HTML.format(count=len(cards), cards="".join(cards)))
     print(f"\nwrote {index}")
     print(f"open file://{index.resolve()}")
+    print(f"  or serve: uv run python -m http.server 8000 --directory {OUT}")
 
 
 if __name__ == "__main__":

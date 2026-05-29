@@ -297,6 +297,7 @@ def main() -> None:
     ))
     print(f"\nwrote {index}")
     print(f"open file://{index.resolve()}")
+    print(f"  or serve: uv run python -m http.server 8000 --directory {OUT}")
 
 
 if __name__ == "__main__":

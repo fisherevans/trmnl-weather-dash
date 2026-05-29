@@ -79,3 +79,23 @@ trivially boil down to a numeric assertion). The discipline is: render
 all four fixtures and look at them. PRs that touch `template.html`,
 `render.py`, `aggregate.py`, or any of the background SVGs should
 include before/after images in the PR body.
+
+Two helpers write a browsable index alongside the PNGs:
+
+```bash
+uv run scripts/visual_regression.py        # 21 fabricated scenarios -> out/scenarios/
+uv run scripts/live_demo.py                # 10 real US cities       -> out/live/
+```
+
+Both finish by printing `file://...` to view directly. To view from
+another device on the network (phone, tablet), serve the output dir
+with the stdlib HTTP server - no install:
+
+```bash
+uv run python -m http.server 8000 --directory out/live
+# then open http://<host>:8000/ in any browser
+```
+
+Same `out/scenarios` for the regression set. The PNGs are cache-busted
+in the index via `?v=<mtime>` so a re-render under the same URL just
+shows up on refresh.
