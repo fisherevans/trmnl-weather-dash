@@ -34,7 +34,7 @@ class TuningConfig(_Strict):
     # the start of tomorrow; 16-18 typically covers "today and tonight"
     # or "tonight and tomorrow morning" depending on render time, with
     # ~30% more horizontal space per bar.
-    chart_hours: int = Field(default=24, ge=8, le=48)
+    chart_hours: int = Field(default=18, ge=8, le=48)
 
     # TEMP FORECAST card layout. 'stacked' keeps HIGH on top of LOW;
     # 'side-by-side' puts them in a single row, freeing vertical space
@@ -42,34 +42,35 @@ class TuningConfig(_Strict):
     summary_layout: Literal["stacked", "side-by-side"] = "stacked"
 
     # OUTSIDE card.
-    outside_icon_max_h: int = Field(default=240, ge=80, le=600)
-    outside_temp_fs: int = Field(default=138, ge=40, le=400)
-    outside_tempsup_fs: int = Field(default=60, ge=12, le=200)
-    outside_trend_fs: int = Field(default=42, ge=12, le=120)
-    outside_hum_fs: int = Field(default=70, ge=20, le=200)
+    outside_icon_max_h: int = Field(default=200, ge=80, le=600)
+    outside_temp_fs: int = Field(default=160, ge=40, le=400)
+    outside_tempsup_fs: int = Field(default=72, ge=12, le=200)
+    outside_trend_fs: int = Field(default=60, ge=12, le=120)
+    outside_hum_fs: int = Field(default=90, ge=20, le=200)
 
     # INSIDE card font sizes (CSS px).
-    inside_temp_fs: int = Field(default=64, ge=20, le=300)
-    inside_tempsup_fs: int = Field(default=28, ge=8, le=100)
-    inside_hum_fs: int = Field(default=52, ge=16, le=200)
-    inside_lab_fs: int = Field(default=15, ge=8, le=60)
+    inside_temp_fs: int = Field(default=120, ge=20, le=300)
+    inside_tempsup_fs: int = Field(default=60, ge=8, le=100)
+    inside_hum_fs: int = Field(default=72, ge=16, le=200)
+    inside_lab_fs: int = Field(default=16, ge=8, le=60)
 
     # TEMP FORECAST card font sizes (CSS px).
-    forecast_big_fs: int = Field(default=104, ge=40, le=300)
-    forecast_arrow_fs: int = Field(default=88, ge=20, le=200)
-    forecast_when_fs: int = Field(default=28, ge=10, le=100)
+    forecast_big_fs: int = Field(default=120, ge=40, le=300)
+    forecast_tempsup_fs: int = Field(default=54, ge=12, le=200)
+    forecast_arrow_fs: int = Field(default=100, ge=20, le=200)
+    forecast_when_fs: int = Field(default=30, ge=10, le=100)
     forecast_rh_fs: int = Field(default=20, ge=8, le=80)
 
     # Summary column geometry. col_left_width is the fixed pixel width
     # of the left summary column (date / OUTSIDE / TEMP FORECAST /
     # INSIDE); the chart absorbs the remainder. The three *_weight
-    # values are CSS-grid fr units sharing the column's height. INSIDE's
-    # default is intentionally small so its compact reading docks at
-    # the bottom; bump it up to give INSIDE more vertical room.
-    col_left_width: int = Field(default=460, ge=240, le=900)
-    outside_weight: float = Field(default=1.15, ge=0.1, le=10.0)
-    forecast_weight: float = Field(default=1.0, ge=0.1, le=10.0)
-    inside_weight: float = Field(default=0.3, ge=0.1, le=10.0)
+    # values are CSS-grid fr units sharing the column's height. Bump
+    # any of the three to grow that row's share of the fixed column
+    # height.
+    col_left_width: int = Field(default=565, ge=240, le=900)
+    outside_weight: float = Field(default=3.7, ge=0.1, le=10.0)
+    forecast_weight: float = Field(default=3.6, ge=0.1, le=10.0)
+    inside_weight: float = Field(default=1.35, ge=0.1, le=10.0)
 
     def css_overrides(self) -> str:
         """Build a :root { --X: Ypx; } block for font-size overrides.
@@ -90,6 +91,7 @@ class TuningConfig(_Strict):
             "--inside-hum-fs":           ("inside_hum_fs", "px"),
             "--inside-lab-fs":           ("inside_lab_fs", "px"),
             "--forecast-big-fs":         ("forecast_big_fs", "px"),
+            "--forecast-tempsup-fs":     ("forecast_tempsup_fs", "px"),
             "--forecast-arrow-fs":       ("forecast_arrow_fs", "px"),
             "--forecast-when-fs":        ("forecast_when_fs", "px"),
             "--forecast-rh-fs":          ("forecast_rh_fs", "px"),

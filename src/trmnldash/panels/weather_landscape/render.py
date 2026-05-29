@@ -212,6 +212,20 @@ def render_html(data: dict) -> str:
         outside.setdefault("humidity_trend", "flat")
         data = {**data, "outside": outside}
 
+    # Fill in forecast.high.humidity_pct / forecast.low.humidity_pct for
+    # offline fixtures. The live aggregate picks the humidity reading at
+    # the high/low hour; offline data carries neither hourly humidity nor
+    # this field. Stand in with the current outside humidity so the row
+    # has a representative value to render against during tuning.
+    forecast_in = data.get("forecast") or {}
+    stand_in_humidity = outside_in.get("humidity_pct")
+    if forecast_in and stand_in_humidity is not None:
+        forecast = {**forecast_in}
+        for key in ("high", "low"):
+            if key in forecast and "humidity_pct" not in forecast[key]:
+                forecast[key] = {**forecast[key], "humidity_pct": stand_in_humidity}
+        data = {**data, "forecast": forecast}
+
     ctx = {**data, "hourly": enriched,
            "precip_scale_max": precip_scale_max,
            "n_hours": n_hours,

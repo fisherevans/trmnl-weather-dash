@@ -89,6 +89,7 @@ KNOBS = [
     ("inside_hum_fs",          16,  200,    1, "INSIDE"),
     ("inside_lab_fs",           8,   60,    1, "INSIDE"),
     ("forecast_big_fs",        40,  300,    1, "TEMP FORECAST"),
+    ("forecast_tempsup_fs",    12,  200,    1, "TEMP FORECAST"),
     ("forecast_arrow_fs",      20,  200,    1, "TEMP FORECAST"),
     ("forecast_when_fs",       10,  100,    1, "TEMP FORECAST"),
     ("forecast_rh_fs",          8,   80,    1, "TEMP FORECAST"),

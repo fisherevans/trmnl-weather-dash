@@ -26,28 +26,29 @@
          block in the panel config changes the rendered output without
          touching this template. Use scripts/tune_studio.py to find
          values interactively. */
-      --outside-icon-max-h: 240px;
-      --outside-temp-fs:    138px;
-      --outside-tempsup-fs:  60px;
-      --outside-trend-fs:    42px;
-      --outside-hum-fs:      70px;
-      --inside-temp-fs:      64px;
-      --inside-tempsup-fs:   28px;
-      --inside-hum-fs:       52px;
-      --inside-lab-fs:       15px;
-      --forecast-big-fs:    104px;
-      --forecast-arrow-fs:   88px;
-      --forecast-when-fs:    28px;
+      --outside-icon-max-h: 200px;
+      --outside-temp-fs:    160px;
+      --outside-tempsup-fs:  72px;
+      --outside-trend-fs:    60px;
+      --outside-hum-fs:      90px;
+      --inside-temp-fs:     120px;
+      --inside-tempsup-fs:   60px;
+      --inside-hum-fs:       72px;
+      --inside-lab-fs:       16px;
+      --forecast-big-fs:    120px;
+      --forecast-tempsup-fs: 54px;
+      --forecast-arrow-fs:  100px;
+      --forecast-when-fs:    30px;
       --forecast-rh-fs:      20px;
 
       /* Summary-column geometry. Width is the fixed pixel width of the
          left column; the chart card absorbs whatever's left. The three
          row weights drive a CSS grid so OUTSIDE / TEMP FORECAST / INSIDE
          share the column height proportionally. */
-      --col-left-width:         460px;
-      --col-left-row-outside:  1.15fr;
-      --col-left-row-forecast:    1fr;
-      --col-left-row-inside:    0.3fr;
+      --col-left-width:        565px;
+      --col-left-row-outside:  3.7fr;
+      --col-left-row-forecast: 3.6fr;
+      --col-left-row-inside:  1.35fr;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width: 1872px; height: 1404px; }
@@ -456,6 +457,11 @@
       display: flex;
       align-items: baseline;
       gap: 12px;
+    }
+    .tempforecast .big sup {
+      font-size: var(--forecast-tempsup-fs);
+      font-weight: 700;
+      top: -0.55em;
     }
     .tempforecast .big .arrow {
       font-size: var(--forecast-arrow-fs);
@@ -938,22 +944,22 @@
         <div class="card-title">TEMPERATURE FORECAST</div>
         <div class="card-body tempforecast{% if tuning_summary_layout == 'side-by-side' %} side-by-side{% endif %}">
           <div class="row high">
-            <div class="big"><span class="arrow">↑</span><span>{{ forecast.high.temp_f }}°F</span></div>
+            <div class="big"><span class="arrow">↑</span><span>{{ forecast.high.temp_f }}<sup>°F</sup></span></div>
             <div class="when">
               <span>HIGH @ {{ forecast.high.time }}</span>
               {%- if forecast.high.tomorrow %}<span class="tag">TMRW</span>{%- endif %}
             </div>
-            {%- if forecast.high.humidity_pct is not none %}
+            {%- if forecast.high.humidity_pct is defined and forecast.high.humidity_pct is not none %}
             <div class="rh">{{ forecast.high.humidity_pct }}% HUMIDITY</div>
             {%- endif %}
           </div>
           <div class="row low">
-            <div class="big"><span class="arrow">↓</span><span>{{ forecast.low.temp_f }}°F</span></div>
+            <div class="big"><span class="arrow">↓</span><span>{{ forecast.low.temp_f }}<sup>°F</sup></span></div>
             <div class="when">
               <span>LOW @ {{ forecast.low.time }}</span>
               {%- if forecast.low.tomorrow %}<span class="tag">TMRW</span>{%- endif %}
             </div>
-            {%- if forecast.low.humidity_pct is not none %}
+            {%- if forecast.low.humidity_pct is defined and forecast.low.humidity_pct is not none %}
             <div class="rh">{{ forecast.low.humidity_pct }}% HUMIDITY</div>
             {%- endif %}
           </div>
