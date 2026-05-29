@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>TRMNL Weather (Compact)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink:   #000000;
+      --dim:   #555555;
+      --grey:  #AAAAAA;
+      --paper: #FFFFFF;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100vw; height: 100vh; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      font-feature-settings: "tnum" 1;
+      display: flex;
+      flex-direction: column;
+      padding: 6px 12px;
+    }
+
+    /* Section borders are the horizontal grid lines of the panel.
+       Inner vertical dividers extend top/bottom past their content to
+       touch those borders, so the panel reads as one + grid rather
+       than a stack of disconnected blocks. */
+    section { position: relative; border-bottom: 2px solid var(--ink); }
+    section:last-child { border-bottom: 0; }
+
+    .pair-divider {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: -2px;
+      width: 2px;
+      transform: translateX(-50%);
+      background: var(--ink);
+    }
+
+    .section-label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      color: var(--dim);
+      text-transform: uppercase;
+      padding: 2px 0 0;
+    }
+
+    /* ── now: tiny CURRENT label + temp/humidity, no inner divider ─── */
+    .now {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      column-gap: 14px;
+      padding-bottom: 6px;
+    }
+    .now .section-label {
+      grid-column: 1 / -1;
+      text-align: center;
+    }
+    .now .col { text-align: center; }
+    .now .big {
+      font-size: 60px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+    .now .big sup { font-size: 26px; font-weight: 700; top: -0.55em; }
+    .now .lab {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      color: var(--dim);
+      margin-top: 4px;
+      text-transform: uppercase;
+    }
+
+    /* ── high/low ───────────────────────────────────────────────────── */
+    .hilo {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      column-gap: 14px;
+      padding: 6px 0 8px;
+    }
+    .hilo .col { text-align: center; }
+    .hilo .hl-label {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      color: var(--dim);
+      text-transform: uppercase;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .hilo .top {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 8px;
+      line-height: 1;
+    }
+    .hilo .arrow {
+      font-size: 38px;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .hilo .temp {
+      font-size: 44px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+    .hilo .temp sup { font-size: 18px; font-weight: 700; top: -0.55em; }
+    .hilo .meta {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--dim);
+      margin-top: 4px;
+    }
+    .hilo .meta .at { color: var(--ink); font-weight: 800; }
+
+    /* ── chart ──────────────────────────────────────────────────────── */
+    .chart { padding: 2px 0 2px; }
+    .chart svg { display: block; width: 100%; height: auto; }
+    /* Temp line is drawn TWICE: a thicker paper-colored under-stroke
+       first so the line stays legible where it crosses dark precip
+       bars, then the actual black ink line on top. */
+    .chart .temp-halo {
+      fill: none;
+      stroke: var(--paper);
+      stroke-width: 5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .chart .temp-line {
+      fill: none;
+      stroke: var(--ink);
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .chart .precip   { fill: var(--ink); }
+    /* Night shading marks the post-sunset slice of the chart. Light grey
+       so bars + the temp line still read against it post-quantize. */
+    .chart .night    { fill: var(--grey); }
+    .chart .grid     { stroke: var(--grey);  stroke-width: 1.2; }
+    /* In the night region the day-side grid colour merges with the
+       light-grey shading and disappears. Switch to paper-white inside
+       the shaded slice so the same horizontals stay visible. */
+    .chart .grid-night { stroke: var(--paper); stroke-width: 1.2; }
+    .chart .axis     { stroke: var(--ink); stroke-width: 1; }
+    .chart .scale-lab {
+      fill: var(--dim);
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+    }
+    .chart .axis-title {
+      fill: var(--dim);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+    }
+    .chart .hour {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      fill: var(--dim);
+    }
+
+    /* ── today / tonight prose ──────────────────────────────────────── */
+    .chunks {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: 1fr 1fr;
+      gap: 4px;
+      padding: 4px 0 0;
+    }
+    .chunk {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 0;
+      padding: 2px 0;
+    }
+    /* Lighter, thinner mid-divider so it doesn't compete with the
+       section borders. Sits in the gap so each chunk's content area
+       is symmetric. */
+    .chunk + .chunk { border-top: 1px solid var(--grey); }
+    .chunk .label {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      color: var(--dim);
+      line-height: 1;
+      margin-bottom: 3px;
+    }
+    .chunk .text {
+      font-size: 17px;
+      font-weight: 600;
+      line-height: 1.15;
+      letter-spacing: -0.005em;
+    }
+  </style>
+</head>
+<body>
+
+  <section class="now">
+    <div class="section-label">CURRENT</div>
+    <div class="col">
+      <div class="big">{{ current.temp_f }}<sup>°F</sup></div>
+      <div class="lab">TEMP</div>
+    </div>
+    <div class="col">
+      <div class="big">{{ current.humidity_pct }}<sup>%</sup></div>
+      <div class="lab">HUMIDITY</div>
+    </div>
+  </section>
+
+  <section class="hilo">
+    <div class="pair-divider"></div>
+    <div class="col">
+      <div class="hl-label">HIGH</div>
+      <div class="top">
+        <span class="arrow">↑</span>
+        <span class="temp">{{ high.temp_f }}<sup>°F</sup></span>
+      </div>
+      <div class="meta"><span class="at">{{ high.time }}</span> · {{ high.humidity_pct }}% RH</div>
+    </div>
+    <div class="col">
+      <div class="hl-label">LOW</div>
+      <div class="top">
+        <span class="arrow">↓</span>
+        <span class="temp">{{ low.temp_f }}<sup>°F</sup></span>
+      </div>
+      <div class="meta"><span class="at">{{ low.time }}</span> · {{ low.humidity_pct }}% RH</div>
+    </div>
+  </section>
+
+  <section class="chart">
+    <svg viewBox="0 0 {{ chart.view_w }} {{ chart.view_h }}" preserveAspectRatio="none">
+      {# night shading behind everything else - covers the chart slice
+         from sunset to (here) the right edge since sunrise is beyond
+         the 18-hour window. Bars and temp line render on top. #}
+      {%- if chart.night and chart.night.w > 0 %}
+      <rect class="night" x="{{ chart.night.x }}" y="{{ chart.precip_top_y }}"
+            width="{{ chart.night.w }}" height="{{ chart.axis_y - chart.precip_top_y }}"/>
+      {%- endif %}
+
+      {# precip bars #}
+      {%- for b in chart.precip_bars %}
+      <rect class="precip" x="{{ b.x }}" y="{{ chart.axis_y - b.h }}" width="{{ b.w }}" height="{{ b.h }}"/>
+      {%- endfor %}
+
+      {# baseline axis #}
+      <line class="axis" x1="{{ chart.left_axis_x }}" x2="{{ chart.right_axis_x }}" y1="{{ chart.axis_y }}" y2="{{ chart.axis_y }}"/>
+
+      {# 25/50/75/100% grid lines drawn ON TOP of the bars, with rain
+         % on the left and the corresponding temperature value on the
+         right. Shared grid lets the same horizontals carry both
+         scales. Grid line colour flips inside the night region so the
+         line stays visible against the light-grey shading. #}
+      {%- for g in chart.grid_lines %}
+        {%- if chart.night and chart.night.w > 0 %}
+          {%- set night_x1 = chart.night.x %}
+          {%- set night_x2 = chart.night.x + chart.night.w %}
+          {%- if night_x1 > chart.left_axis_x %}
+      <line class="grid" x1="{{ chart.left_axis_x }}" x2="{{ night_x1 }}" y1="{{ g.y }}" y2="{{ g.y }}"/>
+          {%- endif %}
+      <line class="grid-night" x1="{{ night_x1 }}" x2="{{ night_x2 }}" y1="{{ g.y }}" y2="{{ g.y }}"/>
+          {%- if night_x2 < chart.right_axis_x %}
+      <line class="grid" x1="{{ night_x2 }}" x2="{{ chart.right_axis_x }}" y1="{{ g.y }}" y2="{{ g.y }}"/>
+          {%- endif %}
+        {%- else %}
+      <line class="grid" x1="{{ chart.left_axis_x }}" x2="{{ chart.right_axis_x }}" y1="{{ g.y }}" y2="{{ g.y }}"/>
+        {%- endif %}
+      <text class="scale-lab" x="{{ chart.left_axis_x - 2 }}" y="{{ g.y + 3 }}" text-anchor="end">{{ g.rain }}</text>
+      <text class="scale-lab" x="{{ chart.right_axis_x + 2 }}" y="{{ g.y + 3 }}" text-anchor="start">{{ g.temp }}</text>
+      {%- endfor %}
+
+      {# rotated axis titles - read bottom-to-top on both sides. Short
+         "RAIN" / "TEMP" instead of full words so the rotated text fits
+         inside the SVG viewBox at this width. #}
+      <text class="axis-title" x="{{ chart.rain_label_x }}" y="{{ chart.chart_mid_y }}"
+            text-anchor="middle" transform="rotate(-90 {{ chart.rain_label_x }} {{ chart.chart_mid_y }})">{{ chart.rain_label }}</text>
+      <text class="axis-title" x="{{ chart.temp_label_x }}" y="{{ chart.chart_mid_y }}"
+            text-anchor="middle" transform="rotate(-90 {{ chart.temp_label_x }} {{ chart.chart_mid_y }})">{{ chart.temp_label }}</text>
+
+      {# temp line: paper halo first, ink line on top. Stays legible
+         when it crosses the dark bars. #}
+      <path class="temp-halo" d="{{ chart.temp_path }}"/>
+      <path class="temp-line" d="{{ chart.temp_path }}"/>
+
+      {# hour ticks #}
+      {%- for t in chart.hour_ticks %}
+      <text class="hour" x="{{ t.x }}" y="{{ chart.view_h - 1 }}" text-anchor="middle">{{ t.label }}</text>
+      {%- endfor %}
+    </svg>
+  </section>
+
+  <section class="chunks">
+    <div class="chunk">
+      <div class="label">TODAY</div>
+      <div class="text">{{ today_prose }}</div>
+    </div>
+    <div class="chunk">
+      <div class="label">TONIGHT</div>
+      <div class="text">{{ tonight_prose }}</div>
+    </div>
+  </section>
+
+</body>
+</html>

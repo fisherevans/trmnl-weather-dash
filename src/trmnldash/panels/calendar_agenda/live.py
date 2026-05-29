@@ -37,7 +37,6 @@ def build_live_context(config: CalendarAgendaConfig) -> dict:
         "now":   now.isoformat(),
         "today_label": now.strftime("%a %b %-d").upper(),
         "events": [_event_to_dict(e) for e in events],
-        "next_event_badge_minutes": config.next_event_badge_minutes,
     }
 
 

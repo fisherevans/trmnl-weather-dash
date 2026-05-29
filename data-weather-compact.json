@@ -1,0 +1,33 @@
+{
+  "now": "2026-05-29T10:17:00-04:00",
+  "current": {
+    "temp_f": 72,
+    "humidity_pct": 41
+  },
+  "hourly": [
+    {"datetime": "2026-05-29T11:00:00-04:00", "hour_label": "11A", "temp_f": 64, "humidity_pct": 50, "precip_prob_pct":  5, "is_night": false},
+    {"datetime": "2026-05-29T12:00:00-04:00", "hour_label": "12P", "temp_f": 67, "humidity_pct": 45, "precip_prob_pct": 10, "is_night": false},
+    {"datetime": "2026-05-29T13:00:00-04:00", "hour_label":  "1P", "temp_f": 71, "humidity_pct": 42, "precip_prob_pct": 25, "is_night": false},
+    {"datetime": "2026-05-29T14:00:00-04:00", "hour_label":  "2P", "temp_f": 74, "humidity_pct": 40, "precip_prob_pct": 45, "is_night": false},
+    {"datetime": "2026-05-29T15:00:00-04:00", "hour_label":  "3P", "temp_f": 78, "humidity_pct": 35, "precip_prob_pct": 75, "is_night": false},
+    {"datetime": "2026-05-29T16:00:00-04:00", "hour_label":  "4P", "temp_f": 76, "humidity_pct": 38, "precip_prob_pct": 90, "is_night": false},
+    {"datetime": "2026-05-29T17:00:00-04:00", "hour_label":  "5P", "temp_f": 74, "humidity_pct": 42, "precip_prob_pct": 80, "is_night": false},
+    {"datetime": "2026-05-29T18:00:00-04:00", "hour_label":  "6P", "temp_f": 71, "humidity_pct": 48, "precip_prob_pct": 55, "is_night": false},
+    {"datetime": "2026-05-29T19:00:00-04:00", "hour_label":  "7P", "temp_f": 67, "humidity_pct": 52, "precip_prob_pct": 30, "is_night": false},
+    {"datetime": "2026-05-29T20:00:00-04:00", "hour_label":  "8P", "temp_f": 65, "humidity_pct": 60, "precip_prob_pct": 10, "is_night": false},
+    {"datetime": "2026-05-29T21:00:00-04:00", "hour_label":  "9P", "temp_f": 64, "humidity_pct": 65, "precip_prob_pct":  5, "is_night": true},
+    {"datetime": "2026-05-29T22:00:00-04:00", "hour_label": "10P", "temp_f": 63, "humidity_pct": 68, "precip_prob_pct":  2, "is_night": true},
+    {"datetime": "2026-05-29T23:00:00-04:00", "hour_label": "11P", "temp_f": 62, "humidity_pct": 72, "precip_prob_pct":  0, "is_night": true},
+    {"datetime": "2026-05-30T00:00:00-04:00", "hour_label": "12A", "temp_f": 61, "humidity_pct": 75, "precip_prob_pct":  0, "is_night": true},
+    {"datetime": "2026-05-30T01:00:00-04:00", "hour_label":  "1A", "temp_f": 60, "humidity_pct": 76, "precip_prob_pct":  0, "is_night": true},
+    {"datetime": "2026-05-30T02:00:00-04:00", "hour_label":  "2A", "temp_f": 59, "humidity_pct": 77, "precip_prob_pct":  0, "is_night": true},
+    {"datetime": "2026-05-30T03:00:00-04:00", "hour_label":  "3A", "temp_f": 58, "humidity_pct": 78, "precip_prob_pct":  0, "is_night": true},
+    {"datetime": "2026-05-30T04:00:00-04:00", "hour_label":  "4A", "temp_f": 58, "humidity_pct": 78, "precip_prob_pct":  0, "is_night": true}
+  ],
+  "sun": {
+    "next_sunset":  "2026-05-29T20:15:00-04:00",
+    "next_sunrise": "2026-05-30T05:28:00-04:00"
+  },
+  "today_prose":   "warm with afternoon thunderstorms",
+  "tonight_prose": "clear and cool, falling into the 50s overnight"
+}

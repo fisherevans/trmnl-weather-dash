@@ -10,8 +10,8 @@
     :root {
       /* 4-shade palette levels post-quantize. Use these exact values so
          what the panel sees matches what the renderer sees. */
-      --ink:   #000000;   /* level 0  */
-      --dim:   #555555;   /* level 85 */
+      --ink:   #000000;   /* level 0   */
+      --dim:   #555555;   /* level 85  */
       --grey:  #AAAAAA;   /* level 170 */
       --paper: #FFFFFF;   /* level 255 */
     }
@@ -24,7 +24,7 @@
       font-feature-settings: "tnum" 1;
       display: flex;
       flex-direction: column;
-      padding: 14px 22px 16px;
+      padding: 10px 14px 10px;
     }
 
     /* ── header ─────────────────────────────────────────────────────── */
@@ -32,20 +32,24 @@
       display: flex;
       align-items: baseline;
       justify-content: space-between;
+      gap: 12px;
       border-bottom: 3px solid var(--ink);
-      padding-bottom: 6px;
-      margin-bottom: 8px;
+      padding-bottom: 4px;
+      margin-bottom: 4px;
     }
     .agenda-header .dow {
-      font-size: 34px;
+      font-size: 30px;
       font-weight: 900;
       letter-spacing: 0.04em;
+      line-height: 1;
     }
     .agenda-header .label {
-      font-size: 18px;
+      font-size: 12px;
       font-weight: 700;
-      letter-spacing: 0.16em;
+      letter-spacing: 0.14em;
       color: var(--dim);
+      line-height: 1;
+      white-space: nowrap;
     }
 
     /* ── event list ─────────────────────────────────────────────────── */
@@ -53,69 +57,96 @@
       list-style: none;
       display: flex;
       flex-direction: column;
-      gap: 0;
       flex: 1;
       min-height: 0;
     }
+    /* flex: 1 1 0 distributes the list's height across events. Sparse
+       days get tall rows, full days compress. Combined with the
+       density-* font-size tiers below, this gives the row content room
+       to breathe at every event count. */
     .event {
+      flex: 1 1 0;
+      min-height: 0;
       display: grid;
-      grid-template-columns: 220px 1fr auto auto;
-      align-items: center;
-      gap: 12px;
-      padding: 5px 0;
-      font-size: 22px;
-      line-height: 1.05;
+      grid-template-rows: auto auto;
+      align-content: center;
+      row-gap: 2px;
+      padding: 4px 0;
       border-top: 1px solid var(--grey);
     }
     .event:first-child { border-top: 0; }
 
+    /* Top line: time range left, cal label right. Time is the
+       supporting metadata (lighter, tracked, monospace digits via
+       tnum); title carries the visual weight. */
+    .event .meta {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+    }
     .event .time {
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+      color: var(--dim);
+    }
+    .event .cal {
       font-weight: 700;
-      letter-spacing: 0.02em;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--dim);
       white-space: nowrap;
     }
     .event .title {
-      font-weight: 600;
+      font-weight: 700;
+      line-height: 1.0;
+      letter-spacing: -0.005em;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .event .badge {
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      padding: 3px 10px;
-      border: 2px solid var(--ink);
-      border-radius: 999px;
-      white-space: nowrap;
-    }
-    .event .cal {
-      font-size: 16px;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--dim);
-      white-space: nowrap;
-      min-width: 90px;
-      text-align: right;
-    }
 
-    /* past events: collapse temp + cal labels into mid-grey so the
-       palette quantizes them cleanly to level 170. No opacity (the
-       browser blend doesn't snap deterministically). */
+    /* Past events: collapse text to mid-grey so the 4-shade quantizer
+       lands them on level 170 (visible but distinctly faded). Opacity
+       doesn't quantize predictably across only 4 levels. */
     .event.past .time,
-    .event.past .title { color: var(--grey); }
-    .event.past .cal   { color: var(--grey); }
+    .event.past .title,
+    .event.past .cal { color: var(--grey); }
 
-    /* the next-up event: bold + black, no fade. The badge floats next
-       to it carrying the "Xm until" countdown. */
-    .event.next .time,
-    .event.next .title { color: var(--ink); font-weight: 800; }
+    /* All-day events sit naturally at the top (start == 00:00). The
+       ALL DAY label visually distinguishes by capitalization + extra
+       tracking. */
+    .event.all-day .time { letter-spacing: 0.16em; }
 
-    /* all-day events sit above timed events naturally because their
-       start is 00:00. The "ALL DAY" time label visually reads as
-       distinct because of the all-caps + slight letter spacing. */
-    .event.all-day .time { letter-spacing: 0.12em; }
+    /* ── density tiers ──────────────────────────────────────────────
+       Picked in render.py based on event count. Tighter as the day
+       fills up so all events fit; breathier on sparse days. */
+    .density-xl .agenda-header .dow   { font-size: 34px; }
+    .density-xl .agenda-header .label { font-size: 14px; }
+    .density-xl .event .time   { font-size: 24px; }
+    .density-xl .event .title  { font-size: 38px; }
+    .density-xl .event .cal    { font-size: 16px; }
+
+    .density-lg .agenda-header .dow   { font-size: 32px; }
+    .density-lg .event .time   { font-size: 22px; }
+    .density-lg .event .title  { font-size: 32px; }
+    .density-lg .event .cal    { font-size: 15px; }
+
+    .density-md .agenda-header .dow   { font-size: 30px; }
+    .density-md .event .time   { font-size: 19px; }
+    .density-md .event .title  { font-size: 26px; }
+    .density-md .event .cal    { font-size: 14px; }
+
+    .density-sm .agenda-header .dow   { font-size: 28px; }
+    .density-sm .event .time   { font-size: 17px; }
+    .density-sm .event .title  { font-size: 22px; }
+    .density-sm .event .cal    { font-size: 13px; }
+
+    .density-xs .agenda-header .dow   { font-size: 26px; }
+    .density-xs .event .time   { font-size: 15px; }
+    .density-xs .event .title  { font-size: 19px; }
+    .density-xs .event .cal    { font-size: 12px; }
 
     /* empty state */
     .empty {
@@ -123,14 +154,16 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 26px;
+      text-align: center;
+      font-size: 22px;
       font-weight: 700;
       letter-spacing: 0.08em;
       color: var(--grey);
+      padding: 0 18px;
     }
   </style>
 </head>
-<body>
+<body class="{{ density }}">
 
   <header class="agenda-header">
     <span class="dow">{{ today_label }}</span>
@@ -142,11 +175,12 @@
   {% else %}
     <ul class="events">
       {%- for e in events %}
-      <li class="event{% if e.is_past %} past{% endif %}{% if e.is_next %} next{% endif %}{% if e.all_day %} all-day{% endif %}">
-        <span class="time">{{ e.time_label }}</span>
-        <span class="title">{{ e.title }}</span>
-        <span class="badge">{% if e.is_next %}{{ e.minutes_until_text }}{% endif %}</span>
-        <span class="cal">{{ e.calendar_label }}</span>
+      <li class="event{% if e.is_past %} past{% endif %}{% if e.all_day %} all-day{% endif %}">
+        <div class="meta">
+          <span class="time">{{ e.time_label }}</span>
+          <span class="cal">{{ e.calendar_label }}</span>
+        </div>
+        <div class="title">{{ e.title }}</div>
       </li>
       {%- endfor %}
     </ul>

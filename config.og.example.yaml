@@ -1,0 +1,77 @@
+# Example trmnldash config for the TRMNL OG (800x480, 2-bit grey) mounted
+# in native landscape orientation. The dashboard is split vertically into
+# two 400x480 halves: agenda on the left, compact weather on the right.
+#
+# Validate with: uv run trmnldash validate --config config.og.example.yaml
+# Pass at runtime via --config or the TRMNLDASH_CONFIG env var.
+
+# ──────────────────────────────────────────────────────────────────────────
+# Dashboard
+# ──────────────────────────────────────────────────────────────────────────
+dashboard:
+  device:
+    width:   800
+    height:  480
+    palette: 2bit-grey            # 4-shade greyscale on the OG firmware
+    rotate:  0                    # already landscape; no rotation
+
+  layout:
+    hstack:
+      padding: 0
+      gap: 0
+      separator:
+        thickness: 2
+        color: "#000000"
+      children:
+        # ── LEFT: today's calendar agenda ───────────────────────────────
+        - panel: calendar_agenda
+          size: 1fr
+          config:
+            timezone: America/New_York
+
+            # OAuth credentials + saved refresh token. Run
+            #   uv run scripts/google_auth.py \
+            #     --credentials /path/to/client_secret.json \
+            #     --token       /path/to/google-token.json
+            # once locally, then mount both files into the container.
+            google:
+              credentials_file: /etc/trmnldash/google-credentials.json
+              token_file:       /etc/trmnldash/google-token.json
+              calendars:
+                - id:    primary
+                  label: Personal
+                - id:    your-work-calendar-id@group.calendar.google.com
+                  label: Work
+                - id:    your-family-calendar-id@group.calendar.google.com
+                  label: Family
+                - id:    your-side-calendar-id@group.calendar.google.com
+                  label: Side
+
+            max_events: 12
+
+        # ── RIGHT: compact weather ──────────────────────────────────────
+        - panel: weather_compact
+          size: 1fr
+          config:
+            location:
+              lat: 43.21
+              lon: -71.54
+              timezone: America/New_York
+            weather:
+              provider: open-meteo
+              hours: 18             # match the chart's x-axis range
+
+# ──────────────────────────────────────────────────────────────────────────
+# Render cadence + output path. Same shape as the X dashboard's config.
+# ──────────────────────────────────────────────────────────────────────────
+render:
+  output_path: /data/dashboard.png
+  refresh_minutes: 5
+
+# ──────────────────────────────────────────────────────────────────────────
+# HTTP server (same shape as the X dashboard's config).
+# ──────────────────────────────────────────────────────────────────────────
+serve:
+  host: 0.0.0.0
+  port: 8080
+  secret_path: change-me-to-a-random-token

@@ -21,10 +21,11 @@ from ...engine.render import html_to_image
 TEMPLATE_DIR = Path(__file__).parent
 ASSETS = TEMPLATE_DIR / "assets"
 
-# Natural size for the OG bottom-half. Dashboard layout overrides at compose.
-# 300 picks the rough split of 480 - weather_compact (~170) - separator
-# (~10) = 300 for the agenda. Tunable from the dashboard YAML.
-RENDER_SPEC = RenderSpec(width=800, height=300, palette="2bit-grey")
+# Natural size: one vertical half of the OG's 800x480 panel, mounted
+# landscape with an hstack split. Tall + narrow drives a stacked event
+# layout (time on one line, title on the next) rather than a single-row
+# grid - 400 px isn't wide enough for time + title + cal label inline.
+RENDER_SPEC = RenderSpec(width=400, height=480, palette="2bit-grey")
 
 
 def render_html(data: dict) -> str:
@@ -34,55 +35,54 @@ def render_html(data: dict) -> str:
     )
 
     now = _parse_iso(data["now"])
-    badge_horizon_min = data.get("next_event_badge_minutes", 60)
     raw_events = data.get("events") or []
 
+    # Enrich each event with derived display fields. is_past drives the
+    # greying; we do NOT compute "next event" / "Xm until" because the
+    # TRMNL device polls on a multi-minute cadence and any countdown
+    # would be visibly stale by the time the panel shows it.
     enriched: list[dict] = []
-    next_idx: int | None = None
-
-    # First pass: enrich each event with derived display fields. Track the
-    # earliest event whose start is in the future as the candidate for the
-    # "Xm until" badge.
-    for i, e in enumerate(raw_events):
+    for e in raw_events:
         start = _parse_iso(e["start"])
         end = _parse_iso(e["end"])
-        is_past = end <= now
-        is_future = start > now
-        is_now = (not is_past) and (not is_future)
-        if next_idx is None and is_future:
-            next_idx = i
         enriched.append({
             **e,
-            "start_dt": start,
-            "end_dt":   end,
-            "is_past":  is_past,
-            "is_now":   is_now,
+            "start_dt":   start,
+            "end_dt":     end,
+            "is_past":    end <= now,
             "time_label": _format_time_range(start, end, e.get("all_day", False)),
         })
 
-    # Second pass: stamp is_next + minutes_until on the elected candidate
-    # iff its start falls within the configured badge horizon.
-    if next_idx is not None:
-        ne = enriched[next_idx]
-        delta = ne["start_dt"] - now
-        minutes = int(delta.total_seconds() // 60)
-        if 0 <= minutes <= badge_horizon_min:
-            ne["is_next"] = True
-            ne["minutes_until_text"] = _format_until(minutes)
-        else:
-            ne["is_next"] = False
-            ne["minutes_until_text"] = ""
-    for e in enriched:
-        e.setdefault("is_next", False)
-        e.setdefault("minutes_until_text", "")
+    # Density tier: pick the smallest CSS class that comfortably fits
+    # `len(events)` rows. Sparse days get breathing room; full days
+    # collapse to tighter type. Thresholds picked so each tier preserves
+    # readable line-height at 480 px panel height.
+    density = _density_tier(len(enriched))
 
     ctx = {
         "now":         now,
         "today_label": data.get("today_label", now.strftime("%a %b %-d").upper()),
         "events":      enriched,
         "empty":       not enriched,
+        "density":     density,
     }
     return env.get_template("template.html").render(**ctx)
+
+
+def _density_tier(n_events: int) -> str:
+    """Map event count -> CSS density class.
+
+    xl: 1-3 events  (huge type, lots of breathing room)
+    lg: 4-5 events
+    md: 6-7 events
+    sm: 8-9 events
+    xs: 10+ events  (the cap of max_events=12 fits here)
+    """
+    if n_events <= 3:  return "density-xl"
+    if n_events <= 5:  return "density-lg"
+    if n_events <= 7:  return "density-md"
+    if n_events <= 9:  return "density-sm"
+    return "density-xs"
 
 
 def render_to_image(data: dict, *, width: int | None = None, height: int | None = None) -> Image.Image:
@@ -128,12 +128,3 @@ def _format_clock(dt: datetime) -> str:
     return dt.strftime("%-I:%M %p")
 
 
-def _format_until(minutes: int) -> str:
-    if minutes <= 0:
-        return "now"
-    if minutes < 60:
-        return f"{minutes}m until"
-    hours, rem = divmod(minutes, 60)
-    if rem == 0:
-        return f"{hours}h until"
-    return f"{hours}h {rem}m until"

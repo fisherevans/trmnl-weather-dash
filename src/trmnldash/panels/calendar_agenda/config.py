@@ -26,13 +26,6 @@ class CalendarAgendaConfig(_Strict):
         default=12, ge=1, le=50,
         description="Cap on event rows. Past events still count against this.",
     )
-    next_event_badge_minutes: int = Field(
-        default=60, ge=1, le=600,
-        description=(
-            "Show 'Xm until' next to the next upcoming event when it starts "
-            "within this many minutes. Past that horizon, the badge is hidden."
-        ),
-    )
 
 
 __all__ = ["CalendarAgendaConfig"]
