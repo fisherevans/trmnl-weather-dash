@@ -59,6 +59,17 @@ class TuningConfig(_Strict):
     forecast_when_fs: int = Field(default=28, ge=10, le=100)
     forecast_rh_fs: int = Field(default=20, ge=8, le=80)
 
+    # Summary column geometry. col_left_width is the fixed pixel width
+    # of the left summary column (date / OUTSIDE / TEMP FORECAST /
+    # INSIDE); the chart absorbs the remainder. The three *_weight
+    # values are CSS-grid fr units sharing the column's height. INSIDE's
+    # default is intentionally small so its compact reading docks at
+    # the bottom; bump it up to give INSIDE more vertical room.
+    col_left_width: int = Field(default=460, ge=240, le=900)
+    outside_weight: float = Field(default=1.15, ge=0.1, le=10.0)
+    forecast_weight: float = Field(default=1.0, ge=0.1, le=10.0)
+    inside_weight: float = Field(default=0.3, ge=0.1, le=10.0)
+
     def css_overrides(self) -> str:
         """Build a :root { --X: Ypx; } block for font-size overrides.
 
@@ -68,18 +79,22 @@ class TuningConfig(_Strict):
         """
         defaults = TuningConfig()
         mapping = {
-            "--outside-temp-fs":     ("outside_temp_fs", "px"),
-            "--outside-tempsup-fs":  ("outside_tempsup_fs", "px"),
-            "--outside-trend-fs":    ("outside_trend_fs", "px"),
-            "--outside-hum-fs":      ("outside_hum_fs", "px"),
-            "--inside-temp-fs":      ("inside_temp_fs", "px"),
-            "--inside-tempsup-fs":   ("inside_tempsup_fs", "px"),
-            "--inside-sep-fs":       ("inside_sep_fs", "px"),
-            "--inside-hum-fs":       ("inside_hum_fs", "px"),
-            "--forecast-big-fs":     ("forecast_big_fs", "px"),
-            "--forecast-arrow-fs":   ("forecast_arrow_fs", "px"),
-            "--forecast-when-fs":    ("forecast_when_fs", "px"),
-            "--forecast-rh-fs":      ("forecast_rh_fs", "px"),
+            "--outside-temp-fs":         ("outside_temp_fs", "px"),
+            "--outside-tempsup-fs":      ("outside_tempsup_fs", "px"),
+            "--outside-trend-fs":        ("outside_trend_fs", "px"),
+            "--outside-hum-fs":          ("outside_hum_fs", "px"),
+            "--inside-temp-fs":          ("inside_temp_fs", "px"),
+            "--inside-tempsup-fs":       ("inside_tempsup_fs", "px"),
+            "--inside-sep-fs":           ("inside_sep_fs", "px"),
+            "--inside-hum-fs":           ("inside_hum_fs", "px"),
+            "--forecast-big-fs":         ("forecast_big_fs", "px"),
+            "--forecast-arrow-fs":       ("forecast_arrow_fs", "px"),
+            "--forecast-when-fs":        ("forecast_when_fs", "px"),
+            "--forecast-rh-fs":          ("forecast_rh_fs", "px"),
+            "--col-left-width":          ("col_left_width", "px"),
+            "--col-left-row-outside":    ("outside_weight", "fr"),
+            "--col-left-row-forecast":   ("forecast_weight", "fr"),
+            "--col-left-row-inside":     ("inside_weight", "fr"),
         }
         lines = []
         for var, (field_name, unit) in mapping.items():

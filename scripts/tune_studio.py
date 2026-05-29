@@ -72,21 +72,25 @@ state = State()
 # TuningConfig itself so the UI stays in lock-step with the model.
 
 KNOBS = [
-    # field,                 min, max, step, group
-    ("chart_hours",            8,  48,  1, "Chart"),
-    ("summary_layout",      None,None,None,"Chart"),     # special: dropdown
-    ("outside_temp_fs",       40, 400, 1, "OUTSIDE"),
-    ("outside_tempsup_fs",    12, 200, 1, "OUTSIDE"),
-    ("outside_trend_fs",      12, 120, 1, "OUTSIDE"),
-    ("outside_hum_fs",        20, 200, 1, "OUTSIDE"),
-    ("inside_temp_fs",        20, 300, 1, "INSIDE"),
-    ("inside_tempsup_fs",      8, 100, 1, "INSIDE"),
-    ("inside_sep_fs",         12, 120, 1, "INSIDE"),
-    ("inside_hum_fs",         16, 200, 1, "INSIDE"),
-    ("forecast_big_fs",       40, 300, 1, "TEMP FORECAST"),
-    ("forecast_arrow_fs",     20, 200, 1, "TEMP FORECAST"),
-    ("forecast_when_fs",      10, 100, 1, "TEMP FORECAST"),
-    ("forecast_rh_fs",         8,  80, 1, "TEMP FORECAST"),
+    # field,                  min,  max,  step, group
+    ("chart_hours",             8,   48,    1, "Chart"),
+    ("summary_layout",       None, None, None, "Chart"),    # special: dropdown
+    ("col_left_width",        240,  900,    5, "Layout"),
+    ("outside_weight",        0.1, 10.0, 0.05, "Layout"),
+    ("forecast_weight",       0.1, 10.0, 0.05, "Layout"),
+    ("inside_weight",         0.1, 10.0, 0.05, "Layout"),
+    ("outside_temp_fs",        40,  400,    1, "OUTSIDE"),
+    ("outside_tempsup_fs",     12,  200,    1, "OUTSIDE"),
+    ("outside_trend_fs",       12,  120,    1, "OUTSIDE"),
+    ("outside_hum_fs",         20,  200,    1, "OUTSIDE"),
+    ("inside_temp_fs",         20,  300,    1, "INSIDE"),
+    ("inside_tempsup_fs",       8,  100,    1, "INSIDE"),
+    ("inside_sep_fs",          12,  120,    1, "INSIDE"),
+    ("inside_hum_fs",          16,  200,    1, "INSIDE"),
+    ("forecast_big_fs",        40,  300,    1, "TEMP FORECAST"),
+    ("forecast_arrow_fs",      20,  200,    1, "TEMP FORECAST"),
+    ("forecast_when_fs",       10,  100,    1, "TEMP FORECAST"),
+    ("forecast_rh_fs",          8,   80,    1, "TEMP FORECAST"),
 ]
 
 
@@ -395,8 +399,12 @@ function buildKnob(k) {
   num.min = k.min; num.max = k.max; num.step = k.step;
   num.value = state.tuning[k.field];
 
+  // Float vs int parsing depends on the knob's step. parseFloat handles
+  // both, then we round to the step's precision for display.
+  const isInt = Number.isInteger(k.step);
   const syncFrom = (src, other) => {
-    const v = parseInt(src.value, 10);
+    let v = parseFloat(src.value);
+    if (isInt) v = Math.round(v);
     other.value = v;
     update(k.field, v);
   };

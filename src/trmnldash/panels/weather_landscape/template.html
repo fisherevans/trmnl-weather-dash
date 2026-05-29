@@ -38,6 +38,15 @@
       --forecast-arrow-fs:   88px;
       --forecast-when-fs:    28px;
       --forecast-rh-fs:      20px;
+
+      /* Summary-column geometry. Width is the fixed pixel width of the
+         left column; the chart card absorbs whatever's left. The three
+         row weights drive a CSS grid so OUTSIDE / TEMP FORECAST / INSIDE
+         share the column height proportionally. */
+      --col-left-width:         460px;
+      --col-left-row-outside:  1.15fr;
+      --col-left-row-forecast:    1fr;
+      --col-left-row-inside:    0.3fr;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width: 1872px; height: 1404px; }
@@ -167,20 +176,23 @@
       display: flex;
       gap: 24px;
     }
-    .body > .col-left  { flex: 0 0 460px; }
+    .body > .col-left  { flex: 0 0 var(--col-left-width); }
     .body > .col-chart { flex: 1; min-width: 0; }
     /* summary_side='right' — flip the visual order without touching
        the DOM. The chunk-separator on the right of the header lines up
-       with the chart card's right edge (1872 - 36 - 460 - 24 = 1352),
-       mirroring how the default first separator aligns at x=520. */
+       with the chart card's right edge, mirroring how the default
+       first separator aligns. */
     .body.body--mirror { flex-direction: row-reverse; }
-    /* Left column heights are tuned so OUTSIDE_bottom + gap ≈ hour-bar
-       top in the chart card, putting TEMP FORECAST's title visually
-       aligned with the time-axis. OUTSIDE gets a slight edge over
-       TEMP FORECAST (1.15fr vs 1fr) to offset the 16px row gap that
-       the chart card doesn't have between title + chart-row. INSIDE
-       autosizes to its compact content at the bottom. */
-    .col-left  { display: grid; grid-template-rows: 1.15fr 1fr auto; gap: 16px; }
+    /* Left column heights — each row gets a tunable weight; the grid
+       divides the column among them proportionally. OUTSIDE and TEMP
+       FORECAST take the bulk; INSIDE defaults to a small fraction so
+       its compact reading sits at the bottom without dominating. Set
+       weights live via scripts/tune_studio.py. */
+    .col-left  {
+      display: grid;
+      grid-template-rows: var(--col-left-row-outside) var(--col-left-row-forecast) var(--col-left-row-inside);
+      gap: 16px;
+    }
 
     /* Card chrome */
     .card {
