@@ -8,11 +8,13 @@ services:
     container_name: trmnldash
     restart: unless-stopped
 
-    # Run a PID-1 init so chromium's orphaned helper processes get reaped.
-    # The published image bundles tini for the same reason; this is belt-
-    # and-suspenders and makes the requirement visible to anyone copying
-    # this file.
-    init: true
+    # Do NOT add `init: true` here. The image's ENTRYPOINT is already
+    # `/usr/bin/tini --` (see Dockerfile), which reaps chromium's
+    # orphaned helpers as PID 1. Compose's `init: true` injects
+    # docker-init as PID 1 and demotes the bundled tini to a child,
+    # which then warns on every startup ("Tini is not running as PID 1
+    # and isn't registered as a child subreaper"). Reaping still works
+    # via docker-init but the bundled tini becomes redundant noise.
 
     # Secrets: HA_TOKEN (required), WEATHER_API_KEY (only for providers
     # that need one). The container reads them as env vars; the names
