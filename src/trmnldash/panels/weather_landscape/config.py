@@ -51,8 +51,8 @@ class TuningConfig(_Strict):
     # INSIDE card font sizes (CSS px).
     inside_temp_fs: int = Field(default=64, ge=20, le=300)
     inside_tempsup_fs: int = Field(default=28, ge=8, le=100)
-    inside_sep_fs: int = Field(default=44, ge=12, le=120)
     inside_hum_fs: int = Field(default=52, ge=16, le=200)
+    inside_lab_fs: int = Field(default=15, ge=8, le=60)
 
     # TEMP FORECAST card font sizes (CSS px).
     forecast_big_fs: int = Field(default=104, ge=40, le=300)
@@ -87,8 +87,8 @@ class TuningConfig(_Strict):
             "--outside-hum-fs":          ("outside_hum_fs", "px"),
             "--inside-temp-fs":          ("inside_temp_fs", "px"),
             "--inside-tempsup-fs":       ("inside_tempsup_fs", "px"),
-            "--inside-sep-fs":           ("inside_sep_fs", "px"),
             "--inside-hum-fs":           ("inside_hum_fs", "px"),
+            "--inside-lab-fs":           ("inside_lab_fs", "px"),
             "--forecast-big-fs":         ("forecast_big_fs", "px"),
             "--forecast-arrow-fs":       ("forecast_arrow_fs", "px"),
             "--forecast-when-fs":        ("forecast_when_fs", "px"),

@@ -33,8 +33,8 @@
       --outside-hum-fs:      70px;
       --inside-temp-fs:      64px;
       --inside-tempsup-fs:   28px;
-      --inside-sep-fs:       44px;
       --inside-hum-fs:       52px;
+      --inside-lab-fs:       15px;
       --forecast-big-fs:    104px;
       --forecast-arrow-fs:   88px;
       --forecast-when-fs:    28px;
@@ -391,26 +391,40 @@
       letter-spacing: 0.06em;
     }
     .card-compact .card-body  { padding: 14px 20px; }
-    /* INSIDE row alignment: when temp and hum are sized differently
-       (e.g. big temp, small hum) baseline-align kept their letter bottoms
-       at the same Y but left the smaller item visually high in the
-       row. Center-align matches their *visual* centers instead so the
-       row reads as one balanced unit at any size mix. The sup, dot,
-       and HUMIDITY label naturally inherit center alignment. */
+    /* INSIDE reading mirrors OUTSIDE's two-cell grid (temp | divider |
+       hum) at smaller sizes. Centered both ways so the temp + hum
+       group sits in the middle of the card regardless of font size.
+       The hum cell stacks the percentage on top of the HUMIDITY label
+       (matches OUTSIDE) instead of running them inline. */
     .reading-compact {
-      display: flex;
+      display: grid;
+      grid-template-columns: 1.4fr 2px 1fr;
       align-items: center;
-      justify-content: center;
-      gap: 16px;
+      gap: 18px;
       line-height: 1;
     }
-    .reading-compact .temp { font-size: var(--inside-temp-fs); font-weight: 800; letter-spacing: -0.02em; }
-    /* sup stays in the flow above the main glyph; pull it down a bit
-       less than the OUTSIDE sup so it doesn't break the center-line. */
-    .reading-compact .temp sup { font-size: var(--inside-tempsup-fs); font-weight: 700; top: -0.6em; }
-    .reading-compact .sep  { font-size: var(--inside-sep-fs); font-weight: 300; opacity: 0.5; }
-    .reading-compact .hum  { font-size: var(--inside-hum-fs); font-weight: 800; letter-spacing: -0.02em; }
-    .reading-compact .lab  { font-size: 15px; font-weight: 700; letter-spacing: 0.12em; }
+    .reading-compact .divider { background: var(--ink); align-self: stretch; }
+    .reading-compact .temp {
+      font-size: var(--inside-temp-fs);
+      font-weight: 800;
+      line-height: 1;
+      text-align: center;
+      letter-spacing: -0.02em;
+    }
+    .reading-compact .temp sup { font-size: var(--inside-tempsup-fs); font-weight: 700; top: -0.55em; }
+    .reading-compact .hum { text-align: center; }
+    .reading-compact .hum .val {
+      font-size: var(--inside-hum-fs);
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+    .reading-compact .hum .lab {
+      font-size: var(--inside-lab-fs);
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      margin-top: 6px;
+    }
 
     /* Temperature forecast card */
     .tempforecast { gap: 0; padding: 0; justify-content: stretch; }
@@ -950,10 +964,12 @@
         <div class="card-title">INSIDE</div>
         <div class="card-body">
           <div class="reading-compact">
-            <span class="temp">{{ inside.temp_f }}<sup>°F</sup></span>
-            <span class="sep">·</span>
-            <span class="hum">{{ inside.humidity_pct }}%</span>
-            <span class="lab">HUMIDITY</span>
+            <div class="temp">{{ inside.temp_f }}<sup>°F</sup></div>
+            <div class="divider"></div>
+            <div class="hum">
+              <div class="val">{{ inside.humidity_pct }}%</div>
+              <div class="lab">HUMIDITY</div>
+            </div>
           </div>
         </div>
       </section>
