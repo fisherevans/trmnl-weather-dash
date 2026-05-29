@@ -109,10 +109,13 @@
 
     /* Past events: collapse text to mid-grey so the 4-shade quantizer
        lands them on level 170 (visible but distinctly faded). Opacity
-       doesn't quantize predictably across only 4 levels. */
+       doesn't quantize predictably across only 4 levels. The title
+       additionally takes a strikethrough so the "done" signal is
+       legible at a glance even when the row is one of many. */
     .event.past .time,
     .event.past .title,
     .event.past .cal { color: var(--grey); }
+    .event.past .title { text-decoration: line-through; text-decoration-thickness: 2px; }
 
     /* All-day events sit naturally at the top (start == 00:00). The
        ALL DAY label visually distinguishes by capitalization + extra
@@ -122,31 +125,31 @@
     /* ── density tiers ──────────────────────────────────────────────
        Picked in render.py based on event count. Tighter as the day
        fills up so all events fit; breathier on sparse days. */
-    .density-xl .agenda-header .dow   { font-size: 34px; }
-    .density-xl .agenda-header .label { font-size: 14px; }
-    .density-xl .event .time   { font-size: 24px; }
-    .density-xl .event .title  { font-size: 38px; }
-    .density-xl .event .cal    { font-size: 16px; }
+    .density-xl .agenda-header .dow   { font-size: 30px; }
+    .density-xl .agenda-header .label { font-size: 13px; }
+    .density-xl .event .time   { font-size: 20px; }
+    .density-xl .event .title  { font-size: 28px; }
+    .density-xl .event .cal    { font-size: 14px; }
 
-    .density-lg .agenda-header .dow   { font-size: 32px; }
-    .density-lg .event .time   { font-size: 22px; }
-    .density-lg .event .title  { font-size: 32px; }
-    .density-lg .event .cal    { font-size: 15px; }
+    .density-lg .agenda-header .dow   { font-size: 28px; }
+    .density-lg .event .time   { font-size: 18px; }
+    .density-lg .event .title  { font-size: 24px; }
+    .density-lg .event .cal    { font-size: 13px; }
 
-    .density-md .agenda-header .dow   { font-size: 30px; }
-    .density-md .event .time   { font-size: 19px; }
-    .density-md .event .title  { font-size: 26px; }
-    .density-md .event .cal    { font-size: 14px; }
+    .density-md .agenda-header .dow   { font-size: 26px; }
+    .density-md .event .time   { font-size: 17px; }
+    .density-md .event .title  { font-size: 22px; }
+    .density-md .event .cal    { font-size: 13px; }
 
-    .density-sm .agenda-header .dow   { font-size: 28px; }
-    .density-sm .event .time   { font-size: 17px; }
-    .density-sm .event .title  { font-size: 22px; }
-    .density-sm .event .cal    { font-size: 13px; }
+    .density-sm .agenda-header .dow   { font-size: 24px; }
+    .density-sm .event .time   { font-size: 16px; }
+    .density-sm .event .title  { font-size: 20px; }
+    .density-sm .event .cal    { font-size: 12px; }
 
-    .density-xs .agenda-header .dow   { font-size: 26px; }
-    .density-xs .event .time   { font-size: 15px; }
-    .density-xs .event .title  { font-size: 19px; }
-    .density-xs .event .cal    { font-size: 12px; }
+    .density-xs .agenda-header .dow   { font-size: 22px; }
+    .density-xs .event .time   { font-size: 14px; }
+    .density-xs .event .title  { font-size: 17px; }
+    .density-xs .event .cal    { font-size: 11px; }
 
     /* empty state */
     .empty {

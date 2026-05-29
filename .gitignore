@@ -13,10 +13,14 @@ dist/
 build/
 *.egg-info/
 
-# Local config / secrets (the deploy repo owns these)
+# Local config / secrets (the deploy repo owns these).
+# The .example.yml stays in git; the live docker-compose.yml does not.
+# secrets/ holds OAuth credentials + refresh tokens.
 .env
 config.local.yaml
-docker-compose.yml    # the .example.yml stays in git; the live copy doesn't
+config.og.yaml
+docker-compose.yml
+secrets/
 
 # Tooling
 .DS_Store
