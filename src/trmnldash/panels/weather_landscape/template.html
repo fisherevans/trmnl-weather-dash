@@ -397,7 +397,12 @@
     }
     .reading-compact .temp { font-size: var(--inside-temp-fs); font-weight: 800; letter-spacing: -0.02em; }
     .reading-compact .temp sup { font-size: var(--inside-tempsup-fs); font-weight: 700; top: -0.6em; }
-    .reading-compact .sep  { font-size: var(--inside-sep-fs); font-weight: 300; opacity: 0.5; }
+    /* `·` is a middle-dot glyph but baseline-align would still anchor
+       its bounding box to the temp/hum baseline, leaving the small dot
+       floating above the big numbers' visual center. align-self: center
+       pins it to the flex line's cross-axis center, which tracks the
+       midpoint between temp and hum regardless of how they're sized. */
+    .reading-compact .sep  { font-size: var(--inside-sep-fs); font-weight: 300; opacity: 0.5; align-self: center; }
     .reading-compact .hum  { font-size: var(--inside-hum-fs); font-weight: 800; letter-spacing: -0.02em; }
     .reading-compact .lab  { font-size: 15px; font-weight: 700; letter-spacing: 0.12em; align-self: center; }
 
