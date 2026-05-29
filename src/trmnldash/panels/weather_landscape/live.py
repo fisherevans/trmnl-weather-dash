@@ -58,7 +58,12 @@ def build_live_context(config: WeatherLandscapeConfig) -> dict:
             # whole panel.
             logger.warning("HA disabled: %s - falling back to weather API", e)
 
-    return build_context(config, weather, ha_readings, forecast_periods=forecast_periods)
+    ctx = build_context(config, weather, ha_readings, forecast_periods=forecast_periods)
+    # Stash the tuning block on the context so render_html doesn't need a
+    # separate parameter. The offline `render --data X.json` path leaves
+    # this key absent and falls back to TuningConfig() defaults.
+    ctx["tuning"] = config.tuning
+    return ctx
 
 
 def _collect_entity_ids(config: WeatherLandscapeConfig) -> list[str]:

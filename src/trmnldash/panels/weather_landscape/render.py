@@ -23,6 +23,7 @@ from ...engine.render import html_to_image
 from .aggregate import SNOW_CODES as _SNOW_CODES
 from .aggregate import compute_regions
 from .bg_shading import cloud_bucket, precip_bucket, row_bg_color, shaded_svg_url
+from .config import TuningConfig
 
 TEMPLATE_DIR = Path(__file__).parent
 ASSETS = TEMPLATE_DIR / "assets"
@@ -41,7 +42,27 @@ def render_html(data: dict) -> str:
         loader=FileSystemLoader(TEMPLATE_DIR),
         autoescape=select_autoescape(["html"]),
     )
+    # `tuning` lives on the data dict so the offline `render --data X.json`
+    # path inherits defaults (no key -> TuningConfig()) without each fixture
+    # carrying a tuning block. The live pipeline sticks the panel config's
+    # tuning into ctx in panels/weather_landscape/live.py.
+    tuning_raw = data.get("tuning")
+    if isinstance(tuning_raw, TuningConfig):
+        tuning = tuning_raw
+    elif isinstance(tuning_raw, dict):
+        tuning = TuningConfig.model_validate(tuning_raw)
+    else:
+        tuning = TuningConfig()
+
     hourly = data["hourly"]
+    # Honor chart_hours by truncating before any chart math runs. The
+    # `regions` field in `data` (if present) was computed against the
+    # full hourly, so drop it on truncation and let compute_regions
+    # rebuild from the truncated slice below.
+    regions_override = data.get("regions")
+    if tuning.chart_hours < len(hourly):
+        hourly = hourly[:tuning.chart_hours]
+        regions_override = None
     n_hours = len(hourly)
     # Precip chart now plots probability-of-precip (PoP). Scale anchors at
     # 100% so the tallest bar (a "definite" hour) fills ~90% of row height
@@ -114,8 +135,10 @@ def render_html(data: dict) -> str:
         })
     # Honor pre-computed regions (carries the per-region labels) when the
     # aggregation layer supplied them; otherwise recompute for the offline
-    # `trmnldash render --data data.json` path.
-    regions = data.get("regions") or compute_regions(hourly, n_hours)
+    # `trmnldash render --data data.json` path. `regions_override` is the
+    # pre-computed list, cleared above if chart_hours truncation changed
+    # the hourly span.
+    regions = regions_override or compute_regions(hourly, n_hours)
     # Render-time stamp (not part of the data file) so a stale image is
     # visually obvious on the panel. %-I drops the leading zero on the hour
     # to match the header's "10:03 AM" style. Date carries the year so a
@@ -186,7 +209,9 @@ def render_html(data: dict) -> str:
            "precip_bg_color_night": precip_bg_color_night,
            "cloud_empty_text": cloud_empty_text,
            "precip_empty_text": precip_empty_text,
-           "night_regions": [r for r in regions if r["is_night"]]}
+           "night_regions": [r for r in regions if r["is_night"]],
+           "tuning_css": tuning.css_overrides(),
+           "tuning_summary_layout": tuning.summary_layout}
     return env.get_template("template.html").render(**ctx)
 
 

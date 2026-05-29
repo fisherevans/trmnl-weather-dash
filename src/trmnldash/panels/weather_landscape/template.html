@@ -20,6 +20,24 @@
       --night:     #D8D8D8;
       --night-ink: #000;
       --night-bar: #000;
+
+      /* Tunable font sizes. Defaults are the hand-picked values that
+         predate the tuning system; overriding these via the `tuning`
+         block in the panel config changes the rendered output without
+         touching this template. Use scripts/tune_studio.py to find
+         values interactively. */
+      --outside-temp-fs:    138px;
+      --outside-tempsup-fs:  60px;
+      --outside-trend-fs:    42px;
+      --outside-hum-fs:      70px;
+      --inside-temp-fs:      64px;
+      --inside-tempsup-fs:   28px;
+      --inside-sep-fs:       44px;
+      --inside-hum-fs:       52px;
+      --forecast-big-fs:    104px;
+      --forecast-arrow-fs:   88px;
+      --forecast-when-fs:    28px;
+      --forecast-rh-fs:      20px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width: 1872px; height: 1404px; }
@@ -286,20 +304,20 @@
     .reading .divider { background: var(--ink); align-self: stretch; }
     .reading .temp {
       position: relative;          /* anchor for the trend arrow */
-      font-size: 138px;
+      font-size: var(--outside-temp-fs);
       font-weight: 800;
       line-height: 1;
       text-align: center;
       letter-spacing: -0.03em;
     }
-    .reading .temp sup { font-size: 60px; font-weight: 700; top: -0.55em; }
+    .reading .temp sup { font-size: var(--outside-tempsup-fs); font-weight: 700; top: -0.55em; }
     /* Trajectory arrow on the OUTSIDE temperature. Lives in the empty
        space below the ° superscript, right of the number. */
     .reading .temp .trend {
       position: absolute;
       right: 4px;
       bottom: 4px;
-      font-size: 42px;
+      font-size: var(--outside-trend-fs);
       font-weight: 800;
       line-height: 1;
       letter-spacing: 0;
@@ -320,7 +338,7 @@
       line-height: 1;
     }
     .reading .hum .val {
-      font-size: 70px;
+      font-size: var(--outside-hum-fs);
       font-weight: 800;
       line-height: 1;
       letter-spacing: -0.02em;
@@ -348,10 +366,10 @@
       gap: 16px;
       line-height: 1;
     }
-    .reading-compact .temp { font-size: 64px; font-weight: 800; letter-spacing: -0.02em; }
-    .reading-compact .temp sup { font-size: 28px; font-weight: 700; top: -0.6em; }
-    .reading-compact .sep  { font-size: 44px; font-weight: 300; opacity: 0.5; }
-    .reading-compact .hum  { font-size: 52px; font-weight: 800; letter-spacing: -0.02em; }
+    .reading-compact .temp { font-size: var(--inside-temp-fs); font-weight: 800; letter-spacing: -0.02em; }
+    .reading-compact .temp sup { font-size: var(--inside-tempsup-fs); font-weight: 700; top: -0.6em; }
+    .reading-compact .sep  { font-size: var(--inside-sep-fs); font-weight: 300; opacity: 0.5; }
+    .reading-compact .hum  { font-size: var(--inside-hum-fs); font-weight: 800; letter-spacing: -0.02em; }
     .reading-compact .lab  { font-size: 15px; font-weight: 700; letter-spacing: 0.12em; align-self: center; }
 
     /* Temperature forecast card */
@@ -366,13 +384,18 @@
       position: relative;     /* anchor for the arrow chip */
     }
     .tempforecast .row + .row { border-top: 2px solid var(--ink); }
+    /* Side-by-side variant flips the stack horizontal so HIGH and LOW
+       sit next to each other instead of stacked. The borders flip too
+       so the divider runs vertically between the rows. */
+    .tempforecast.side-by-side { flex-direction: row; }
+    .tempforecast.side-by-side .row + .row { border-top: 0; border-left: 2px solid var(--ink); }
     /* Tinted bands so HIGH/LOW read as distinct cells at a glance. The
        HIGH row gets a slightly darker tint than the panel; the LOW
        row stays panel-light. Subtle but enough to mark the call-out. */
     .tempforecast .row.high { background: #DCDCDC; }
     .tempforecast .row.low  { background: var(--panel); }
     .tempforecast .big {
-      font-size: 104px;
+      font-size: var(--forecast-big-fs);
       font-weight: 900;
       letter-spacing: -0.02em;
       line-height: 1;
@@ -381,11 +404,11 @@
       gap: 12px;
     }
     .tempforecast .big .arrow {
-      font-size: 88px;
+      font-size: var(--forecast-arrow-fs);
       line-height: 1;
     }
     .tempforecast .when {
-      font-size: 28px;
+      font-size: var(--forecast-when-fs);
       font-weight: 700;
       letter-spacing: 0.05em;
       display: flex;
@@ -397,7 +420,7 @@
        than .when and dimmed so it sits visually below the time line
        without competing with the big temperature. */
     .tempforecast .rh {
-      font-size: 20px;
+      font-size: var(--forecast-rh-fs);
       font-weight: 700;
       letter-spacing: 0.12em;
       opacity: 0.6;
@@ -782,6 +805,7 @@
       line-height: 0;       /* don't grow the line box past the text */
     }
   </style>
+  {% if tuning_css %}<style>{{ tuning_css | safe }}</style>{% endif %}
 </head>
 <body>
   <header class="header">
@@ -858,7 +882,7 @@
 
       <section class="card">
         <div class="card-title">TEMPERATURE FORECAST</div>
-        <div class="card-body tempforecast">
+        <div class="card-body tempforecast{% if tuning_summary_layout == 'side-by-side' %} side-by-side{% endif %}">
           <div class="row high">
             <div class="big"><span class="arrow">↑</span><span>{{ forecast.high.temp_f }}°F</span></div>
             <div class="when">

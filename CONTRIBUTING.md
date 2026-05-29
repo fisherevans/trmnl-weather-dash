@@ -32,6 +32,27 @@ render off the clock. Always render *with* quantization before
 declaring victory — some effects (semi-transparency, fine gradients)
 look fine pre-snap and terrible after.
 
+### Live font + layout tuning
+
+For interactive font-size + chart-hours + summary-layout tuning, the
+`tune_studio` script launches a local Flask server with a left-side
+form and a right-side iframe rendering the actual template:
+
+```bash
+uv run scripts/tune_studio.py
+open http://localhost:5056/
+```
+
+Every slider change re-renders the template in the iframe in
+sub-100ms (no Chromium round-trip — the iframe IS the renderer). When
+the tuning's dialed in, the "Copy YAML" button emits a snippet to
+paste under `dashboard.layout.config.tuning:` in your config.yaml.
+
+Knobs live in
+[`panels/weather_landscape/config.py`](src/trmnldash/panels/weather_landscape/config.py)
+(`TuningConfig`). The studio introspects the model so adding a knob is
+one field there + one entry in the `KNOBS` list in `tune_studio.py`.
+
 ## Adding a weather provider
 
 Implement the `WeatherSource` protocol from

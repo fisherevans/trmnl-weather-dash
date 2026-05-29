@@ -255,6 +255,9 @@ uv run trmnldash setup                                  # one-time: install chro
 uv run scripts/gen_patterns.py
 uv run scripts/pattern_studio.py                          # http://localhost:5055/
 
+# Tune font sizes + chart hours + summary layout for the weather panel
+uv run scripts/tune_studio.py                             # http://localhost:5056/
+
 # Process an icon pack (when adding new conditions)
 uv run scripts/convert_icons.py <raw_dir> <out_dir>
 uv run scripts/tighten_viewbox.py <dir>
