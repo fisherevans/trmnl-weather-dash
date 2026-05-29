@@ -79,6 +79,7 @@ KNOBS = [
     ("outside_weight",        0.1, 10.0, 0.05, "Layout"),
     ("forecast_weight",       0.1, 10.0, 0.05, "Layout"),
     ("inside_weight",         0.1, 10.0, 0.05, "Layout"),
+    ("outside_icon_max_h",     80,  600,    5, "OUTSIDE"),
     ("outside_temp_fs",        40,  400,    1, "OUTSIDE"),
     ("outside_tempsup_fs",     12,  200,    1, "OUTSIDE"),
     ("outside_trend_fs",       12,  120,    1, "OUTSIDE"),

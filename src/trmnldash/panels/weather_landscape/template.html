@@ -26,6 +26,7 @@
          block in the panel config changes the rendered output without
          touching this template. Use scripts/tune_studio.py to find
          values interactively. */
+      --outside-icon-max-h: 240px;
       --outside-temp-fs:    138px;
       --outside-tempsup-fs:  60px;
       --outside-trend-fs:    42px;
@@ -272,12 +273,12 @@
     .outside-body .weather-icon {
       flex: 1;
       min-height: 0;
-      max-height: 240px;          /* bigger than the old 200 to absorb most
-                                     of the flex-end slack (which used to dump
-                                     ~120px above the icon), but small enough
-                                     that the OUTSIDE box's min-content still
-                                     fits inside the widget area on a
-                                     worst-case 3-line prose header. */
+      max-height: var(--outside-icon-max-h);
+      /* Default 240 absorbs the flex-end slack that would otherwise dump
+         ~120px above the icon, while staying small enough that OUTSIDE's
+         min-content fits inside the widget area on a worst-case 3-line
+         prose header. Bump higher to grow the icon when the surrounding
+         box has been bumped up via outside_weight too. */
       display: flex;
       align-items: center;
       justify-content: center;

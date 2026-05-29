@@ -11,8 +11,9 @@ where the temp HTML lives.
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from PIL import Image
@@ -190,6 +191,14 @@ def render_html(data: dict) -> str:
         total_mm = data.get("total_accumulation_mm", 0.0)
         data = {**data, "precip_description": _precip_description(total_mm, precip_type)}
 
+    # Derive forecast_chunks for offline fixtures. The live aggregate
+    # builds these from a NormalizedForecast (or NWS shortForecast); for
+    # the JSON fixtures we wrap each hourly dict in a SimpleNamespace
+    # carrying the attrs `_forecast_chunks` / `_summarize` expect, then
+    # call the same helpers so the prose matches the live deploy.
+    if not data.get("forecast_chunks"):
+        data = {**data, "forecast_chunks": _derive_chunks_offline(hourly, precip_type)}
+
     ctx = {**data, "hourly": enriched,
            "precip_scale_max": precip_scale_max,
            "n_hours": n_hours,
@@ -213,6 +222,46 @@ def render_html(data: dict) -> str:
            "tuning_css": tuning.css_overrides(),
            "tuning_summary_layout": tuning.summary_layout}
     return env.get_template("template.html").render(**ctx)
+
+
+def _derive_chunks_offline(hourly_dicts: list[dict], precip_type: str) -> list[dict]:
+    """Build the TODAY/TONIGHT forecast prose chunks from offline hourly
+    dicts. Mirrors what aggregate.build_context does in the live path.
+
+    Wraps each dict in a SimpleNamespace carrying the attrs the chunk
+    helpers expect (temp_f, humidity_pct, cloud_pct, precip_mm, snow_cm,
+    is_day, timestamp). `timestamp` is synthesized from `now` since the
+    fixtures don't carry one; _summarize only uses `.month` for season-
+    aware feel words, so the exact instant doesn't matter much.
+    """
+    from .aggregate import _forecast_chunks
+    base = datetime.now()
+    points = [
+        SimpleNamespace(
+            temp_f=h["temp_f"],
+            humidity_pct=h.get("humidity_pct"),
+            cloud_pct=h["cloud_pct"],
+            precip_mm=h.get("precip_mm", 0.0),
+            snow_cm=h.get("snow_cm", 0.0),
+            is_day=not h.get("is_night", False),
+            timestamp=base + timedelta(hours=i),
+        )
+        for i, h in enumerate(hourly_dicts)
+    ]
+    chunks = _forecast_chunks(points, precip_type)
+    # Apply the same flex_style + chips defaults aggregate.build_context
+    # sets so the rendered chunks match live structurally. Offline data
+    # has no UV/AQI/pollen signal so the chips stay empty.
+    for c in chunks:
+        c.setdefault("chips", "")
+        c["flex_style"] = "1 1 auto"
+    if len(chunks) == 2:
+        lens = [len(c["text"]) for c in chunks]
+        short_i = 0 if lens[0] < lens[1] else 1
+        long_i = 1 - short_i
+        if lens[short_i] <= 18 and lens[long_i] >= lens[short_i] * 2.5:
+            chunks[short_i]["flex_style"] = "0 0 auto"
+    return chunks
 
 
 # Vertical band the temperature line occupies inside the precip-bars row,

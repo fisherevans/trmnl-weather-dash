@@ -41,7 +41,8 @@ class TuningConfig(_Strict):
     # in the summary column for bigger OUTSIDE / INSIDE readings.
     summary_layout: Literal["stacked", "side-by-side"] = "stacked"
 
-    # OUTSIDE card font sizes (CSS px).
+    # OUTSIDE card.
+    outside_icon_max_h: int = Field(default=240, ge=80, le=600)
     outside_temp_fs: int = Field(default=138, ge=40, le=400)
     outside_tempsup_fs: int = Field(default=60, ge=12, le=200)
     outside_trend_fs: int = Field(default=42, ge=12, le=120)
@@ -79,6 +80,7 @@ class TuningConfig(_Strict):
         """
         defaults = TuningConfig()
         mapping = {
+            "--outside-icon-max-h":      ("outside_icon_max_h", "px"),
             "--outside-temp-fs":         ("outside_temp_fs", "px"),
             "--outside-tempsup-fs":      ("outside_tempsup_fs", "px"),
             "--outside-trend-fs":        ("outside_trend_fs", "px"),
