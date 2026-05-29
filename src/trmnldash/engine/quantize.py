@@ -29,9 +29,19 @@ _FOUR_BIT_GREY = Palette(
     dither=False,
 )
 
+# 2-bit greyscale: 4 levels evenly spaced 0..255. Drives the TRMNL OG's
+# 4-shade display mode. Levels here are the standard even split; if the
+# physical panel maps differently we'll calibrate by rendering known-grey
+# patches and reading what comes out.
+_TWO_BIT_GREY = Palette(
+    levels=tuple(round(i * 255 / 3) for i in range(4)),
+    dither=False,
+)
+
 
 PALETTES: dict[str, Palette] = {
     "4bit-grey": _FOUR_BIT_GREY,
+    "2bit-grey": _TWO_BIT_GREY,
 }
 
 

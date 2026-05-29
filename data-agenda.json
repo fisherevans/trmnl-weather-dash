@@ -1,0 +1,71 @@
+{
+  "now": "2026-05-29T10:17:00-04:00",
+  "today_label": "FRI MAY 29",
+  "next_event_badge_minutes": 60,
+  "events": [
+    {
+      "title": "Bike-to-work week",
+      "start": "2026-05-29T00:00:00-04:00",
+      "end":   "2026-05-30T00:00:00-04:00",
+      "all_day": true,
+      "calendar_label": "Personal",
+      "location": null
+    },
+    {
+      "title": "Standup",
+      "start": "2026-05-29T08:00:00-04:00",
+      "end":   "2026-05-29T08:30:00-04:00",
+      "all_day": false,
+      "calendar_label": "Work",
+      "location": null
+    },
+    {
+      "title": "1:1 with Pat",
+      "start": "2026-05-29T09:00:00-04:00",
+      "end":   "2026-05-29T10:00:00-04:00",
+      "all_day": false,
+      "calendar_label": "Work",
+      "location": null
+    },
+    {
+      "title": "Pickup kids from school",
+      "start": "2026-05-29T10:30:00-04:00",
+      "end":   "2026-05-29T11:00:00-04:00",
+      "all_day": false,
+      "calendar_label": "Family",
+      "location": "Lincoln Elementary"
+    },
+    {
+      "title": "Lunch with Alex",
+      "start": "2026-05-29T12:00:00-04:00",
+      "end":   "2026-05-29T13:00:00-04:00",
+      "all_day": false,
+      "calendar_label": "Personal",
+      "location": null
+    },
+    {
+      "title": "Engineering review",
+      "start": "2026-05-29T14:00:00-04:00",
+      "end":   "2026-05-29T15:30:00-04:00",
+      "all_day": false,
+      "calendar_label": "Work",
+      "location": null
+    },
+    {
+      "title": "Take dog to vet",
+      "start": "2026-05-29T16:00:00-04:00",
+      "end":   "2026-05-29T16:30:00-04:00",
+      "all_day": false,
+      "calendar_label": "Family",
+      "location": null
+    },
+    {
+      "title": "Side: ship MVP review",
+      "start": "2026-05-29T20:00:00-04:00",
+      "end":   "2026-05-29T21:00:00-04:00",
+      "all_day": false,
+      "calendar_label": "Side",
+      "location": null
+    }
+  ]
+}

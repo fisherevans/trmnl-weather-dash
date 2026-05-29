@@ -19,6 +19,9 @@ dependencies = [
     "httpx>=0.27",
     "aiohttp>=3.9",
     "astral>=3.2",                  # local sunrise/sunset for providers (NWS) that don't supply it
+    "google-api-python-client>=2.0", # Google Calendar source for the agenda panel
+    "google-auth>=2.0",
+    "google-auth-oauthlib>=1.0",    # InstalledAppFlow for the one-shot auth bootstrap
 ]
 
 [project.urls]
