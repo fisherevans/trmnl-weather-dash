@@ -61,7 +61,12 @@
          the widget block top, without moving the widget block. */
       padding: 18px 36px 36px;
       display: grid;
-      grid-template-rows: auto 1fr;
+      /* minmax(0, 1fr) (not bare `1fr`) so the body row can shrink
+         under content. Without this, a column whose children's
+         min-content exceeds its slice stretches the row past 1404 -
+         visible as the dashboard overflowing the panel when the
+         tuning weights push children larger than their natural fit. */
+      grid-template-rows: auto minmax(0, 1fr);
       gap: 18px;
       font-feature-settings: "tnum" 1;
       /* Anchor for the absolutely-positioned `.updated-at` element so its
@@ -188,11 +193,22 @@
        divides the column among them proportionally. OUTSIDE and TEMP
        FORECAST take the bulk; INSIDE defaults to a small fraction so
        its compact reading sits at the bottom without dominating. Set
-       weights live via scripts/tune_studio.py. */
+       weights live via scripts/tune_studio.py.
+       minmax(0, ...) is load-bearing: without the 0-min, each row's
+       implicit min-height defaults to the child's min-content and the
+       grid stretches past the panel height when any child gets large.
+       With minmax(0, Xfr), the column's height is fixed at the parent's
+       allocation and the rows split it strictly by ratio - children
+       just clip if they overflow their slice (the user's fix: bump the
+       slice via the weight, not by growing the child). */
     .col-left  {
       display: grid;
-      grid-template-rows: var(--col-left-row-outside) var(--col-left-row-forecast) var(--col-left-row-inside);
+      grid-template-rows:
+        minmax(0, var(--col-left-row-outside))
+        minmax(0, var(--col-left-row-forecast))
+        minmax(0, var(--col-left-row-inside));
       gap: 16px;
+      min-height: 0;
     }
 
     /* Card chrome */
