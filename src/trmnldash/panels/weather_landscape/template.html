@@ -391,23 +391,26 @@
       letter-spacing: 0.06em;
     }
     .card-compact .card-body  { padding: 14px 20px; }
+    /* INSIDE row alignment: when temp and hum are sized differently
+       (e.g. big temp, small hum) baseline-align kept their letter bottoms
+       at the same Y but left the smaller item visually high in the
+       row. Center-align matches their *visual* centers instead so the
+       row reads as one balanced unit at any size mix. The sup, dot,
+       and HUMIDITY label naturally inherit center alignment. */
     .reading-compact {
       display: flex;
-      align-items: baseline;
+      align-items: center;
       justify-content: center;
       gap: 16px;
       line-height: 1;
     }
     .reading-compact .temp { font-size: var(--inside-temp-fs); font-weight: 800; letter-spacing: -0.02em; }
+    /* sup stays in the flow above the main glyph; pull it down a bit
+       less than the OUTSIDE sup so it doesn't break the center-line. */
     .reading-compact .temp sup { font-size: var(--inside-tempsup-fs); font-weight: 700; top: -0.6em; }
-    /* `·` is a middle-dot glyph but baseline-align would still anchor
-       its bounding box to the temp/hum baseline, leaving the small dot
-       floating above the big numbers' visual center. align-self: center
-       pins it to the flex line's cross-axis center, which tracks the
-       midpoint between temp and hum regardless of how they're sized. */
-    .reading-compact .sep  { font-size: var(--inside-sep-fs); font-weight: 300; opacity: 0.5; align-self: center; }
+    .reading-compact .sep  { font-size: var(--inside-sep-fs); font-weight: 300; opacity: 0.5; }
     .reading-compact .hum  { font-size: var(--inside-hum-fs); font-weight: 800; letter-spacing: -0.02em; }
-    .reading-compact .lab  { font-size: 15px; font-weight: 700; letter-spacing: 0.12em; align-self: center; }
+    .reading-compact .lab  { font-size: 15px; font-weight: 700; letter-spacing: 0.12em; }
 
     /* Temperature forecast card */
     .tempforecast { gap: 0; padding: 0; justify-content: stretch; }
