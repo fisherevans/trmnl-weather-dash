@@ -112,7 +112,10 @@
       font-variant-numeric: lining-nums tabular-nums;
     }
     .header .meta {
-      width: 460px;
+      /* Date column tracks the summary column width so the chunk
+         separator beside the meta lands exactly on the chart card's
+         left edge regardless of how col_left_width is tuned. */
+      width: var(--col-left-width);
       flex-shrink: 0;
       letter-spacing: 0.005em;
       display: flex;

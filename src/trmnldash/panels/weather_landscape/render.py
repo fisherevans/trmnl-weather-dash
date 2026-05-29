@@ -199,6 +199,19 @@ def render_html(data: dict) -> str:
     if not data.get("forecast_chunks"):
         data = {**data, "forecast_chunks": _derive_chunks_offline(hourly, precip_type)}
 
+    # Default the OUTSIDE trend arrows for offline fixtures. The live
+    # aggregate compares current to a 3-hour look-ahead average; the
+    # offline data carries `outside.temp_f` and `outside.humidity_pct`
+    # but no trend signal. Derive temp trend from the next few hourly
+    # entries when possible; default humidity to "flat" since the
+    # fixtures don't carry hourly humidity.
+    outside_in = data.get("outside") or {}
+    if "temp_trend" not in outside_in or "humidity_trend" not in outside_in:
+        outside = {**outside_in}
+        outside.setdefault("temp_trend", _derive_temp_trend_offline(hourly, outside_in.get("temp_f")))
+        outside.setdefault("humidity_trend", "flat")
+        data = {**data, "outside": outside}
+
     ctx = {**data, "hourly": enriched,
            "precip_scale_max": precip_scale_max,
            "n_hours": n_hours,
@@ -222,6 +235,28 @@ def render_html(data: dict) -> str:
            "tuning_css": tuning.css_overrides(),
            "tuning_summary_layout": tuning.summary_layout}
     return env.get_template("template.html").render(**ctx)
+
+
+def _derive_temp_trend_offline(hourly_dicts: list[dict], current_temp: float | None) -> str:
+    """Compare the current outside temp to the next 3 hourly entries'
+    mean; return 'up' / 'down' / 'flat' under a 2°F deadband.
+
+    Mirrors aggregate._trend / TREND_TEMP_THRESHOLD_F but reads the dict
+    fixtures directly. Without the look-ahead (short hourly window), or
+    without a current temp, default to flat.
+    """
+    if current_temp is None or len(hourly_dicts) < 2:
+        return "flat"
+    look = hourly_dicts[1:4] or hourly_dicts[1:]
+    if not look:
+        return "flat"
+    future_mean = sum(h["temp_f"] for h in look) / len(look)
+    delta = future_mean - float(current_temp)
+    if delta > 2.0:
+        return "up"
+    if delta < -2.0:
+        return "down"
+    return "flat"
 
 
 def _derive_chunks_offline(hourly_dicts: list[dict], precip_type: str) -> list[dict]:
