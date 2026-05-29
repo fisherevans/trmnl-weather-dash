@@ -42,7 +42,7 @@ class TuningConfig(_Strict):
     summary_layout: Literal["stacked", "side-by-side"] = "stacked"
 
     # OUTSIDE card.
-    outside_icon_max_h: int = Field(default=200, ge=80, le=600)
+    outside_icon_max_h: int = Field(default=185, ge=80, le=600)
     outside_temp_fs: int = Field(default=160, ge=40, le=400)
     outside_tempsup_fs: int = Field(default=72, ge=12, le=200)
     outside_trend_fs: int = Field(default=60, ge=12, le=120)
@@ -56,7 +56,7 @@ class TuningConfig(_Strict):
 
     # TEMP FORECAST card font sizes (CSS px).
     forecast_big_fs: int = Field(default=120, ge=40, le=300)
-    forecast_tempsup_fs: int = Field(default=54, ge=12, le=200)
+    forecast_tempsup_fs: int = Field(default=60, ge=12, le=200)
     forecast_arrow_fs: int = Field(default=100, ge=20, le=200)
     forecast_when_fs: int = Field(default=30, ge=10, le=100)
     forecast_rh_fs: int = Field(default=20, ge=8, le=80)
