@@ -8,7 +8,7 @@ import logging
 import sys
 from pathlib import Path
 
-from .config import ConfigError, load_config
+from .config import Config, ConfigError, DashboardEntry, load_config
 from .engine.pipeline import run_once
 from .engine.render import setup_browser
 from .panels.weather_landscape import render_from_json
@@ -37,15 +37,21 @@ def cmd_validate(args: argparse.Namespace) -> int:
     except ConfigError as e:
         print(str(e), file=sys.stderr)
         return 1
-    # Show a one-line OK summary; full dump is too noisy for a routine check.
-    device = cfg.dashboard.device
-    panel_names = _layout_panel_names(cfg.dashboard.layout)
     print(
-        f"config OK: device={device.width}x{device.height} "
-        f"palette={device.palette} rotate={device.rotate} "
-        f"panels=[{', '.join(panel_names)}] "
-        f"refresh={cfg.render.refresh_minutes}m port={cfg.serve.port}"
+        f"config OK: {len(cfg.dashboards)} dashboard(s) on "
+        f"http://{cfg.serve.host}:{cfg.serve.port}/"
     )
+    for entry in cfg.dashboards:
+        d = entry.dashboard
+        panel_names = _layout_panel_names(d.layout)
+        print(
+            f"  {entry.name}: device={d.device.width}x{d.device.height} "
+            f"palette={d.device.palette} rotate={d.device.rotate} "
+            f"panels=[{', '.join(panel_names)}] "
+            f"refresh={entry.render.refresh_minutes}m "
+            f"-> /{entry.serve.secret_path}/dashboard.png "
+            f"-> {entry.render.output_path}"
+        )
     return 0
 
 
@@ -82,10 +88,15 @@ def cmd_render_live(args: argparse.Namespace) -> int:
     except ConfigError as e:
         print(str(e), file=sys.stderr)
         return 1
-    out = Path(args.out) if args.out else cfg.render.output_path
+    try:
+        entry = _resolve_dashboard(cfg, args.dashboard)
+    except ConfigError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    out = Path(args.out) if args.out else entry.render.output_path
     out.parent.mkdir(parents=True, exist_ok=True)
     try:
-        stats = run_once(cfg, out, quantize=not args.no_quantize)
+        stats = run_once(entry, out, quantize=not args.no_quantize)
     except ForecastError as e:
         print(f"forecast fetch failed: {e}", file=sys.stderr)
         return 1
@@ -93,12 +104,33 @@ def cmd_render_live(args: argparse.Namespace) -> int:
         # require_env() can raise this if a referenced env var isn't set
         print(str(e), file=sys.stderr)
         return 1
-    _print_summary(cfg, stats)
+    _print_summary(entry, stats)
     return 0
 
 
-def _print_summary(cfg, stats) -> None:
-    print(f"wrote {stats.output_path}")
+def _resolve_dashboard(cfg: Config, name: str | None) -> DashboardEntry:
+    """Pick a dashboard from the loaded config. With multiple dashboards
+    declared, the caller must name one - we don't guess. With exactly
+    one declared, the name is optional and we fall through to it."""
+    if name is None:
+        if len(cfg.dashboards) == 1:
+            return cfg.dashboards[0]
+        names = [e.name for e in cfg.dashboards]
+        raise ConfigError(
+            f"config has {len(cfg.dashboards)} dashboards: "
+            f"pass --dashboard <name> to pick one (available: {', '.join(names)})"
+        )
+    for entry in cfg.dashboards:
+        if entry.name == name:
+            return entry
+    names = [e.name for e in cfg.dashboards]
+    raise ConfigError(
+        f"no dashboard named {name!r} in config (available: {', '.join(names)})"
+    )
+
+
+def _print_summary(entry: DashboardEntry, stats) -> None:
+    print(f"wrote {stats.output_path}  (dashboard={entry.name})")
     for p in stats.panels:
         print(f"  {p.name}: fetch={p.fetch_ms:.0f}ms render={p.render_ms:.0f}ms")
     print(f"  compose+rotate: {stats.compose_ms:.0f}ms")
@@ -123,13 +155,15 @@ def main(argv: list[str] | None = None) -> int:
                           help="skip the 16-gray snap (faster iteration)")
     p_render.set_defaults(func=cmd_render)
 
-    p_live = sub.add_parser("render-live", help="fetch live data + render once")
+    p_live = sub.add_parser("render-live", help="fetch live data + render one dashboard once")
     p_live.add_argument("--config", default=None,
                         help="path to config.yaml (or set TRMNLDASH_CONFIG)")
+    p_live.add_argument("--dashboard", default=None,
+                        help="name of the dashboard to render (required with >1 dashboard)")
     p_live.add_argument("--out", default=None,
-                        help="output PNG path (default: config's render.output_path)")
+                        help="output PNG path (default: dashboard's render.output_path)")
     p_live.add_argument("--no-quantize", action="store_true",
-                        help="skip the 16-gray snap (faster iteration)")
+                        help="skip the palette snap (faster iteration)")
     p_live.set_defaults(func=cmd_render_live)
 
     p_serve = sub.add_parser("serve", help="long-running scheduler + HTTP server")

@@ -135,7 +135,7 @@ panels onto a device profile (size + palette + rotation).
 ```
 src/trmnldash/
 ├── cli.py                              # entrypoint (render/render-live/serve/setup/validate)
-├── config.py                           # top-level YAML: dashboard + render + serve
+├── config.py                           # top-level YAML: dashboards list + shared serve
 ├── engine/                             # panel-agnostic plumbing
 │   ├── render.py                       # html -> chromium -> PIL.Image
 │   ├── quantize.py                     # palette-driven snap (PALETTES registry)
@@ -196,18 +196,24 @@ at the root and ignore its `size:` (it fills the canvas).
 
 ## Live data integration
 
-End-to-end shape:
+End-to-end shape (v1):
 1. `trmnldash.config.load_config` parses the YAML, validates the
-   top-level `dashboard / render / serve` schema, walks the layout tree,
-   looks up each panel by name, and validates the per-panel `config:`
-   block against the panel's `config_schema`.
-2. `trmnldash.engine.pipeline.run_once` walks the layout, calls each
-   panel's `build_live_context(panel_config)` to fetch + aggregate, then
-   its `render_to_image(ctx, width, height)` for the screenshot.
+   top-level `dashboards: [...]` + shared `serve:` schema, walks each
+   dashboard's layout tree, looks up each panel by name, and validates
+   the per-panel `config:` block against the panel's `config_schema`.
+   Uniqueness checks: dashboard names, secret_paths, and output_paths
+   must all be unique across the list.
+2. `trmnldash.engine.pipeline.run_once` takes a single `DashboardEntry`
+   and renders it - walks the layout, calls each panel's
+   `build_live_context(panel_config)` to fetch + aggregate, then its
+   `render_to_image(ctx, width, height)` for the screenshot.
 3. The composed canvas is rotated per `device.rotate`, quantized via
    the device's palette, and saved.
-4. `trmnldash.engine.server` runs a scheduler + HTTP server in one
-   process, calling `run_once` on the configured interval.
+4. `trmnldash.engine.server` runs one scheduler task per dashboard
+   (each at its own `refresh_minutes`) sharing a global Chromium lock,
+   plus one HTTP listener that mounts each dashboard's PNG at
+   `GET /<dashboard.serve.secret_path>/dashboard.png`. `/healthz` is
+   all-must-be-healthy.
 
 The weather panel's own pipeline (`panels/weather_landscape/live.py`)
 is what used to be `engine/pipeline.py`: it builds the configured

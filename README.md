@@ -75,14 +75,17 @@ keep real values in `.env`.
 uv run trmnldash validate --config config.yaml
 ```
 
-Config structure: the top-level `dashboard:` block describes the target
-device + a layout tree composing one or more panels. The weather
-landscape panel's settings (location, weather provider, HA sensors) live
-inside the panel's `config:` block. The `render:` and `serve:` blocks
-configure the scheduler and HTTP server.
+Config structure: the top-level `dashboards:` list holds one or more
+dashboard entries; each entry has a `name`, a `dashboard:` block
+(device + layout), a `render:` block (output path + refresh cadence),
+and a `serve:` block (per-dashboard `secret_path`). The top-level
+`serve:` block defines the shared host/port that hosts every
+dashboard's PNG. Each dashboard runs on its own scheduler at its own
+`render.refresh_minutes`, so a 1-minute weather dash can sit alongside
+a 10-minute calendar dash in the same container.
 
-A few knobs worth calling out (under `dashboard.layout.config:` for the
-weather panel):
+A few knobs worth calling out (under each dashboard's
+`dashboard.layout.config:` for the weather panel):
 
 - `weather.provider` — `open-meteo` (default, no key) or `nws` (US only, no
   key, richer prose via `shortForecast`).
@@ -94,9 +97,9 @@ weather panel):
   horizontally: chart card on the left, date + OUTSIDE + TEMP FORECAST +
   INSIDE stack on the right.
 
-Top-level `render.refresh_minutes` — `1` is the most aggressive cadence
-the host CPU can comfortably hold; bump up to 30/60 if you don't need
-sub-hour freshness.
+Each dashboard's `render.refresh_minutes` — `1` is the most aggressive
+cadence the host CPU can comfortably hold; bump up to 30/60 if you don't
+need sub-hour freshness.
 
 ## Weather providers
 
@@ -172,7 +175,7 @@ with all CSS inline. No build step, no bundler. Edits go directly there.
 ```
 src/trmnldash/
 ├── cli.py                   trmnldash {render,render-live,serve,setup,validate}
-├── config.py                top-level YAML schema (dashboard / render / serve)
+├── config.py                top-level YAML schema (dashboards list + shared serve)
 ├── engine/                  panel-agnostic rendering plumbing
 │   ├── render.py            html -> chromium -> PIL.Image
 │   ├── quantize.py          palette-driven snap to device greys

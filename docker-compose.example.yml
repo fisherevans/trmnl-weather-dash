@@ -33,15 +33,20 @@ services:
     ports:
       - "8090:8080"
 
-    # /healthz returns 200 once the first render completes. Docker uses
-    # this to mark the container "healthy" so `docker compose ps` and
-    # any orchestrator (Portainer, Dockge, Nomad) shows a real status.
+    # /healthz returns 200 only when EVERY dashboard declared in
+    # config.yaml has completed at least one successful render and the
+    # most recent render of each succeeded. A single failed dashboard
+    # makes the whole container unhealthy. Each dashboard's PNG is at
+    #   /<dashboard.serve.secret_path>/dashboard.png
+    # on this same port - one listener serves them all.
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz', timeout=5)"]
       interval: 60s
       timeout: 10s
       retries: 3
-      start_period: 30s   # first render takes ~2s — pad for cold start
+      # First render of each dashboard takes ~2s. Pad for the slowest
+      # one (calendar fetch adds ~1s, weather adds ~0.5s).
+      start_period: 30s
 
 volumes:
   # Named volume so the rendered PNG survives container restarts. Not
