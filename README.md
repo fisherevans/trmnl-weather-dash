@@ -1,46 +1,56 @@
 # trmnl-weather-dash
 
-A weather dashboard for the [TRMNL X](https://shop.trmnl.com/products/trmnl-x)
-10.3" e-ink panel. Pulls hourly forecast from a public weather API, prefers
-real Home Assistant sensor readings when available, renders a native-resolution
-1872×1404 4-bit grayscale PNG, and serves it over HTTP for TRMNL's Image
-Display plugin to poll.
+A renderer for [TRMNL](https://usetrmnl.com/) e-ink dashboards. One container
+hosts any number of dashboards on independent schedules, each composed of one
+or more panels rendered into a device-specific PNG and served over HTTP for
+TRMNL's Image Display plugin to poll.
 
-![sample render](docs/screenshot.png)
+Three panels ship today, composable in any combination via YAML:
 
-What's on the panel:
+- **`weather_landscape`** — 1872×1404 4-bit greyscale weather dashboard for
+  the [TRMNL X 10.3"](https://shop.trmnl.com/products/trmnl-x). Hourly
+  temperature curve overlaid on precipitation-probability bars, OUTSIDE /
+  INSIDE / TEMP FORECAST cards, today/tonight prose, optional Home Assistant
+  indoor + outdoor sensor readings.
+- **`calendar_agenda`** — 400×480 portrait panel showing the day's events
+  from one or more Google Calendars (OAuth, read-only). Density-tiered
+  font sizing so sparse days breathe and full days compact, past events
+  grey + strikethrough, `INVITED` / `MAYBE` badges on un-responded events.
+- **`weather_compact`** — 400×480 portrait weather panel for half of a
+  [TRMNL OG](https://usetrmnl.com/) (800×480, 2-bit grey). Current
+  temp + humidity, today's high / low with times + RH, a single shared
+  chart carrying rain % and temperature on the same grid lines, night
+  shading, today/tonight prose.
 
-- **OUTSIDE** — current condition icon, temperature + 3-hour trend arrow,
-  humidity + trend, wind/gust/direction.
-- **TEMPERATURE FORECAST** — next 24h high/low with a `TMRW` pill if the
-  peak/trough falls on the next calendar day.
-- **INSIDE** — average of your configured indoor HA sensors; renders `--`
-  when nothing's configured.
-- **PRECIPITATION & CLOUD COVER FORECAST** — back-to-back bar chart. Rain
-  bars grow up; cloud bars grow down. Dotted threshold lines mark
-  MODERATE/HEAVY rain and PARTLY/OVERCAST cloud cover. The night half of
-  the chart is shaded with a parallel night-tinted background pattern so
-  the texture continues into evening hours. Sunset/sunrise markers float
-  at their actual times.
-- A small `Updated HH:MM` stamp in the bottom right tells you at a glance
-  if the image is stale.
+Two ready-made dashboards are documented in
+[`config.example.yaml`](config.example.yaml) (a single `weather_landscape`
+for a TRMNL X) and [`config.og.example.yaml`](config.og.example.yaml) (an
+`hstack` of `calendar_agenda` + `weather_compact` for a TRMNL OG mounted
+landscape).
+
+| TRMNL X (`weather_landscape`) | TRMNL OG (`calendar_agenda` + `weather_compact`) |
+|---|---|
+| ![X render](docs/screenshot.png) | ![OG render](docs/og-screenshot.png) |
 
 ## Quickstart (Docker)
 
 ```bash
 git clone https://github.com/fisherevans/trmnl-weather-dash
 cd trmnl-weather-dash
-cp config.example.yaml config.yaml             # edit for your location + sensors
-cp .env.example .env                            # add HA_TOKEN
+cp config.example.yaml config.yaml             # edit lat/lon + secret_path
+cp .env.example .env                            # add HA_TOKEN if using HA
 cp docker-compose.example.yml docker-compose.yml
 docker compose up -d
 ```
 
-The dashboard is served at `http://<host>:8090/<secret_path>/dashboard.png`.
-Point a TRMNL Image Display plugin at that URL and you're done.
+Each dashboard is served at
+`http://<host>:8090/<dashboard.serve.secret_path>/dashboard.png`. Point
+the TRMNL device's Image Display plugin at that URL and you're done.
 
 Images are published to `ghcr.io/fisherevans/trmnl-weather-dash`. Pin to a
-versioned tag (`v0.1.0`) for stable deploys; use `:edge` to track `main`.
+versioned tag (`v1.4.0`) for stable deploys; use `:edge` to track `main`.
+If you fork, point your own `docker-compose.yml` at your GHCR namespace and
+let your own workflow publish the image.
 
 ## TRMNL refresh cadence
 
@@ -85,17 +95,20 @@ dashboard's PNG. Each dashboard runs on its own scheduler at its own
 a 10-minute calendar dash in the same container.
 
 A few knobs worth calling out (under each dashboard's
-`dashboard.layout.config:` for the weather panel):
+`dashboard.layout.config:` for the weather panels):
 
-- `weather.provider` — `open-meteo` (default, no key) or `nws` (US only, no
-  key, richer prose via `shortForecast`).
+- `weather.provider` — `open-meteo` (default, no key) or `nws` (US only,
+  no key, richer prose via `shortForecast`).
 - `weather.forecast_provider` — `derive` (default, composes TODAY/TONIGHT
   prose from hourly numerics) or `nws` (uses NWS's `shortForecast` strings
-  directly). The two are orthogonal — `open-meteo` hourly + `nws` prose is a
-  valid combo.
-- `summary_side` — `left` (default) or `right`. Mirrors the layout
-  horizontally: chart card on the left, date + OUTSIDE + TEMP FORECAST +
-  INSIDE stack on the right.
+  directly). The two are orthogonal — `open-meteo` hourly + `nws` prose is
+  a valid combo.
+- `summary_side` (landscape panel only) — `left` (default) or `right`.
+  Mirrors the layout horizontally.
+- `climate` — per-season temperature → feel-word bands used in the
+  forecast prose. Defaults to a Burlington, VT-style temperate New England
+  calibration where 30°F in February reads as "chilly"; override the
+  winter/summer/shoulder lists for hotter or colder climates.
 
 Each dashboard's `render.refresh_minutes` — `1` is the most aggressive
 cadence the host CPU can comfortably hold; bump up to 30/60 if you don't
@@ -105,14 +118,15 @@ need sub-hour freshness.
 
 | Provider | Key required | Coverage | Status |
 |---|---|---|---|
-| `open-meteo` | none | global | default |
-| `nws` | none | US only | tracked in [#11](https://github.com/fisherevans/trmnl-weather-dash/issues/11) |
-| `pirate` | yes (free) | global | tracked in [#12](https://github.com/fisherevans/trmnl-weather-dash/issues/12) |
+| `open-meteo` | none | global | implemented, default |
+| `nws` | none | US only | implemented |
 
-All implement the same `WeatherSource` protocol — switching is one line of
+Both implement the same `WeatherSource` protocol — switching is one line of
 YAML (`weather.provider: nws`). Open-Meteo is the default because it needs
 no signup; non-commercial use gets 10k calls/day, well above what a 10-minute
-render cadence consumes.
+render cadence consumes. Adding a third provider is a single new module
+under `src/trmnldash/sources/` + a clause in
+[`sources/factory.py`](src/trmnldash/sources/factory.py).
 
 ## Home Assistant integration
 

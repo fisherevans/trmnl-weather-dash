@@ -21,8 +21,8 @@ def make_weather_source(cfg: WeatherConfig, *, timezone: str) -> WeatherSource:
     if cfg.provider == WeatherProvider.NWS:
         return NWSProvider(timezone=timezone)
     raise NotImplementedError(
-        f"weather provider {cfg.provider.value!r} not implemented yet "
-        f"(tracked in trmnl-weather-dash#12)"
+        f"weather provider {cfg.provider.value!r} is not implemented "
+        f"(currently shipped: open-meteo, nws)"
     )
 
 

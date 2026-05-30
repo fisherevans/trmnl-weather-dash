@@ -11,7 +11,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from ...sources.config import HomeAssistantConfig, WeatherConfig
+from ...sources.config import ClimateConfig, HomeAssistantConfig, WeatherConfig
 
 
 class _Strict(BaseModel):
@@ -144,6 +144,12 @@ class WeatherLandscapeConfig(_Strict):
         description=("Which side of the panel holds the date + OUTSIDE + "
                      "TEMP FORECAST + INSIDE stack. 'right' mirrors the "
                      "layout horizontally."),
+    )
+    climate: ClimateConfig = Field(
+        default_factory=ClimateConfig,
+        description=("Per-season temperature → feel-word mappings for the "
+                     "forecast prose. Defaults to a Burlington, VT-style "
+                     "temperate climate; override for hotter/colder deploys."),
     )
     tuning: TuningConfig = Field(
         default_factory=TuningConfig,

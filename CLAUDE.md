@@ -1,21 +1,26 @@
 # CLAUDE.md
 
-Context for a future Claude session working on this repo. The user (Fisher)
-is a senior software engineer; treat him as a peer. Be terse, push back when
-you disagree, skip filler.
+Context for a contributor (LLM or human) working on this repo. Assume a
+senior engineer reading: be terse, push back when you disagree, skip filler.
 
 ## What this is
 
-A weather-dashboard renderer that produces a 1872×1404, 16-grey PNG for the
-TRMNL X 10.3" e-ink panel (4-bit mode). Pipeline: JSON data → Jinja2 template
-→ headless Chromium screenshot → Pillow quantization to the 16-level palette.
+A renderer for TRMNL e-ink dashboards. One process hosts any number of
+dashboards on independent schedules; each dashboard composes one or more
+panels via a YAML layout and produces a device-specific PNG served over
+HTTP. The pipeline per render: panel data → Jinja2 template → headless
+Chromium screenshot → Pillow palette-quantization → PNG.
 
-The four `data*.json` files are hand-crafted scenarios covering different
-times of day so the layout can be stress-tested. Live data sources are
-being wired in via issues #2-#7; the integration point is
-`trmnldash.panels.weather_landscape.build_context` (produces a dict
-matching the existing `data.json` shape) and the condition-string
-mapping in the same module (#5).
+Three panels ship today:
+
+- `weather_landscape` — 1872×1404 4-bit greyscale for the TRMNL X 10.3".
+- `calendar_agenda` — 400×480 portrait, Google Calendar via OAuth.
+- `weather_compact` — 400×480 portrait, slim weather for the TRMNL OG.
+
+The four `data*.json` fixtures in the repo root are hand-crafted scenarios
+covering different times of day so the landscape panel's layout can be
+stress-tested offline. `data-agenda.json` and `data-weather-compact.json`
+do the same for the OG panels.
 
 ## Architecture
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 
 from ..weather_landscape.config import LocationConfig
-from ...sources.config import WeatherConfig
+from ...sources.config import ClimateConfig, WeatherConfig
 
 
 class _Strict(BaseModel):
@@ -20,6 +20,7 @@ class WeatherCompactConfig(_Strict):
     """Per-deploy config for the compact weather panel."""
     location: LocationConfig
     weather: WeatherConfig = WeatherConfig()
+    climate: ClimateConfig = ClimateConfig()
 
 
 __all__ = ["WeatherCompactConfig"]

@@ -22,7 +22,7 @@ from zoneinfo import ZoneInfo
 
 from .bg_shading import cloud_bucket, precip_bucket, row_bg_color, shaded_svg_url
 from .config import WeatherLandscapeConfig
-from ...sources.config import SensorRef, as_sensor_list
+from ...sources.config import ClimateConfig, SensorRef, as_sensor_list
 from ...sources.base import ForecastPeriod, NormalizedForecast
 from ...sources.homeassistant import SensorReading
 
@@ -263,7 +263,7 @@ def build_context(
     if forecast_periods:
         forecast_chunks = _forecast_chunks_from_periods(forecast_periods, now)
     else:
-        forecast_chunks = _forecast_chunks(weather.hourly, precip_type)
+        forecast_chunks = _forecast_chunks(weather.hourly, precip_type, climate=config.climate)
     # Auto-derive UV max from hourly daytime data if no override given.
     if uv_index_max is None:
         day_uv = [h.uv_index for h in weather.hourly
@@ -747,7 +747,8 @@ def _forecast_chunks_from_periods(periods: list[ForecastPeriod], now: datetime) 
     return out
 
 
-def _forecast_chunks(hourly, precip_type: str) -> list[dict]:
+def _forecast_chunks(hourly, precip_type: str, *,
+                     climate: ClimateConfig | None = None) -> list[dict]:
     """Group `hourly` into 2 contiguous day-or-night periods and produce
     a short prose forecast for each.
 
@@ -787,56 +788,43 @@ def _forecast_chunks(hourly, precip_type: str) -> list[dict]:
             label = "TOMORROW" if is_day else "TONIGHT"
         chunks.append({
             "label": label,
-            "text":  _summarize(g, precip_type, is_day),
+            "text":  _summarize(g, precip_type, is_day, climate=climate),
         })
     return chunks
 
 
-def _feel_for_temp(temp_f: float, month: int) -> str:
+def _feel_for_temp(temp_f: float, month: int, climate: ClimateConfig | None = None) -> str:
     """Map a reference temperature to a casual feel word, scaled by season.
 
-    Tuned for a Northeastern US (Vermont / New Hampshire) climate where
-    winter acclimation drops the "freezing" threshold significantly —
-    a Vermont local doesn't call 30°F freezing in February. Swap the
-    thresholds if the deployment is in a different climate.
+    Walks the configured climate's bands for the given month's season
+    (winter / summer / shoulder) in order; the first band whose
+    `below_f` is greater than `temp_f` wins. The last band (open-top,
+    `below_f is None`) applies if none of the earlier thresholds match.
 
-    Bands:
-        Winter (Dec-Feb): frigid < 10, cold < 25, chilly < 38, mild < 50,
-                          warm < 65, hot >= 65 (rare).
-        Summer (Jun-Aug): cool < 60, comfortable < 75, warm < 85,
-                          hot < 95, very hot >= 95.
-        Spring/Fall: between the two extremes.
+    Default climate is a temperate Burlington, VT calibration where a
+    February day at 30°F reads as "chilly", not "freezing"; override
+    via panel `climate:` config for hotter / colder deploys.
     """
-    if month in (12, 1, 2):
-        if temp_f < 10:  return "frigid"
-        if temp_f < 25:  return "cold"
-        if temp_f < 38:  return "chilly"
-        if temp_f < 50:  return "mild"
-        if temp_f < 65:  return "warm"
-        return "hot"
-    if month in (6, 7, 8):
-        if temp_f < 55:  return "cool"
-        if temp_f < 70:  return "comfortable"
-        if temp_f < 80:  return "warm"
-        if temp_f < 92:  return "hot"
-        return "very hot"
-    # Shoulder seasons (Mar-May, Sep-Nov)
-    if temp_f < 25:  return "cold"
-    if temp_f < 40:  return "chilly"
-    if temp_f < 58:  return "cool"
-    if temp_f < 72:  return "comfortable"
-    if temp_f < 82:  return "warm"
-    return "hot"
+    bands = (climate or ClimateConfig()).bands_for_month(month)
+    for band in bands:
+        if band.below_f is None or temp_f < band.below_f:
+            return band.feel
+    # Defensive fallback - reached only if the climate config has no
+    # open-top band, which the schema can't enforce statically. Use
+    # the last entry's feel as the open-top default.
+    return bands[-1].feel
 
 
-def _summarize(points, precip_type: str, is_day: bool) -> str:
+def _summarize(points, precip_type: str, is_day: bool, *,
+               climate: ClimateConfig | None = None) -> str:
     """Short natural-prose summary, e.g. 'warm and sunny',
     'muggy with scattered thunderstorms', 'cold and some light snow'.
 
     Combines a temperature/humidity feel word with either a sky
     descriptor (when no precip) or a precip phrase (when there is).
-    Feel words are season-aware — 30°F reads as 'mild' in February
-    and 'freezing' in May because acclimation shifts."""
+    Feel words are season-aware AND climate-aware — 30°F reads as
+    'mild' in a New England February and 'frigid' in a Florida one
+    because the configured bands differ."""
     temps = [p.temp_f for p in points]
     humidities = [p.humidity_pct for p in points if p.humidity_pct is not None]
     avg_cloud = sum(p.cloud_pct for p in points) / len(points)
@@ -848,7 +836,7 @@ def _summarize(points, precip_type: str, is_day: bool) -> str:
     # Season comes from the chunk's first timestamp.
     ref_temp = max(temps) if is_day else min(temps)
     month = points[0].timestamp.month
-    feel = _feel_for_temp(ref_temp, month)
+    feel = _feel_for_temp(ref_temp, month, climate)
 
     # Override with humidity-driven feel when relevant.
     if humidities:

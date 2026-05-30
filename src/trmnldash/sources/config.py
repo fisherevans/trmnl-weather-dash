@@ -30,6 +30,64 @@ class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class ClimateBand(_Strict):
+    """One ordered threshold → feel-word band used by the forecast
+    prose generator. The band applies when the temperature is below
+    `below_f`. A band with `below_f=None` is the open-top bucket
+    used for temperatures above every prior threshold; exactly one
+    open-top band must appear last in each season's list."""
+    feel: str
+    below_f: float | None = None
+
+
+class ClimateConfig(_Strict):
+    """Per-season temperature → feel-word mappings used by the weather
+    panels' forecast prose ("warm with afternoon thunderstorms",
+    "frigid and clear", etc.).
+
+    The defaults are calibrated against Burlington, VT - a temperate
+    New England climate where a February day at 30°F reads as
+    "chilly", not "freezing". A Phoenix deploy probably wants warmer
+    summer ceilings; a Miami deploy probably wants the winter band
+    bottoming out around 50°F instead of 10°F.
+
+    Each season's list walks ascending by `below_f`: the first band
+    whose threshold is greater than the temperature wins; the last
+    band (open-top) applies if none match. The lists must be ordered
+    correctly - we don't sort at load time.
+    """
+    winter: list[ClimateBand] = Field(default_factory=lambda: [
+        ClimateBand(below_f=10,   feel="frigid"),
+        ClimateBand(below_f=25,   feel="cold"),
+        ClimateBand(below_f=38,   feel="chilly"),
+        ClimateBand(below_f=50,   feel="mild"),
+        ClimateBand(below_f=65,   feel="warm"),
+        ClimateBand(below_f=None, feel="hot"),
+    ])
+    summer: list[ClimateBand] = Field(default_factory=lambda: [
+        ClimateBand(below_f=55,   feel="cool"),
+        ClimateBand(below_f=70,   feel="comfortable"),
+        ClimateBand(below_f=80,   feel="warm"),
+        ClimateBand(below_f=92,   feel="hot"),
+        ClimateBand(below_f=None, feel="very hot"),
+    ])
+    shoulder: list[ClimateBand] = Field(default_factory=lambda: [
+        ClimateBand(below_f=25,   feel="cold"),
+        ClimateBand(below_f=40,   feel="chilly"),
+        ClimateBand(below_f=58,   feel="cool"),
+        ClimateBand(below_f=72,   feel="comfortable"),
+        ClimateBand(below_f=82,   feel="warm"),
+        ClimateBand(below_f=None, feel="hot"),
+    ])
+
+    def bands_for_month(self, month: int) -> list[ClimateBand]:
+        if month in (12, 1, 2):
+            return self.winter
+        if month in (6, 7, 8):
+            return self.summer
+        return self.shoulder
+
+
 # Either a single entity_id, or a list of them. A single value is used
 # as-is; a list is averaged at aggregation time.
 SensorRef = Union[str, list[str], None]
@@ -136,6 +194,8 @@ def as_sensor_list(ref: SensorRef) -> list[str]:
 
 __all__ = [
     "CalendarRef",
+    "ClimateBand",
+    "ClimateConfig",
     "ConfigError",
     "ForecastProvider",
     "GoogleCalendarConfig",

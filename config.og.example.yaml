@@ -19,8 +19,8 @@ dashboards:
         panel: weather_landscape
         config:
           location:
-            lat: 43.21
-            lon: -75.16
+            lat:  40.7128            # decimal degrees - example: NYC
+            lon: -74.0060            # decimal degrees
             timezone: America/New_York
           weather:
             provider: open-meteo
@@ -77,8 +77,8 @@ dashboards:
               size: 1fr
               config:
                 location:
-                  lat: 43.21
-                  lon: -75.16
+                  lat:  40.7128       # decimal degrees - example: NYC
+                  lon: -74.0060       # decimal degrees
                   timezone: America/New_York
                 weather:
                   provider: open-meteo

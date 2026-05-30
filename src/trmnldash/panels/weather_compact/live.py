@@ -31,7 +31,7 @@ def build_live_context(config: WeatherCompactConfig) -> dict:
     )
 
     hourly = _hourly_to_dicts(weather.hourly, tz)
-    today_prose, tonight_prose = _prose_chunks(weather.hourly)
+    today_prose, tonight_prose = _prose_chunks(weather.hourly, climate=config.climate)
 
     return {
         "now":           now.isoformat(),
@@ -70,14 +70,14 @@ def _format_hour(dt: datetime) -> str:
     return f"{h12}{suffix}"
 
 
-def _prose_chunks(hourly: list[HourlyPoint]) -> tuple[str, str]:
+def _prose_chunks(hourly: list[HourlyPoint], climate=None) -> tuple[str, str]:
     """Run the landscape aggregate's chunker and return the first two
     chunks' text. The chunker labels them TODAY/TONIGHT/TOMORROW based
     on the day/night transition - we discard the label here, the
     template hard-codes 'TODAY' / 'TONIGHT' for this panel."""
     # precip_type='rain' is a presentational hint for the helper; the
     # compact panel doesn't distinguish snow vs rain in its prose.
-    chunks = _forecast_chunks(hourly, precip_type="rain")
+    chunks = _forecast_chunks(hourly, precip_type="rain", climate=climate)
     today = chunks[0]["text"] if len(chunks) >= 1 else ""
     tonight = chunks[1]["text"] if len(chunks) >= 2 else ""
     return today, tonight

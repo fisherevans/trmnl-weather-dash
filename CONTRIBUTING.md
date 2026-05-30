@@ -56,15 +56,15 @@ one field there + one entry in the `KNOBS` list in `tune_studio.py`.
 ## Adding a weather provider
 
 Implement the `WeatherSource` protocol from
-[`src/trmnldash/sources/base.py`](src/trmnldash/sources/base.py) and
-wire it into
+[`src/trmnldash/sources/base.py`](src/trmnldash/sources/base.py) and wire
+it into the dispatch clause in
 [`src/trmnldash/sources/factory.py`](src/trmnldash/sources/factory.py).
-Issues [#11](https://github.com/fisherevans/trmnl-weather-dash/issues/11) and
-[#12](https://github.com/fisherevans/trmnl-weather-dash/issues/12) have full
-specs for NWS and Pirate Weather.
+The two shipped providers (`openmeteo.py`, `nws.py`) are the reference
+implementations.
 
 The hardest part is mapping the provider's native condition codes onto the
-WMO codes the icon mapper expects (`WMO_ICON_MAP` in `aggregate.py`).
+WMO codes the icon mapper expects (`WMO_ICON_MAP` in
+`panels/weather_landscape/aggregate.py`).
 
 ## Adding a weather icon
 
