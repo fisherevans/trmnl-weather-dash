@@ -60,11 +60,12 @@ def render_html(data: dict) -> str:
     density = _density_tier(len(enriched))
 
     ctx = {
-        "now":         now,
-        "today_label": data.get("today_label", now.strftime("%a %b %-d").upper()),
-        "events":      enriched,
-        "empty":       not enriched,
-        "density":     density,
+        "now":            now,
+        "today_label":    data.get("today_label", now.strftime("%a %b %-d").upper()),
+        "events":         enriched,
+        "empty":          not enriched,
+        "density":        density,
+        "updated_label":  f"updated {_format_clock(now)}",
     }
     return env.get_template("template.html").render(**ctx)
 

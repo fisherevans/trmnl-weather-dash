@@ -98,13 +98,20 @@
       color: var(--dim);
       white-space: nowrap;
     }
+    /* Titles wrap up to 2 lines, then ellipsis-truncate. Long event
+       names get their second line; titles that overflow even that
+       (3+ lines worth) get a "…" at the end of line 2. line-clamp is
+       Chromium-native and what playwright's chrome uses, so it Just
+       Works for our renderer. */
     .event .title {
       font-weight: 700;
-      line-height: 1.0;
+      line-height: 1.1;
       letter-spacing: -0.005em;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
       overflow: hidden;
       text-overflow: ellipsis;
-      white-space: nowrap;
     }
 
     /* Past events: collapse text to mid-grey so the 4-shade quantizer
@@ -151,6 +158,20 @@
     .density-xs .event .title  { font-size: 17px; }
     .density-xs .event .cal    { font-size: 11px; }
 
+    /* bottom-right "updated NN:NN AM" stamp. Sits in the gap below
+       the last event row so the events list still keeps its flex:1
+       grow and density tiers stay accurate. dim grey + small so it
+       reads as supporting metadata, not a row of its own. */
+    .updated-at {
+      flex: 0 0 auto;
+      text-align: right;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--dim);
+      padding-top: 4px;
+    }
+
     /* empty state */
     .empty {
       flex: 1;
@@ -188,6 +209,8 @@
       {%- endfor %}
     </ul>
   {% endif %}
+
+  <footer class="updated-at">{{ updated_label }}</footer>
 
 </body>
 </html>
