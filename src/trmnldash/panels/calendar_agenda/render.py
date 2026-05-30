@@ -51,6 +51,7 @@ def render_html(data: dict) -> str:
             "end_dt":     end,
             "is_past":    end <= now,
             "time_label": _format_time_range(start, end, e.get("all_day", False)),
+            "rsvp_label": _rsvp_label(e.get("response_status")),
         })
 
     # Density tier: pick the smallest CSS class that comfortably fits
@@ -112,6 +113,20 @@ def render_from_json(data_path: Path, out: Path, *, quantize: bool = True) -> No
 
 def _parse_iso(s: str) -> datetime:
     return datetime.fromisoformat(s)
+
+
+_RSVP_LABELS = {
+    "needsAction": "INVITED",
+    "tentative":   "MAYBE",
+    # accepted + declined render without a label. Declined never gets
+    # here in the live path (filtered at source); the offline path
+    # treats declined as accepted-ish - the user can keep it out of
+    # the fixture if they don't want it shown.
+}
+
+
+def _rsvp_label(response_status: str | None) -> str:
+    return _RSVP_LABELS.get(response_status or "accepted", "")
 
 
 def _format_time_range(start: datetime, end: datetime, all_day: bool) -> str:

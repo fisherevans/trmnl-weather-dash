@@ -41,7 +41,8 @@
       "end":   "2026-05-29T13:00:00-04:00",
       "all_day": false,
       "calendar_label": "Personal",
-      "location": null
+      "location": null,
+      "response_status": "tentative"
     },
     {
       "title": "Engineering review",
@@ -49,7 +50,8 @@
       "end":   "2026-05-29T15:30:00-04:00",
       "all_day": false,
       "calendar_label": "Work",
-      "location": null
+      "location": null,
+      "response_status": "needsAction"
     },
     {
       "title": "Take dog to vet",

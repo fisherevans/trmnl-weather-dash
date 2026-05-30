@@ -42,10 +42,11 @@ def build_live_context(config: CalendarAgendaConfig) -> dict:
 
 def _event_to_dict(e) -> dict:
     return {
-        "title":          e.title,
-        "start":          e.start.isoformat(),
-        "end":            e.end.isoformat(),
-        "all_day":        e.all_day,
-        "calendar_label": e.calendar_label,
-        "location":       e.location,
+        "title":           e.title,
+        "start":           e.start.isoformat(),
+        "end":             e.end.isoformat(),
+        "all_day":         e.all_day,
+        "calendar_label":  e.calendar_label,
+        "location":        e.location,
+        "response_status": e.response_status,
     }

@@ -91,6 +91,19 @@
       white-space: nowrap;
       color: var(--dim);
     }
+    /* RSVP badge sits inline after the time on the meta row. Same
+       size as the cal label so it reads as supporting metadata, but
+       bolder + black so the "you haven't responded" / "maybe" signal
+       is easy to spot. */
+    .event .rsvp {
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      color: var(--ink);
+      white-space: nowrap;
+      margin-left: 6px;
+    }
+    .event .rsvp::before { content: "· "; color: var(--dim); font-weight: 500; }
+    .event.past .rsvp { color: var(--grey); }
     .event .cal {
       font-weight: 700;
       letter-spacing: 0.14em;
@@ -134,7 +147,15 @@
        fills up so all events fit; breathier on sparse days. */
     .density-xl .agenda-header .dow   { font-size: 30px; }
     .density-xl .agenda-header .label { font-size: 13px; }
+    /* density tiers also apply to the inline rsvp + cal text. Sizes
+       below mirror the time scale so the rsvp badge stays the same
+       relative weight at every density. */
     .density-xl .event .time   { font-size: 20px; }
+    .density-xl .event .rsvp   { font-size: 14px; }
+    .density-lg .event .rsvp   { font-size: 13px; }
+    .density-md .event .rsvp   { font-size: 12px; }
+    .density-sm .event .rsvp   { font-size: 11px; }
+    .density-xs .event .rsvp   { font-size: 10px; }
     .density-xl .event .title  { font-size: 28px; }
     .density-xl .event .cal    { font-size: 14px; }
 
@@ -201,7 +222,7 @@
       {%- for e in events %}
       <li class="event{% if e.is_past %} past{% endif %}{% if e.all_day %} all-day{% endif %}">
         <div class="meta">
-          <span class="time">{{ e.time_label }}</span>
+          <span class="time">{{ e.time_label }}{% if e.rsvp_label %}<span class="rsvp">{{ e.rsvp_label }}</span>{% endif %}</span>
           <span class="cal">{{ e.calendar_label }}</span>
         </div>
         <div class="title">{{ e.title }}</div>

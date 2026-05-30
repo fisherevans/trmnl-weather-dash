@@ -38,6 +38,15 @@ class Event:
     `all_day` events have start.time() == 00:00 and end at start-of-next-day
     in the local timezone; the renderer treats them as a top-of-list block
     without start/end clock times.
+
+    `response_status` is the current user's RSVP for this event when
+    `self` is in the attendees list:
+      'accepted'    - explicit yes (no badge)
+      'needsAction' - invited but not responded (renders "INVITED")
+      'tentative'   - maybe (renders "MAYBE")
+      'declined'    - filtered out at fetch time, never reaches the renderer
+    Defaults to 'accepted' for events where the user isn't listed as an
+    attendee (own calendar / shared calendars where you're the organizer).
     """
     title: str
     start: datetime              # tz-aware (local)
@@ -45,6 +54,7 @@ class Event:
     all_day: bool
     calendar_label: str
     location: str | None = None
+    response_status: str = "accepted"
 
 
 class CalendarSource(Protocol):
@@ -165,6 +175,22 @@ class GoogleCalendarProvider:
         else:
             # Malformed entry (no start) — skip without raising.
             return None
+        # Pick the current user's RSVP from the attendees list. Google
+        # marks the user's own row with `self: true`; events the user
+        # created (own calendar, no other attendees) and shared
+        # calendars where the user isn't in the attendee list both
+        # fall through to "accepted" so they render without a badge.
+        response_status = "accepted"
+        for att in raw.get("attendees") or []:
+            if att.get("self"):
+                response_status = att.get("responseStatus", "accepted")
+                break
+        # Declined events shouldn't appear on the agenda at all -
+        # filter at the source so the panel never has to think about
+        # them.
+        if response_status == "declined":
+            return None
+
         title = (raw.get("summary") or "(no title)").strip()
         location = (raw.get("location") or "").strip() or None
         return Event(
@@ -174,6 +200,7 @@ class GoogleCalendarProvider:
             all_day=all_day,
             calendar_label=cal.label,
             location=location,
+            response_status=response_status,
         )
 
 
