@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "trmnldash"
-version = "1.3.0"
+version = "1.4.0"
 description = "TRMNL dashboard suite: composable panels rendered to e-ink PNGs. First panel is a 1872x1404 16-grey weather dash for the 10.3\" TRMNL X."
 readme = "README.md"
 license = { text = "MIT" }
@@ -46,3 +46,6 @@ packages = ["src/trmnldash"]
 [tool.hatch.build.targets.wheel.force-include]
 "src/trmnldash/panels/weather_landscape/template.html" = "trmnldash/panels/weather_landscape/template.html"
 "src/trmnldash/panels/weather_landscape/assets" = "trmnldash/panels/weather_landscape/assets"
+"src/trmnldash/panels/calendar_agenda/template.html" = "trmnldash/panels/calendar_agenda/template.html"
+"src/trmnldash/panels/weather_compact/template.html" = "trmnldash/panels/weather_compact/template.html"
+"src/trmnldash/engine/fonts" = "trmnldash/engine/fonts"
