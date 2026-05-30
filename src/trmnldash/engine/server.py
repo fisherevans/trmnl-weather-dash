@@ -68,8 +68,34 @@ class _DashboardState:
         return self.entry.render.output_path
 
     @property
-    def is_healthy(self) -> bool:
-        return self.total_renders > 0 and self.last_render_status == "ok"
+    def staleness_threshold_s(self) -> int:
+        """A successful render older than this many seconds counts as
+        stale - the scheduler probably wedged. Tied to the dashboard's
+        own refresh interval so a 1-min-refresh dash flips unhealthy
+        much sooner than an hourly one."""
+        return self.entry.render.refresh_minutes * 60 * 2
+
+    def is_healthy(self, now: datetime) -> bool:
+        if self.total_renders == 0 or self.last_render_status != "ok":
+            return False
+        if self.last_render_at is None:
+            return False
+        age = (now - self.last_render_at).total_seconds()
+        return age <= self.staleness_threshold_s
+
+    def diagnostic_state(self, now: datetime) -> str:
+        """Short string for the /healthz payload - distinguishes the
+        ways a dashboard can be unhealthy."""
+        if self.total_renders == 0:
+            return "pending"
+        if self.last_render_status != "ok":
+            return "failing"
+        if self.last_render_at is None:
+            return "pending"
+        age = (now - self.last_render_at).total_seconds()
+        if age > self.staleness_threshold_s:
+            return "stale"
+        return "ok"
 
 
 class TrmnldashServer:
@@ -217,20 +243,22 @@ class TrmnldashServer:
         return handle
 
     async def handle_healthz(self, _request: web.Request) -> web.Response:
-        all_healthy = all(s.is_healthy for s in self._dashboards.values())
         now = datetime.now(tz=timezone.utc)
+        all_healthy = all(s.is_healthy(now) for s in self._dashboards.values())
         payload = {
             "healthy": all_healthy,
             "dashboards": {
                 name: {
-                    "status":               s.last_render_status,
-                    "last_render_at":       s.last_render_at.isoformat() if s.last_render_at else None,
-                    "age_seconds":          (now - s.last_render_at).total_seconds() if s.last_render_at else None,
-                    "consecutive_failures": s.consecutive_failures,
-                    "total_renders":        s.total_renders,
-                    "total_failures":       s.total_failures,
-                    "refresh_minutes":      s.entry.render.refresh_minutes,
-                    "last_error":           s.last_render_error,
+                    "state":                       s.diagnostic_state(now),
+                    "status":                      s.last_render_status,
+                    "last_render_at":              s.last_render_at.isoformat() if s.last_render_at else None,
+                    "age_seconds":                 (now - s.last_render_at).total_seconds() if s.last_render_at else None,
+                    "staleness_threshold_seconds": s.staleness_threshold_s,
+                    "consecutive_failures":        s.consecutive_failures,
+                    "total_renders":               s.total_renders,
+                    "total_failures":              s.total_failures,
+                    "refresh_minutes":             s.entry.render.refresh_minutes,
+                    "last_error":                  s.last_render_error,
                 }
                 for name, s in self._dashboards.items()
             },
