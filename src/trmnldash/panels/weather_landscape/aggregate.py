@@ -5,7 +5,7 @@ The output shape is the same one `data.json` documents — see that file
 for the canonical reference. Anything new the template needs starts
 here so the renderer stays purely mechanical.
 
-Source-precedence rules (set in trmnl-weather-dash#5 design):
+Source-precedence rules:
 
 - **outdoor temp / humidity:** prefer HA when present; fall back to the
   weather API's current observation. The HA sensor is the actual reading

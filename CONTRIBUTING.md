@@ -5,8 +5,8 @@ Issues and PRs welcome.
 ## Local setup
 
 ```bash
-git clone https://github.com/fisherevans/trmnl-weather-dash
-cd trmnl-weather-dash
+git clone https://github.com/fisherevans/trmnldash
+cd trmnldash
 uv run trmnldash setup        # one-time: install chromium for playwright
 uv run trmnldash render       # smoke test: data.json -> output.png
 ```

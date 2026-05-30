@@ -1,10 +1,10 @@
-# Example docker-compose for trmnl-weather-dash. Copy to docker-compose.yml
+# Example docker-compose for trmnldash. Copy to docker-compose.yml
 # and adjust paths/ports. Secrets (HA_TOKEN, etc.) live in a sibling .env
 # file — see .env.example. Do not commit your real .env.
 
 services:
   trmnldash:
-    image: ghcr.io/fisherevans/trmnl-weather-dash:latest
+    image: ghcr.io/fisherevans/trmnldash:latest
     container_name: trmnldash
     restart: unless-stopped
 

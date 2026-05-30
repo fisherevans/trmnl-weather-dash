@@ -1,4 +1,4 @@
-# trmnl-weather-dash
+# trmnldash
 
 A renderer for [TRMNL](https://usetrmnl.com/) e-ink dashboards. One container
 hosts any number of dashboards on independent schedules, each composed of one
@@ -35,8 +35,8 @@ landscape).
 ## Quickstart (Docker)
 
 ```bash
-git clone https://github.com/fisherevans/trmnl-weather-dash
-cd trmnl-weather-dash
+git clone https://github.com/fisherevans/trmnldash
+cd trmnldash
 cp config.example.yaml config.yaml             # edit lat/lon + secret_path
 cp .env.example .env                            # add HA_TOKEN if using HA
 cp docker-compose.example.yml docker-compose.yml
@@ -47,7 +47,7 @@ Each dashboard is served at
 `http://<host>:8090/<dashboard.serve.secret_path>/dashboard.png`. Point
 the TRMNL device's Image Display plugin at that URL and you're done.
 
-Images are published to `ghcr.io/fisherevans/trmnl-weather-dash`. Pin to a
+Images are published to `ghcr.io/fisherevans/trmnldash`. Pin to a
 versioned tag (`v1.4.0`) for stable deploys; use `:edge` to track `main`.
 If you fork, point your own `docker-compose.yml` at your GHCR namespace and
 let your own workflow publish the image.

@@ -47,8 +47,8 @@ from .base import (CurrentObservation, ForecastError, ForecastPeriod,
 
 POINTS_URL = "https://api.weather.gov/points/{lat},{lon}"
 # Required by NWS: identify the caller. Replace if forking.
-USER_AGENT = ("trmnl-weather-dash/0.1 "
-              "(https://github.com/fisherevans/trmnl-weather-dash)")
+USER_AGENT = ("trmnldash/1 "
+              "(https://github.com/fisherevans/trmnldash)")
 
 
 # ── NWS weather-token -> WMO code map ────────────────────────────────────

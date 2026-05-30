@@ -35,7 +35,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/trmnl-weather-dash
+          images: ghcr.io/${{ github.repository_owner }}/trmnldash
           tags: |
             type=ref,event=tag       # the literal v1.2.3 tag
             type=raw,value=latest    # move :latest to the new sha
