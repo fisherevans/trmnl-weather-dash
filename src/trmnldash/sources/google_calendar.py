@@ -16,6 +16,8 @@ via `singleEvents=True`.
 from __future__ import annotations
 
 import logging
+import os
+import tempfile
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
@@ -122,10 +124,25 @@ class GoogleCalendarProvider:
         if not creds.valid:
             if creds.expired and creds.refresh_token:
                 creds.refresh(Request())
-                # Persist the refreshed creds so the access-token rotation
-                # survives container restarts. .to_json() includes the
-                # refresh token, so the file stays usable.
-                token_path.write_text(creds.to_json())
+                # Persist the refreshed creds atomically. A plain write_text()
+                # truncates the file before writing, so a crash or OOM-kill
+                # mid-write leaves a 0-byte token that bricks every subsequent
+                # render (from_authorized_user_file raises on an empty file).
+                # tmp + os.replace in the same dir is all-or-nothing.
+                # .to_json() includes the refresh token, so the file stays usable.
+                fd, tmp = tempfile.mkstemp(
+                    dir=str(token_path.parent), prefix=token_path.name, suffix=".tmp"
+                )
+                try:
+                    with os.fdopen(fd, "w") as fh:
+                        fh.write(creds.to_json())
+                    os.replace(tmp, token_path)
+                except BaseException:
+                    try:
+                        os.unlink(tmp)
+                    except OSError:
+                        pass
+                    raise
             else:
                 raise CalendarError(
                     "Google Calendar credentials are invalid and have no refresh "
