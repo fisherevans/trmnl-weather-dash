@@ -1,9 +1,11 @@
 """Live-data fetch for the calendar_agenda panel.
 
-Pulls today's events (00:00 -> 24:00 in the configured timezone) from all
-configured Google Calendars, returns the render context. Per-event
-derivation (is_past, is_next, minutes_until) happens in render.py so the
-offline JSON path produces identical output for the same `now`.
+Pulls today's events filtered to a rolling window (now - past_hours -> 24:00)
+from all configured Google Calendars. If capacity remains after today's
+visible events, fills with tomorrow's events up to max_events total.
+
+Per-event derivation (is_past, time_label, etc.) happens in render.py so
+the offline JSON path produces identical output for the same `now`.
 """
 from __future__ import annotations
 
@@ -20,23 +22,53 @@ logger = logging.getLogger(__name__)
 def build_live_context(config: CalendarAgendaConfig) -> dict:
     tz = ZoneInfo(config.timezone)
     now = datetime.now(tz=tz)
-    start = datetime.combine(now.date(), time(0, 0), tzinfo=tz)
-    end = start + timedelta(days=1)
+    today_start = datetime.combine(now.date(), time(0, 0), tzinfo=tz)
+    today_end = today_start + timedelta(days=1)
+    tomorrow_start = today_end
+    tomorrow_end = tomorrow_start + timedelta(days=1)
+    # Timed events that ended before this cutoff are hidden. All-day events
+    # are always visible - they span the full day and are not time-bounded.
+    cutoff = now - timedelta(hours=config.past_hours)
+
     provider = GoogleCalendarProvider(config.google, timezone=config.timezone)
+
     try:
-        events = provider.fetch_events(start, end)
+        today_all = provider.fetch_events(today_start, today_end)
     except CalendarError as e:
-        # No graceful per-event recovery here - a hard auth/network failure
-        # means we render no events. Surface clearly in logs; the panel will
-        # show "Nothing today" which is at least correctly typed.
         logger.error("calendar fetch failed: %s", e)
-        events = []
-    # Truncate at max_events first; render.py does the past/next derivation.
-    events = events[: config.max_events]
+        today_all = []
+
+    # Filter: keep all-day events always; keep timed events only if they
+    # ended within the past `past_hours` hours or haven't ended yet.
+    today_visible = [
+        e for e in today_all
+        if e.all_day or e.end >= cutoff
+    ][: config.max_events]
+
+    events = [
+        {**_event_to_dict(e), "section": "today"}
+        for e in today_visible
+    ]
+
+    # Fill remaining capacity with tomorrow's events.
+    remaining = config.max_events - len(events)
+    if remaining > 0:
+        try:
+            tomorrow_all = provider.fetch_events(tomorrow_start, tomorrow_end)
+            for e in tomorrow_all[:remaining]:
+                events.append({**_event_to_dict(e), "section": "tomorrow"})
+        except CalendarError as e:
+            logger.error("tomorrow calendar fetch failed: %s", e)
+
+    has_tomorrow = any(e["section"] == "tomorrow" for e in events)
+    tomorrow_label = (now + timedelta(days=1)).strftime("%a %b %-d").upper()
+
     return {
-        "now":   now.isoformat(),
-        "today_label": now.strftime("%a %b %-d").upper(),
-        "events": [_event_to_dict(e) for e in events],
+        "now":            now.isoformat(),
+        "today_label":    now.strftime("%a %b %-d").upper(),
+        "tomorrow_label": tomorrow_label,
+        "has_tomorrow":   has_tomorrow,
+        "events":         events,
     }
 
 

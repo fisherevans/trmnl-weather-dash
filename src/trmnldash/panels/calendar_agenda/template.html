@@ -25,6 +25,7 @@
       display: flex;
       flex-direction: column;
       padding: 10px 14px 10px;
+      overflow: hidden;
     }
 
     /* ── header ─────────────────────────────────────────────────────── */
@@ -36,6 +37,7 @@
       border-bottom: 3px solid var(--ink);
       padding-bottom: 4px;
       margin-bottom: 4px;
+      flex: 0 0 auto;
     }
     .agenda-header .dow {
       font-size: 30px;
@@ -59,20 +61,20 @@
       flex-direction: column;
       flex: 1;
       min-height: 0;
+      overflow: hidden;  /* safety net: hide any partial row at the edge */
     }
-    /* flex: 1 1 0 distributes the list's height across events. Sparse
-       days get tall rows, full days compress. Combined with the
-       density-* font-size tiers below, this gives the row content room
-       to breathe at every event count. */
+    /* flex: 0 0 auto - events take their natural height; no shrinking.
+       The Python renderer pre-calculates how many rows fit and truncates
+       the list, so no row is ever partially visible. */
     .event {
-      flex: 1 1 0;
-      min-height: 0;
+      flex: 0 0 auto;
       display: grid;
       grid-template-rows: auto auto;
       align-content: center;
       row-gap: 2px;
       padding: 4px 0;
       border-top: 1px solid var(--grey);
+      overflow: hidden;
     }
     .event:first-child { border-top: 0; }
 
@@ -142,47 +144,105 @@
        tracking. */
     .event.all-day .time { letter-spacing: 0.16em; }
 
+    /* ── tomorrow section divider ───────────────────────────────────
+       Appears between today and tomorrow events. Extra margin-top creates
+       breathing room so tomorrow reads as a distinct section, not a
+       continuation of today. flex: 0 0 auto = fixed height in the list. */
+    .section-break {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      border-top: 2px solid var(--grey);
+      border-bottom: 1px solid var(--grey);
+      padding: 3px 0 2px;
+      margin-top: 10px;
+    }
+    .section-break .dow {
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      line-height: 1;
+      color: var(--dim);
+    }
+    .section-break .label {
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      color: var(--grey);
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    /* ── tomorrow events ────────────────────────────────────────────
+       Rendered subtly (grey + italic + slightly smaller) so today's
+       events stay visually primary at a glance. */
+    .event.tomorrow .time,
+    .event.tomorrow .title,
+    .event.tomorrow .cal { color: var(--grey); font-style: italic; }
+    .event.tomorrow .rsvp { color: var(--grey); font-style: normal; }
+
+    .density-xl .event.tomorrow .time  { font-size: 16px; }
+    .density-xl .event.tomorrow .title { font-size: 22px; }
+    .density-lg .event.tomorrow .time  { font-size: 15px; }
+    .density-lg .event.tomorrow .title { font-size: 20px; }
+    .density-md .event.tomorrow .time  { font-size: 14px; }
+    .density-md .event.tomorrow .title { font-size: 18px; }
+
+    /* ── "and N more" overflow row ──────────────────────────────────
+       Left-aligned so it sits in the same visual lane as the event titles
+       the reader is already scanning. */
+    .more-events {
+      flex: 0 0 auto;
+      padding: 4px 0 0;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: var(--grey);
+      font-style: italic;
+      text-align: left;
+      border-top: 1px solid var(--grey);
+    }
+
     /* ── density tiers ──────────────────────────────────────────────
-       Picked in render.py based on event count. Tighter as the day
-       fills up so all events fit; breathier on sparse days. */
+       Picked in render.py based on visible event count. Dense days cap
+       at density-md and truncate rather than compressing further.
+       density-sm/xs/xxs kept in CSS but not normally reached. */
     .density-xl .agenda-header .dow   { font-size: 30px; }
     .density-xl .agenda-header .label { font-size: 13px; }
-    /* density tiers also apply to the inline rsvp + cal text. Sizes
-       below mirror the time scale so the rsvp badge stays the same
-       relative weight at every density. */
     .density-xl .event .time   { font-size: 20px; }
     .density-xl .event .rsvp   { font-size: 14px; }
-    .density-lg .event .rsvp   { font-size: 13px; }
-    .density-md .event .rsvp   { font-size: 12px; }
-    .density-sm .event .rsvp   { font-size: 11px; }
-    .density-xs .event .rsvp   { font-size: 10px; }
     .density-xl .event .title  { font-size: 28px; }
     .density-xl .event .cal    { font-size: 14px; }
+    .density-xl .section-break .dow   { font-size: 22px; }
+    .density-xl .section-break .label { font-size: 11px; }
 
     .density-lg .agenda-header .dow   { font-size: 28px; }
     .density-lg .event .time   { font-size: 18px; }
+    .density-lg .event .rsvp   { font-size: 13px; }
     .density-lg .event .title  { font-size: 24px; }
     .density-lg .event .cal    { font-size: 13px; }
+    .density-lg .section-break .dow   { font-size: 20px; }
+    .density-lg .section-break .label { font-size: 11px; }
 
     .density-md .agenda-header .dow   { font-size: 26px; }
     .density-md .event .time   { font-size: 17px; }
+    .density-md .event .rsvp   { font-size: 12px; }
     .density-md .event .title  { font-size: 22px; }
     .density-md .event .cal    { font-size: 13px; }
+    .density-md .section-break .dow   { font-size: 18px; }
+    .density-md .section-break .label { font-size: 11px; }
 
+    /* kept in CSS but not reached by default rendering path */
     .density-sm .agenda-header .dow   { font-size: 24px; }
     .density-sm .event .time   { font-size: 16px; }
     .density-sm .event .title  { font-size: 20px; }
     .density-sm .event .cal    { font-size: 12px; }
-
     .density-xs .agenda-header .dow   { font-size: 22px; }
     .density-xs .event .time   { font-size: 14px; }
     .density-xs .event .title  { font-size: 17px; }
     .density-xs .event .cal    { font-size: 11px; }
 
-    /* bottom-right "updated NN:NN AM" stamp. Sits in the gap below
-       the last event row so the events list still keeps its flex:1
-       grow and density tiers stay accurate. dim grey + small so it
-       reads as supporting metadata, not a row of its own. */
+    /* bottom-right "updated NN:NN AM" stamp. */
     .updated-at {
       flex: 0 0 auto;
       text-align: right;
@@ -220,7 +280,13 @@
   {% else %}
     <ul class="events">
       {%- for e in events %}
-      <li class="event{% if e.is_past %} past{% endif %}{% if e.all_day %} all-day{% endif %}">
+      {%- if e.section == "tomorrow" and (loop.index0 == 0 or events[loop.index0 - 1].section == "today") %}
+      <li class="section-break">
+        <span class="dow">TOMORROW</span>
+        <span class="label">{{ tomorrow_label }}</span>
+      </li>
+      {%- endif %}
+      <li class="event{% if e.is_past %} past{% endif %}{% if e.all_day %} all-day{% endif %}{% if e.section == 'tomorrow' %} tomorrow{% endif %}">
         <div class="meta">
           <span class="time">{{ e.time_label }}{% if e.rsvp_label %}<span class="rsvp">{{ e.rsvp_label }}</span>{% endif %}</span>
           <span class="cal">{{ e.calendar_label }}</span>
@@ -228,6 +294,9 @@
         <div class="title">{{ e.title }}</div>
       </li>
       {%- endfor %}
+      {%- if more_label %}
+      <li class="more-events">{{ more_label }}</li>
+      {%- endif %}
     </ul>
   {% endif %}
 

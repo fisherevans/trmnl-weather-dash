@@ -27,6 +27,25 @@ ASSETS = TEMPLATE_DIR / "assets"
 # grid - 400 px isn't wide enough for time + title + cal label inline.
 RENDER_SPEC = RenderSpec(width=400, height=480, palette="2bit-grey")
 
+# ── panel geometry constants (pixels) ─────────────────────────────────────
+# Used to pre-calculate how many event rows fit so we truncate cleanly
+# rather than letting flex compress rows below their natural height.
+_PANEL_H       = 480
+_BODY_PAD_V    = 20    # body padding: 10px top + 10px bottom
+_HEADER_H      = 52    # agenda-header block (conservative estimate)
+_FOOTER_H      = 18    # updated-at stamp (conservative)
+_SECTION_H     = 34    # tomorrow section-break li (border + text + padding)
+
+# Conservative row-height estimates at each density. "Conservative" means
+# rounding up so we never show a row that would be partially clipped.
+# Actual heights are a few px shorter; the extra margin absorbs rounding.
+_ROW_H: dict[str, int] = {
+    "density-xl": 84,  # 28px title + 20px time + line heights + gap + pad
+    "density-lg": 68,
+    "density-md": 58,
+}
+_DEFAULT_ROW_H = 58
+
 
 def render_html(data: dict) -> str:
     env = Environment(
@@ -54,18 +73,41 @@ def render_html(data: dict) -> str:
             "rsvp_label": _rsvp_label(e.get("response_status")),
         })
 
-    # Density tier: pick the smallest CSS class that comfortably fits
-    # `len(events)` rows. Sparse days get breathing room; full days
-    # collapse to tighter type. Thresholds picked so each tier preserves
-    # readable line-height at 480 px panel height.
+    # Density tier: capped at density-md. For dense days we truncate to
+    # what fits at comfortable type rather than compressing further.
     density = _density_tier(len(enriched))
+
+    # Greedy row-fit: walk the list and accumulate pixel height, stopping
+    # before a row would overflow. The section-break between today and
+    # tomorrow is counted when the first tomorrow event is encountered.
+    visible, more_count = _fit_events(enriched, density)
+
+    # Re-evaluate density from the visible count so sparse days (few events
+    # actually shown) still get the breathing room they deserve.
+    density = _density_tier(len(visible))
+
+    has_tomorrow = any(e.get("section") == "tomorrow" for e in visible)
+
+    # "and N more" label shown when the list was truncated.
+    more_label = ""
+    if more_count > 0:
+        truncated = enriched[len(visible):]
+        if all(e.get("section") == "tomorrow" for e in truncated):
+            more_label = f"and {more_count} more tomorrow"
+        elif all(e.get("section") == "today" for e in truncated):
+            more_label = f"and {more_count} more today"
+        else:
+            more_label = f"and {more_count} more events"
 
     ctx = {
         "now":            now,
         "today_label":    data.get("today_label", now.strftime("%a %b %-d").upper()),
-        "events":         enriched,
-        "empty":          not enriched,
+        "tomorrow_label": data.get("tomorrow_label", ""),
+        "has_tomorrow":   has_tomorrow,
+        "events":         visible,
+        "empty":          not visible,
         "density":        density,
+        "more_label":     more_label,
         "updated_label":  f"updated {_format_clock(now)}",
     }
     return env.get_template("template.html").render(**ctx)
@@ -74,17 +116,40 @@ def render_html(data: dict) -> str:
 def _density_tier(n_events: int) -> str:
     """Map event count -> CSS density class.
 
-    xl: 1-3 events  (huge type, lots of breathing room)
-    lg: 4-5 events
-    md: 6-7 events
-    sm: 8-9 events
-    xs: 10+ events  (the cap of max_events=12 fits here)
+    Dense days (6+) are capped at density-md. Rather than compressing
+    further to fit more events, the renderer pre-truncates the list
+    and shows "and N more events" instead. density-sm/xs/xxs are kept
+    in CSS but are not reached by the normal rendering path.
     """
     if n_events <= 3:  return "density-xl"
     if n_events <= 5:  return "density-lg"
-    if n_events <= 7:  return "density-md"
-    if n_events <= 9:  return "density-sm"
-    return "density-xs"
+    return "density-md"
+
+
+def _fit_events(enriched: list[dict], density: str) -> tuple[list[dict], int]:
+    """Greedily select events that fit in the panel without clipping.
+
+    Accumulates pixel height row-by-row, accounting for the section-break
+    that appears before the first tomorrow event. Stops before a row that
+    would overflow the available area. Returns (visible, more_count).
+    """
+    available = _PANEL_H - _BODY_PAD_V - _HEADER_H - _FOOTER_H
+    row_h = _ROW_H.get(density, _DEFAULT_ROW_H)
+    used = 0
+    visible: list[dict] = []
+    section_break_counted = False
+
+    for e in enriched:
+        extra = 0
+        if e.get("section") == "tomorrow" and not section_break_counted:
+            extra = _SECTION_H
+            section_break_counted = True
+        if used + extra + row_h > available:
+            break
+        used += extra + row_h
+        visible.append(e)
+
+    return visible, len(enriched) - len(visible)
 
 
 def render_to_image(data: dict, *, width: int | None = None, height: int | None = None) -> Image.Image:
@@ -142,5 +207,3 @@ def _format_clock(dt: datetime) -> str:
     if dt.minute == 0:
         return dt.strftime("%-I %p")
     return dt.strftime("%-I:%M %p")
-
-

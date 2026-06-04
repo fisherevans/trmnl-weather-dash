@@ -24,7 +24,19 @@ class CalendarAgendaConfig(_Strict):
     google: GoogleCalendarConfig
     max_events: int = Field(
         default=12, ge=1, le=50,
-        description="Cap on event rows. Past events still count against this.",
+        description=(
+            "Total cap on event rows (today + tomorrow combined). "
+            "Past events still count against this."
+        ),
+    )
+    past_hours: int = Field(
+        default=1, ge=0,
+        description=(
+            "Hide timed events that ended more than this many hours ago. "
+            "All-day events are always shown regardless. "
+            "Freed capacity is filled with tomorrow's events. "
+            "0 = show only current and future events."
+        ),
     )
 
 
