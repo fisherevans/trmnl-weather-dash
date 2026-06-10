@@ -198,26 +198,99 @@ def _build_chart(hourly: list[dict], sun: dict | None) -> dict:
         "temp_path":     temp_path,
         "precip_bars":   precip_bars,
         "hour_ticks":    hour_ticks,
-        "night":         _compute_night(hourly, sun, step),
+        "nights":        _compute_nights(hourly, sun, step),
     }
 
 
-def _compute_night(hourly: list[dict], sun: dict | None, step: float) -> dict | None:
-    """Map the upcoming sunset / sunrise pair to an x-range to shade.
+def _compute_nights(hourly: list[dict], sun: dict | None, step: float) -> list[dict]:
+    """Return one {x, w} shade rect per contiguous run of night hours.
 
-    Returns None when no sunset falls inside the chart's time window,
-    so the template skips shading. Returns a single rect even when the
-    night region extends past the right edge (most evening renders).
-    A future improvement: support a chart starting at night so we get
-    a left-edge night slice + an after-sunrise day slice.
+    Night membership comes from each hour's `is_night` flag, so any number
+    of blocks render: an evening block, an overnight block pinned to the
+    left edge when the chart opens after dark, or both at once. The earlier
+    version mapped only the single next_sunset/next_sunrise pair, so a chart
+    that began at night (e.g. a 9 PM render, where the next sunrise precedes
+    the next sunset) shaded just the later evening block - or nothing, when
+    the next sunset fell past the window.
+
+    Each block spans its run's hour-column boundaries. Where an exact
+    sunset / sunrise time is known and lands on a block edge, it refines
+    that edge to sub-hour precision so the common single-evening-block
+    render stays visually stable.
     """
+    n = len(hourly)
+    if n == 0:
+        return []
+    # Older fixtures / hand-built mockups may omit per-hour is_night; fall
+    # back to the single sunset/sunrise rect so they still shade.
+    if not any("is_night" in h for h in hourly):
+        legacy = _night_from_sun(hourly, sun, step)
+        return [legacy] if legacy else []
+
+    chart_start = datetime.fromisoformat(hourly[0]["datetime"])
+    hour_dts = [datetime.fromisoformat(h["datetime"]) for h in hourly]
+    sunset_dt = _parse_sun(sun, "next_sunset")
+    sunrise_dt = _parse_sun(sun, "next_sunrise")
+
+    def _time_to_x(t: datetime) -> float:
+        hours_offset = (t - chart_start).total_seconds() / 3600.0
+        return _LEFT_AXIS_X + hours_offset * step + step / 2
+
+    rects: list[dict] = []
+    i = 0
+    while i < n:
+        if not hourly[i].get("is_night"):
+            i += 1
+            continue
+        start = i
+        while i + 1 < n and hourly[i + 1].get("is_night"):
+            i += 1
+        end = i
+        i += 1
+
+        # Left edge: chart edge if night is already underway at hour 0,
+        # else the day->night column boundary, refined to the exact sunset
+        # when one lands in that gap.
+        if start == 0:
+            x1 = float(_LEFT_AXIS_X)
+        else:
+            x1 = _LEFT_AXIS_X + start * step
+            if sunset_dt and hour_dts[start - 1] <= sunset_dt <= hour_dts[start]:
+                x1 = _time_to_x(sunset_dt)
+        # Right edge: chart edge if night runs to the last hour, else the
+        # night->day boundary, refined to the exact sunrise.
+        if end == n - 1:
+            x2 = float(_RIGHT_AXIS_X)
+        else:
+            x2 = _LEFT_AXIS_X + (end + 1) * step
+            if sunrise_dt and hour_dts[end] <= sunrise_dt <= hour_dts[end + 1]:
+                x2 = _time_to_x(sunrise_dt)
+
+        x1 = max(_LEFT_AXIS_X, x1)
+        x2 = min(_RIGHT_AXIS_X, x2)
+        if x2 - x1 > 0:
+            rects.append({"x": round(x1, 2), "w": round(x2 - x1, 2)})
+    return rects
+
+
+def _parse_sun(sun: dict | None, key: str) -> datetime | None:
     if not sun:
         return None
-    sunset = sun.get("next_sunset")
-    sunrise = sun.get("next_sunrise")
-    if not sunset:
+    val = sun.get(key)
+    return datetime.fromisoformat(val) if val else None
+
+
+def _night_from_sun(hourly: list[dict], sun: dict | None, step: float) -> dict | None:
+    """Legacy single-rect fallback for inputs without per-hour is_night.
+
+    Maps the upcoming sunset / sunrise pair to one x-range. Returns None
+    when no sunset falls inside the chart window. Cannot represent a chart
+    that opens at night - that's why the is_night path above is preferred.
+    """
+    sunset_dt = _parse_sun(sun, "next_sunset")
+    if not sunset_dt:
         return None
-    sunset_dt = datetime.fromisoformat(sunset)
+    sunrise_dt = _parse_sun(sun, "next_sunrise")
     chart_start = datetime.fromisoformat(hourly[0]["datetime"])
     chart_end = datetime.fromisoformat(hourly[-1]["datetime"]) + timedelta(hours=1)
     if sunset_dt >= chart_end:
@@ -229,10 +302,8 @@ def _compute_night(hourly: list[dict], sun: dict | None, step: float) -> dict | 
 
     night_x = max(_LEFT_AXIS_X, _time_to_x(sunset_dt))
     night_end_x = _RIGHT_AXIS_X
-    if sunrise:
-        sunrise_dt = datetime.fromisoformat(sunrise)
-        if sunrise_dt > sunset_dt and sunrise_dt < chart_end:
-            night_end_x = min(_RIGHT_AXIS_X, _time_to_x(sunrise_dt))
+    if sunrise_dt and sunset_dt < sunrise_dt < chart_end:
+        night_end_x = min(_RIGHT_AXIS_X, _time_to_x(sunrise_dt))
     width = night_end_x - night_x
     if width <= 0:
         return None

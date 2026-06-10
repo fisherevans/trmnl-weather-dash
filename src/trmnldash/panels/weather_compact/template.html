@@ -246,13 +246,14 @@
 
   <section class="chart">
     <svg viewBox="0 0 {{ chart.view_w }} {{ chart.view_h }}" preserveAspectRatio="none">
-      {# night shading behind everything else - covers the chart slice
-         from sunset to (here) the right edge since sunrise is beyond
-         the 18-hour window. Bars and temp line render on top. #}
-      {%- if chart.night and chart.night.w > 0 %}
-      <rect class="night" x="{{ chart.night.x }}" y="{{ chart.precip_top_y }}"
-            width="{{ chart.night.w }}" height="{{ chart.axis_y - chart.precip_top_y }}"/>
-      {%- endif %}
+      {# night shading behind everything else - one rect per night block,
+         so a chart that opens after dark gets its leading overnight slice
+         and a later evening block both shade. Bars and temp line render on
+         top. #}
+      {%- for nb in chart.nights %}
+      <rect class="night" x="{{ nb.x }}" y="{{ chart.precip_top_y }}"
+            width="{{ nb.w }}" height="{{ chart.axis_y - chart.precip_top_y }}"/>
+      {%- endfor %}
 
       {# precip bars #}
       {%- for b in chart.precip_bars %}
@@ -265,22 +266,15 @@
       {# 25/50/75/100% grid lines drawn ON TOP of the bars, with rain
          % on the left and the corresponding temperature value on the
          right. Shared grid lets the same horizontals carry both
-         scales. Grid line colour flips inside the night region so the
-         line stays visible against the light-grey shading. #}
+         scales. Draw the full day-colour line, then paint the paper-white
+         night colour over each shaded block so the horizontals stay
+         visible against the light-grey shading (both strokes are 1.2px,
+         so the overlay is pixel-identical to a segmented draw). #}
       {%- for g in chart.grid_lines %}
-        {%- if chart.night and chart.night.w > 0 %}
-          {%- set night_x1 = chart.night.x %}
-          {%- set night_x2 = chart.night.x + chart.night.w %}
-          {%- if night_x1 > chart.left_axis_x %}
-      <line class="grid" x1="{{ chart.left_axis_x }}" x2="{{ night_x1 }}" y1="{{ g.y }}" y2="{{ g.y }}"/>
-          {%- endif %}
-      <line class="grid-night" x1="{{ night_x1 }}" x2="{{ night_x2 }}" y1="{{ g.y }}" y2="{{ g.y }}"/>
-          {%- if night_x2 < chart.right_axis_x %}
-      <line class="grid" x1="{{ night_x2 }}" x2="{{ chart.right_axis_x }}" y1="{{ g.y }}" y2="{{ g.y }}"/>
-          {%- endif %}
-        {%- else %}
       <line class="grid" x1="{{ chart.left_axis_x }}" x2="{{ chart.right_axis_x }}" y1="{{ g.y }}" y2="{{ g.y }}"/>
-        {%- endif %}
+        {%- for nb in chart.nights %}
+      <line class="grid-night" x1="{{ nb.x }}" x2="{{ nb.x + nb.w }}" y1="{{ g.y }}" y2="{{ g.y }}"/>
+        {%- endfor %}
       <text class="scale-lab" x="{{ chart.left_axis_x - 2 }}" y="{{ g.y + 3 }}" text-anchor="end">{{ g.rain }}</text>
       <text class="scale-lab" x="{{ chart.right_axis_x + 2 }}" y="{{ g.y + 3 }}" text-anchor="start">{{ g.temp }}</text>
       {%- endfor %}
