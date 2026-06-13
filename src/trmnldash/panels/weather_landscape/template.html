@@ -41,6 +41,7 @@
       --forecast-arrow-fs:  100px;
       --forecast-when-fs:    30px;
       --forecast-rh-fs:      20px;
+      --forecast-hum-fs:     70px;
 
       /* Summary-column geometry. Width is the fixed pixel width of the
          left column; the chart card absorbs whatever's left. The three
@@ -495,25 +496,53 @@
       justify-content: center;
       gap: 10px;
     }
-    /* Full-width row pairing the big temp on the left with humidity on
-       the right — mirrors the OUTSIDE card's two-column temp/humidity
-       layout. Width 100% stretches across the card; the centered-column
-       parent aligns it via align-self: stretch. */
-    .tempforecast .big-row {
+    /* HIGH/LOW reading: same two-column grid as OUTSIDE .reading
+       (temp | divider | humidity), tuned to the smaller forecast card.
+       No trend arrows since these are point-in-time forecast values,
+       not current observations. */
+    .tempforecast .reading {
       width: 100%;
       padding: 0 24px;
-      display: flex;
+      display: grid;
+      grid-template-columns: 1.4fr 3px 1fr;
       align-items: center;
-      justify-content: space-between;
+      gap: 18px;
     }
-    /* Humidity — right side of .big-row. Smaller + dimmed so it reads
-       as secondary context alongside the dominant temperature. */
-    .tempforecast .rh {
-      font-size: var(--forecast-rh-fs);
+    .tempforecast .reading .divider {
+      background: currentColor;
+      align-self: stretch;
+      opacity: 0.85;
+    }
+    .tempforecast .reading .temp {
+      font-size: var(--forecast-big-fs);
+      font-weight: 800;
+      line-height: 1;
+      text-align: center;
+      letter-spacing: -0.03em;
+    }
+    .tempforecast .reading .temp sup {
+      font-size: var(--forecast-tempsup-fs);
+      font-weight: 700;
+      top: -0.55em;
+    }
+    .tempforecast .reading .temp .arrow {
+      font-size: var(--forecast-arrow-fs);
+      font-weight: 900;
+      margin-right: 6px;
+    }
+    .tempforecast .reading .hum { text-align: center; }
+    .tempforecast .reading .hum .val {
+      font-size: var(--forecast-hum-fs, 70px);
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+    .tempforecast .reading .hum .lab {
+      font-size: 18px;
       font-weight: 700;
       letter-spacing: 0.12em;
-      opacity: 0.6;
-      white-space: nowrap;
+      margin-top: 6px;
+      opacity: 0.85;
     }
     /* Small inverted pill, e.g. "TMRW", flagging that the high/low fell on
        a different calendar day than "now". Only rendered when needed. */
@@ -973,10 +1002,14 @@
         <div class="card-title">TEMPERATURE FORECAST</div>
         <div class="card-body tempforecast{% if tuning_summary_layout == 'side-by-side' %} side-by-side{% endif %}">
           <div class="row high{% if forecast.high.tomorrow %} tomorrow{% endif %}">
-            <div class="big-row">
-              <div class="big"><span class="arrow">↑</span><span>{{ forecast.high.temp_f }}<sup>°F</sup></span></div>
+            <div class="reading">
+              <div class="temp"><span class="arrow">↑</span>{{ forecast.high.temp_f }}<sup>°F</sup></div>
               {%- if forecast.high.humidity_pct is defined and forecast.high.humidity_pct is not none %}
-              <div class="rh">{{ forecast.high.humidity_pct }}%</div>
+              <div class="divider"></div>
+              <div class="hum">
+                <div class="val">{{ forecast.high.humidity_pct }}<sup>%</sup></div>
+                <div class="lab">HUMIDITY</div>
+              </div>
               {%- endif %}
             </div>
             <div class="when">
@@ -988,10 +1021,14 @@
             {%- endif %}
           </div>
           <div class="row low">
-            <div class="big-row">
-              <div class="big"><span class="arrow">↓</span><span>{{ forecast.low.temp_f }}<sup>°F</sup></span></div>
+            <div class="reading">
+              <div class="temp"><span class="arrow">↓</span>{{ forecast.low.temp_f }}<sup>°F</sup></div>
               {%- if forecast.low.humidity_pct is defined and forecast.low.humidity_pct is not none %}
-              <div class="rh">{{ forecast.low.humidity_pct }}%</div>
+              <div class="divider"></div>
+              <div class="hum">
+                <div class="val">{{ forecast.low.humidity_pct }}<sup>%</sup></div>
+                <div class="lab">HUMIDITY</div>
+              </div>
               {%- endif %}
             </div>
             <div class="when">
