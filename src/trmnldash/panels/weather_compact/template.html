@@ -123,6 +123,26 @@
       margin-top: 4px;
     }
     .hilo .meta .at { color: var(--ink); font-weight: 800; }
+    /* When the window high falls on tomorrow, invert the HIGH column so it
+       reads as clearly different from a same-day callout. */
+    .hilo .col.tomorrow {
+      background: var(--ink);
+      color: var(--paper);
+      padding: 4px 6px;
+      border-radius: 2px;
+    }
+    .hilo .col.tomorrow .hl-label { color: var(--paper); }
+    .hilo .col.tomorrow .meta { color: var(--paper); opacity: 0.8; }
+    .hilo .col.tomorrow .meta .at { color: var(--paper); }
+    /* Small footnote showing today's peak when the high is tomorrow's. */
+    .hilo .today-was {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--paper);
+      opacity: 0.6;
+      margin-top: 2px;
+    }
 
     /* ── chart ──────────────────────────────────────────────────────── */
     .chart { padding: 2px 0 2px; }
@@ -226,13 +246,16 @@
 
   <section class="hilo">
     <div class="pair-divider"></div>
-    <div class="col">
-      <div class="hl-label">HIGH</div>
+    <div class="col{% if high.tomorrow %} tomorrow{% endif %}">
+      <div class="hl-label">HIGH{% if high.tomorrow %} · TMRW{% endif %}</div>
       <div class="top">
         <span class="arrow">↑</span>
         <span class="temp">{{ high.temp_f }}<sup>°F</sup></span>
       </div>
       <div class="meta"><span class="at">{{ high.time }}</span> · {{ high.humidity_pct }}% RH</div>
+      {%- if high.tomorrow and high.today_high_f is defined and high.today_high_f is not none %}
+      <div class="today-was">TODAY: {{ high.today_high_f }}°F</div>
+      {%- endif %}
     </div>
     <div class="col">
       <div class="hl-label">LOW</div>

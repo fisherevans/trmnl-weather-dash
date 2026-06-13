@@ -93,7 +93,8 @@ def _augment(data: dict) -> dict:
     hourly = data["hourly"]
     out = dict(data)
     if "high" not in out or "low" not in out:
-        hi, lo = _compute_high_low(hourly)
+        now = datetime.fromisoformat(data["now"]) if "now" in data else None
+        hi, lo = _compute_high_low(hourly, now=now)
         out.setdefault("high", hi)
         out.setdefault("low", lo)
     if "chart" not in out:
@@ -101,13 +102,34 @@ def _augment(data: dict) -> dict:
     return out
 
 
-def _compute_high_low(hourly: list[dict]) -> tuple[dict, dict]:
+def _compute_high_low(hourly: list[dict], now: datetime | None = None) -> tuple[dict, dict]:
     """Find peak high and trough low across the hourly slice. Returns
-    template-ready dicts with rounded temp, formatted time, and the
-    humidity reading at that hour (0 if the provider didn't supply it)."""
+    template-ready dicts with rounded temp, formatted time, tomorrow flag,
+    and the humidity reading at that hour (0 if the provider didn't supply it).
+
+    When `now` is provided, the `tomorrow` flag is set on high/low when their
+    timestamp falls on a different calendar date. For the high, `today_high_f`
+    is also included so the template can show today's peak alongside the
+    tomorrow callout.
+    """
     temps = [h["temp_f"] for h in hourly]
     hi_idx = temps.index(max(temps))
     lo_idx = temps.index(min(temps))
+    today = now.date() if now else None
+
+    def _is_tomorrow(idx: int) -> bool:
+        if today is None:
+            return False
+        dt = datetime.fromisoformat(hourly[idx]["datetime"])
+        return dt.date() != today
+
+    hi_tomorrow = _is_tomorrow(hi_idx)
+    today_high_f: int | None = None
+    if hi_tomorrow and today is not None:
+        today_hours = [h for h in hourly
+                       if datetime.fromisoformat(h["datetime"]).date() == today]
+        if today_hours:
+            today_high_f = int(round(max(h["temp_f"] for h in today_hours)))
 
     def _summary(idx: int) -> dict:
         h = hourly[idx]
@@ -117,7 +139,9 @@ def _compute_high_low(hourly: list[dict]) -> tuple[dict, dict]:
             "humidity_pct": h.get("humidity_pct") or 0,
         }
 
-    return _summary(hi_idx), _summary(lo_idx)
+    hi = {**_summary(hi_idx), "tomorrow": hi_tomorrow, "today_high_f": today_high_f}
+    lo = {**_summary(lo_idx), "tomorrow": _is_tomorrow(lo_idx)}
+    return hi, lo
 
 
 def _build_chart(hourly: list[dict], sun: dict | None) -> dict:
