@@ -450,6 +450,25 @@
        row stays panel-light. Subtle but enough to mark the call-out. */
     .tempforecast .row.high { background: #DCDCDC; }
     .tempforecast .row.low  { background: var(--panel); }
+    /* When the window high falls on tomorrow, invert the HIGH row (black
+       background, white text) so it's unmistakably different from a
+       normal today's high. The TMRW tag flips to match. */
+    .tempforecast .row.high.tomorrow { background: var(--ink); color: var(--panel); }
+    .tempforecast .row.high.tomorrow .rh { color: var(--panel); }
+    .tempforecast .row.high.tomorrow .when .tag {
+      background: var(--panel);
+      color: var(--ink);
+    }
+    /* Small secondary line showing today's peak when the window high is
+       tomorrow's. Sits below the humidity line; dimmed to read as a
+       footnote rather than compete with the main callout. */
+    .tempforecast .today-was {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      opacity: 0.6;
+      margin-top: -2px;
+    }
     .tempforecast .big {
       font-size: var(--forecast-big-fs);
       font-weight: 900;
@@ -944,7 +963,7 @@
       <section class="card">
         <div class="card-title">TEMPERATURE FORECAST</div>
         <div class="card-body tempforecast{% if tuning_summary_layout == 'side-by-side' %} side-by-side{% endif %}">
-          <div class="row high">
+          <div class="row high{% if forecast.high.tomorrow %} tomorrow{% endif %}">
             <div class="big"><span class="arrow">↑</span><span>{{ forecast.high.temp_f }}<sup>°F</sup></span></div>
             <div class="when">
               <span>HIGH @ {{ forecast.high.time }}</span>
@@ -952,6 +971,9 @@
             </div>
             {%- if forecast.high.humidity_pct is defined and forecast.high.humidity_pct is not none %}
             <div class="rh">{{ forecast.high.humidity_pct }}% HUMIDITY</div>
+            {%- endif %}
+            {%- if forecast.high.tomorrow and forecast.high.today_high_f is defined and forecast.high.today_high_f is not none %}
+            <div class="today-was">TODAY'S HIGH: {{ forecast.high.today_high_f }}°F</div>
             {%- endif %}
           </div>
           <div class="row low">

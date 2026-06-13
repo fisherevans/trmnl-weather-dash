@@ -163,6 +163,15 @@ def build_context(
     noon_tomorrow = (now + timedelta(days=1)).replace(
         hour=12, minute=0, second=0, microsecond=0
     )
+    # When the window's high falls on tomorrow, also record today's peak so
+    # the template can show "today was X°" alongside the tomorrow callout.
+    # Only populated when the window high is actually tomorrow; None otherwise.
+    high_is_tomorrow = high_h.timestamp.date() != today
+    today_high_h = None
+    if high_is_tomorrow:
+        today_hours = [h for h in weather.hourly if h.timestamp.date() == today]
+        if today_hours:
+            today_high_h = max(today_hours, key=lambda h: h.temp_f)
 
     # ── precip type drives bg-{rain,snow}.svg selection ───────────────────
     # The bg chooses one or the other; bars themselves stack snow under
@@ -377,10 +386,11 @@ def build_context(
         },
         "forecast": {
             "high": {
-                "temp_f":       round(high_h.temp_f),
-                "time":         _format_clock(high_h.timestamp),
-                "tomorrow":     high_h.timestamp.date() != today,
-                "humidity_pct": high_h.humidity_pct,
+                "temp_f":        round(high_h.temp_f),
+                "time":          _format_clock(high_h.timestamp),
+                "tomorrow":      high_is_tomorrow,
+                "today_high_f":  round(today_high_h.temp_f) if today_high_h else None,
+                "humidity_pct":  high_h.humidity_pct,
             },
             "low": {
                 "temp_f":       round(low_h.temp_f),
