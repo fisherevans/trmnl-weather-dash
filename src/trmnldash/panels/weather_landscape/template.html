@@ -467,7 +467,6 @@
       font-weight: 700;
       letter-spacing: 0.04em;
       opacity: 0.6;
-      margin-top: -2px;
     }
     .tempforecast .big {
       font-size: var(--forecast-big-fs);
@@ -496,15 +495,25 @@
       justify-content: center;
       gap: 10px;
     }
-    /* Humidity line under HIGH/LOW @ time — secondary context. Smaller
-       than .when and dimmed so it sits visually below the time line
-       without competing with the big temperature. */
+    /* Full-width row housing the time/TMRW badge on the left and the
+       humidity reading on the right. Width 100% lets it stretch across
+       the card even though its parent is a centered flex column. */
+    .tempforecast .meta-row {
+      width: 100%;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    /* Humidity — right side of .meta-row. Smaller + dimmed so it reads
+       as secondary context without competing with the big temperature. */
     .tempforecast .rh {
       font-size: var(--forecast-rh-fs);
       font-weight: 700;
       letter-spacing: 0.12em;
       opacity: 0.6;
-      margin-top: -2px;
+      white-space: nowrap;
     }
     /* Small inverted pill, e.g. "TMRW", flagging that the high/low fell on
        a different calendar day than "now". Only rendered when needed. */
@@ -965,26 +974,30 @@
         <div class="card-body tempforecast{% if tuning_summary_layout == 'side-by-side' %} side-by-side{% endif %}">
           <div class="row high{% if forecast.high.tomorrow %} tomorrow{% endif %}">
             <div class="big"><span class="arrow">↑</span><span>{{ forecast.high.temp_f }}<sup>°F</sup></span></div>
-            <div class="when">
-              <span>HIGH @ {{ forecast.high.time }}</span>
-              {%- if forecast.high.tomorrow %}<span class="tag">TMRW</span>{%- endif %}
+            <div class="meta-row">
+              <div class="when">
+                <span>HIGH @ {{ forecast.high.time }}</span>
+                {%- if forecast.high.tomorrow %}<span class="tag">TMRW</span>{%- endif %}
+              </div>
+              {%- if forecast.high.humidity_pct is defined and forecast.high.humidity_pct is not none %}
+              <div class="rh">{{ forecast.high.humidity_pct }}%</div>
+              {%- endif %}
             </div>
-            {%- if forecast.high.humidity_pct is defined and forecast.high.humidity_pct is not none %}
-            <div class="rh">{{ forecast.high.humidity_pct }}% HUMIDITY</div>
-            {%- endif %}
             {%- if forecast.high.tomorrow and forecast.high.today_high_f is defined and forecast.high.today_high_f is not none %}
             <div class="today-was">TODAY'S HIGH: {{ forecast.high.today_high_f }}°F</div>
             {%- endif %}
           </div>
           <div class="row low">
             <div class="big"><span class="arrow">↓</span><span>{{ forecast.low.temp_f }}<sup>°F</sup></span></div>
-            <div class="when">
-              <span>LOW @ {{ forecast.low.time }}</span>
-              {%- if forecast.low.tomorrow %}<span class="tag">TMRW</span>{%- endif %}
+            <div class="meta-row">
+              <div class="when">
+                <span>LOW @ {{ forecast.low.time }}</span>
+                {%- if forecast.low.tomorrow %}<span class="tag">TMRW</span>{%- endif %}
+              </div>
+              {%- if forecast.low.humidity_pct is defined and forecast.low.humidity_pct is not none %}
+              <div class="rh">{{ forecast.low.humidity_pct }}%</div>
+              {%- endif %}
             </div>
-            {%- if forecast.low.humidity_pct is defined and forecast.low.humidity_pct is not none %}
-            <div class="rh">{{ forecast.low.humidity_pct }}% HUMIDITY</div>
-            {%- endif %}
           </div>
         </div>
       </section>
