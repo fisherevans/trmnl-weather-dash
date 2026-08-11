@@ -287,3 +287,12 @@ done
 - Test by rendering at multiple times of day (the four `data*.json`).
   Visual diff is the only kind of test the user cares about.
 - The user reads PRs by looking at the rendered PNG. Show your work that way.
+
+## Changelog
+
+This repo keeps a `changelog/` - a per-entry record of **deliberate changes and the
+why behind them** (features, structural/deploy changes, removals). When you make a
+meaningful change, add an entry in the **same PR as the work**; the why is the point,
+so a future agent doesn't have to reverse-engineer it from a diff. Format and
+when-to-write rules are in [changelog/README.md](changelog/README.md). This mirrors
+the homelab-wide practice defined in nottingham-cloud's `agent/changelog.md`.
