@@ -288,6 +288,12 @@ done
   Visual diff is the only kind of test the user cares about.
 - The user reads PRs by looking at the rendered PNG. Show your work that way.
 
+## Issues
+
+This repo follows the homelab issue lifecycle: an issue per ask, `status:in-progress` while
+working, `status:review` with a structured handover comment when delivered, and **only Fisher
+closes an issue**. Full contract: `nottingham-cloud/agent/issue-lifecycle.md`.
+
 ## Changelog
 
 This repo keeps a `changelog/` - a per-entry record of **deliberate changes and the
